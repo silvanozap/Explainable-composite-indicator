@@ -1,7 +1,7 @@
 """
 DRSA - Dominance-based Rough Set Approach for Composite Indicators
 
-Implements Algorithms 1, 2 and 4 from:
+Implements Algorithms 1, 2, 4 and full pipeline from:
 Corrente, Greco, Slowiński, Zappalà (2026)
 "An explainable and interpretable composite indicator based on decision rules"
 Omega 142, 103513. https://doi.org/10.1016/j.omega.2026.103513
@@ -14,6 +14,8 @@ from .core.formatting import (
     compute_relative_support,
     get_supporting_units,
 )
+from .core.classifier import classify_units, explain_unit
+from .core.pipeline import run_pipeline
 
 __all__ = [
     "induce_atleast_rules",
@@ -22,4 +24,7 @@ __all__ = [
     "format_atmost_rules",
     "compute_relative_support",
     "get_supporting_units",
+    "classify_units",
+    "explain_unit",
+    "run_pipeline",
 ]
