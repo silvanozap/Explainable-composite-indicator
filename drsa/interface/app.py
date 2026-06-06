@@ -361,11 +361,13 @@ with tab2:
                     if al_r2 is not None and len(al_r2) > 0:
                         st.markdown("**R≥ · At-Least Rules (maximal)**")
                         al_texts_max = format_atleast_rules(al_r2, increasing_0, decreasing_0, crit_names)
+                        st.session_state['al_texts_max'] = al_texts_max
                         for txt in al_texts_max:
                             st.markdown(f'<div class="rule-box atleast">{txt}</div>', unsafe_allow_html=True)
                     if am_r2 is not None and len(am_r2) > 0:
                         st.markdown("**R≤ · At-Most Rules (maximal)**")
                         am_texts_max = format_atmost_rules(am_r2, increasing_0, decreasing_0, crit_names)
+                        st.session_state['am_texts_max'] = am_texts_max
                         for txt in am_texts_max:
                             st.markdown(f'<div class="rule-box atmost">{txt}</div>', unsafe_allow_html=True)
 
@@ -382,6 +384,75 @@ with tab2:
                     st.session_state['am_texts'] = am_texts
                     for txt in am_texts:
                         st.markdown(f'<div class="rule-box atmost">{txt}</div>', unsafe_allow_html=True)
+
+                # ── Download rules ────────────────────────────────────────
+                st.markdown("### 💾 Export rules")
+                import pandas as _pd2
+                rows_dl = []
+                if len(al_final) > 0:
+                    for txt in al_texts:
+                        rows_dl.append({"type":"at-least (minimal)","rule":txt})
+                if len(am_final) > 0:
+                    for txt in am_texts:
+                        rows_dl.append({"type":"at-most (minimal)","rule":txt})
+                if st.session_state.get('al_texts_max'):
+                    for txt in st.session_state['al_texts_max']:
+                        rows_dl.append({"type":"at-least (maximal)","rule":txt})
+                if st.session_state.get('am_texts_max'):
+                    for txt in st.session_state['am_texts_max']:
+                        rows_dl.append({"type":"at-most (maximal)","rule":txt})
+                df_rules_dl = _pd2.DataFrame(rows_dl)
+                st.download_button("⬇ Download all rules as CSV",
+                                   df_rules_dl.to_csv(index=False),
+                                   file_name="drsa_rules_all.csv",
+                                   mime="text/csv",
+                                   use_container_width=True)
+
+                # ── Download rules ────────────────────────────────────────
+                st.markdown("### 💾 Export rules")
+                import pandas as _pd2
+                rows_dl = []
+                if len(al_final) > 0:
+                    for txt in al_texts:
+                        rows_dl.append({"type":"at-least (minimal)","rule":txt})
+                if len(am_final) > 0:
+                    for txt in am_texts:
+                        rows_dl.append({"type":"at-most (minimal)","rule":txt})
+                if st.session_state.get('al_texts_max'):
+                    for txt in st.session_state['al_texts_max']:
+                        rows_dl.append({"type":"at-least (maximal)","rule":txt})
+                if st.session_state.get('am_texts_max'):
+                    for txt in st.session_state['am_texts_max']:
+                        rows_dl.append({"type":"at-most (maximal)","rule":txt})
+                df_rules_dl = _pd2.DataFrame(rows_dl)
+                st.download_button("⬇ Download all rules as CSV",
+                                   df_rules_dl.to_csv(index=False),
+                                   file_name="drsa_rules_all.csv",
+                                   mime="text/csv",
+                                   use_container_width=True)
+
+                # ── Download rules ────────────────────────────────────────
+                st.markdown("### 💾 Export rules")
+                rows_dl = []
+                if len(al_final) > 0:
+                    for txt in al_texts:
+                        rows_dl.append({"type":"at-least (minimal)","rule":txt})
+                if len(am_final) > 0:
+                    for txt in am_texts:
+                        rows_dl.append({"type":"at-most (minimal)","rule":txt})
+                if st.session_state.get('al_texts_max'):
+                    for txt in st.session_state['al_texts_max']:
+                        rows_dl.append({"type":"at-least (maximal)","rule":txt})
+                if st.session_state.get('am_texts_max'):
+                    for txt in st.session_state['am_texts_max']:
+                        rows_dl.append({"type":"at-most (maximal)","rule":txt})
+                import pandas as _pd2
+                df_rules_dl = _pd2.DataFrame(rows_dl)
+                st.download_button("⬇ Download all rules as CSV",
+                                   df_rules_dl.to_csv(index=False),
+                                   file_name="drsa_rules_all.csv",
+                                   mime="text/csv",
+                                   use_container_width=True)
                 st.session_state['pipeline_result'] = res
                 al7 = res.get('step7_al_rules')
                 am7 = res.get('step7_am_rules')
@@ -605,8 +676,12 @@ with tab4:
                 st.dataframe(df_nc, use_container_width=True)
 
                 # ── Unit explanation ───────────────────────────────────────
-                al_final = new_res.get('step8_al_rules') or new_res.get('step7_al_rules')
-                am_final = new_res.get('step8_am_rules') or new_res.get('step7_am_rules')
+                al8 = new_res.get('step8_al_rules')
+                am8 = new_res.get('step8_am_rules')
+                al7 = new_res.get('step7_al_rules')
+                am7 = new_res.get('step7_am_rules')
+                al_final = al8 if (al8 is not None and len(al8) > 0) else al7
+                am_final = am8 if (am8 is not None and len(am8) > 0) else am7
 
                 if al_final is not None and len(al_final) > 0:
                     st.markdown("#### Minimal rules for A ∪ A_new")
