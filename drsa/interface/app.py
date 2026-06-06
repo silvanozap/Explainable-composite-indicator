@@ -260,16 +260,92 @@ with tab2:
 
             else:
                 # ── Full pipeline ──────────────────────────────────────────────
-                with st.spinner("Running full pipeline (Steps 1-7)… this may take a moment."):
-                    res = run_pipeline(
-                        matrix, ref_indices, increasing_0, decreasing_0,
-                        min_confidence=min_conf,
-                        handle_missing=handle_missing,
-                        random_seed=int(random_seed)
-                    )
+                progress = st.progress(0)
+                status = st.empty()
+
+                status.info("⏳ Step 2: Inducing rules from reference units…")
+                progress.progress(10)
+
+                from drsa.core.rules import induce_atleast_rules as _ial, induce_atmost_rules as _iam
+                from drsa.core.step_forward import step_forward as _sf
+                from drsa.core.milp import solve_minimal_rules as _smr
+                from drsa.core.classifier import classify_units as _cu
+                import numpy as _np
+
+                ref_matrix = matrix[ref_indices, :]
+                al_r, al_m, al_d, _ = _ial(ref_matrix, increasing_0, decreasing_0, min_conf, handle_missing)
+                am_r, am_m, am_d, _ = _iam(ref_matrix, increasing_0, decreasing_0, min_conf, handle_missing)
+                n_al2 = len(al_r) if al_r is not None and len(al_r)>0 else 0
+                n_am2 = len(am_r) if am_r is not None and len(am_r)>0 else 0
+                status.success(f"✅ Step 2: {n_al2} at-least, {n_am2} at-most rules induced from reference units")
+                progress.progress(25)
+
+                status.info("⏳ Step 3-4: Greedy non-contradictory rule selection…")
+                all_criteria = matrix[:, :-1]
+                sel_al, sel_am, _, _ = _sf(al_r, am_r, al_m, am_m, al_d, am_d,
+                                           ref_matrix, all_criteria, increasing_0, decreasing_0,
+                                           random_seed=int(random_seed))
+                status.success(f"✅ Step 3-4: {len(sel_al)} at-least, {len(sel_am)} at-most rules selected")
+                progress.progress(45)
+
+                status.info("⏳ Step 5: Fixing reference unit classifications…")
+                n_units_p = len(matrix)
+                mat_nc = _np.hstack([all_criteria, _np.full((n_units_p,1), _np.nan)])
+                s_minus, s_plus, _, _ = _cu(mat_nc, sel_al, sel_am, increasing_0, decreasing_0)
+                s_minus_f = s_minus.copy(); s_plus_f = s_plus.copy()
+                for idx in ref_indices:
+                    dm_c = matrix[idx, -1]
+                    if not _np.isnan(dm_c):
+                        s_minus_f[idx] = dm_c; s_plus_f[idx] = dm_c
+                mat_sm = _np.hstack([all_criteria, s_minus_f.reshape(-1,1)])
+                mat_sp = _np.hstack([all_criteria, s_plus_f.reshape(-1,1)])
+                status.success("✅ Step 5: Reference unit classifications fixed")
+                progress.progress(55)
+
+                status.info("⏳ Step 6: Inducing rules from all units…")
+                al_r2, al_m2, al_d2, _ = _ial(mat_sm, increasing_0, decreasing_0, min_conf, handle_missing)
+                am_r2, am_m2, am_d2, _ = _iam(mat_sp, increasing_0, decreasing_0, min_conf, handle_missing)
+                n_al6 = len(al_r2) if al_r2 is not None and len(al_r2)>0 else 0
+                n_am6 = len(am_r2) if am_r2 is not None and len(am_r2)>0 else 0
+                status.success(f"✅ Step 6: {n_al6} at-least, {n_am6} at-most rules induced from all units")
+                progress.progress(75)
+
+                status.info("⏳ Step 7: MILP — finding minimal rule set…")
+                al_min, am_min, al_idx_min, am_idx_min, milp_ok, milp_msg = _smr(
+                    mat_sm, al_m2, mat_sp, am_m2, al_r2, am_r2)
+                if milp_ok:
+                    status.success(f"✅ Step 7: Minimal set — {len(al_min)} at-least, {len(am_min)} at-most rules")
+                else:
+                    status.error(f"⚠️ Step 7: {milp_msg}")
+                progress.progress(90)
+
+                status.info("⏳ Finalizing classification…")
+                res = {
+                    'step2_al_rules': al_r, 'step2_am_rules': am_r,
+                    'step3_al_rules': sel_al, 'step3_am_rules': sel_am,
+                    'step6_al_rules': al_r2, 'step6_am_rules': am_r2,
+                    'step7_al_rules': al_min, 'step7_am_rules': am_min,
+                    'step7_al_idx': al_idx_min, 'step7_am_idx': am_idx_min,
+                    'milp_success': milp_ok, 'milp_message': milp_msg,
+                    'matrix_s_minus': mat_sm, 'matrix_s_plus': mat_sp,
+                    'al_match2': al_m2, 'am_match2': am_m2,
+                    'ref_indices': ref_indices,
+                }
+                if milp_ok and al_min is not None:
+                    sm7, sp7, _, _ = _cu(mat_nc, al_min, am_min, increasing_0, decreasing_0)
+                    res['classification_step7'] = _np.column_stack([sm7, sp7])
+                else:
+                    sm6, sp6, _, _ = _cu(mat_nc, al_r2, am_r2, increasing_0, decreasing_0)
+                    res['classification_step7'] = _np.column_stack([sm6, sp6])
+                progress.progress(100)
+                status.success("🎉 Pipeline complete!")
                 st.session_state['pipeline_result'] = res
-                st.session_state['al_rules'] = res.get('step7_al_rules') or res.get('step6_al_rules')
-                st.session_state['am_rules'] = res.get('step7_am_rules') or res.get('step6_am_rules')
+                al7 = res.get('step7_al_rules')
+                am7 = res.get('step7_am_rules')
+                al6 = res.get('step6_al_rules')
+                am6 = res.get('step6_am_rules')
+                st.session_state['al_rules'] = al7 if (al7 is not None and len(al7) > 0) else al6
+                st.session_state['am_rules'] = am7 if (am7 is not None and len(am7) > 0) else am6
                 st.session_state['al_texts'] = []
                 st.session_state['am_texts'] = []
 
