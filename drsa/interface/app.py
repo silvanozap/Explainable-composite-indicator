@@ -293,8 +293,13 @@ with tab2:
         horizontal=True
     )
 
-    run_al = st.checkbox("At-least rules (R≥)", value=True, key="run_al")
-    run_am = st.checkbox("At-most rules (R≤)",  value=True, key="run_am")
+    # Show checkboxes only for rule induction mode
+    if "only" in mode:
+        run_al = st.checkbox("At-least rules (R≥)", value=True, key="run_al")
+        run_am = st.checkbox("At-most rules (R≤)",  value=True, key="run_am")
+    else:
+        run_al = True
+        run_am = True
 
     if st.button("▶ Run", type="primary", use_container_width=True):
 
