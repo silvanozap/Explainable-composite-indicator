@@ -499,19 +499,18 @@ with tab2:
                                    file_name="drsa_rules_maximal.csv",
                                    mime="text/csv", use_container_width=True)
             with c3:
-                # MATLAB format: raw rule matrix [crit_idx, threshold, ..., class]
-                import io as _io
+                # MATLAB format: MAXIMAL rules (Step 6) for use in classify_new_alt_v3
                 def rules_to_matlab_csv(rules):
                     if rules is None or len(rules) == 0:
                         return ""
                     return pd.DataFrame(rules).to_csv(index=False, header=False)
-                matlab_str = "% AT-LEAST RULES\n"
-                matlab_str += rules_to_matlab_csv(al_final)
-                matlab_str += "\n% AT-MOST RULES\n"
-                matlab_str += rules_to_matlab_csv(am_final)
-                st.download_button("⬇ Rules for MATLAB (.csv)",
+                matlab_str = "% AT-LEAST RULES MAXIMAL (Step 6 - use in MATLAB as AtLEASTRules_2)\n"
+                matlab_str += rules_to_matlab_csv(al_r2)
+                matlab_str += "\n% AT-MOST RULES MAXIMAL (Step 6 - use in MATLAB as AtMOSTRules_2)\n"
+                matlab_str += rules_to_matlab_csv(am_r2)
+                st.download_button("⬇ Maximal rules for MATLAB",
                                    matlab_str,
-                                   file_name="drsa_rules_matlab.csv",
+                                   file_name="drsa_rules_maximal_matlab.csv",
                                    mime="text/plain", use_container_width=True)
 
     else:
@@ -776,6 +775,33 @@ with tab4:
 
                 st.markdown("#### Classification results")
                 st.dataframe(df_nc, use_container_width=True)
+
+                # Debug info
+                with st.expander("🔍 Debug — MILP intermediates"):
+                    eta = new_res.get('eta', None)
+                    st.markdown(f"**η total:** {new_res.get('eta_total', 'N/A')} units of A to reclassify")
+                    if eta is not None:
+                        eta_on = np.where(np.array(eta) == 1)[0].tolist()
+                        st.markdown(f"**η=1 at positions:** {eta_on}")
+                    st.markdown(f"**Changed units in A:** {new_res.get('changed_units', [])}")
+                    sm1 = new_res.get('step1_s_minus', [])
+                    sp1 = new_res.get('step1_s_plus',  [])
+                    if len(sm1) > 0:
+                        df_dbg = pd.DataFrame({
+                            'Unit': new_names,
+                            's⁻ step1': sm1.astype(int),
+                            's⁺ step1': sp1.astype(int),
+                            's⁻ final': new_res['final_s_minus'].astype(int),
+                            's⁺ final': new_res['final_s_plus'].astype(int),
+                        })
+                        st.dataframe(df_dbg, use_container_width=True)
+                    n_al7 = len(new_res.get('step7_al_rules') or [])
+                    n_am7 = len(new_res.get('step7_am_rules') or [])
+                    n_al8 = len(new_res.get('step8_al_rules') or [])
+                    n_am8 = len(new_res.get('step8_am_rules') or [])
+                    st.markdown(f"**MILP(7) rules:** {n_al7} at-least, {n_am7} at-most")
+                    st.markdown(f"**MILP(8) rules:** {n_al8} at-least, {n_am8} at-most")
+                    st.markdown(f"**Message:** {new_res.get('milp_message','N/A')}")
 
                 # Minimal rules for A ∪ A_new
                 if al_texts_new or am_texts_new:
