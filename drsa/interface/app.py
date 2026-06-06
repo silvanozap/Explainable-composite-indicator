@@ -408,51 +408,6 @@ with tab2:
                                    mime="text/csv",
                                    use_container_width=True)
 
-                # ── Download rules ────────────────────────────────────────
-                st.markdown("### 💾 Export rules")
-                import pandas as _pd2
-                rows_dl = []
-                if len(al_final) > 0:
-                    for txt in al_texts:
-                        rows_dl.append({"type":"at-least (minimal)","rule":txt})
-                if len(am_final) > 0:
-                    for txt in am_texts:
-                        rows_dl.append({"type":"at-most (minimal)","rule":txt})
-                if st.session_state.get('al_texts_max'):
-                    for txt in st.session_state['al_texts_max']:
-                        rows_dl.append({"type":"at-least (maximal)","rule":txt})
-                if st.session_state.get('am_texts_max'):
-                    for txt in st.session_state['am_texts_max']:
-                        rows_dl.append({"type":"at-most (maximal)","rule":txt})
-                df_rules_dl = _pd2.DataFrame(rows_dl)
-                st.download_button("⬇ Download all rules as CSV",
-                                   df_rules_dl.to_csv(index=False),
-                                   file_name="drsa_rules_all.csv",
-                                   mime="text/csv",
-                                   use_container_width=True)
-
-                # ── Download rules ────────────────────────────────────────
-                st.markdown("### 💾 Export rules")
-                rows_dl = []
-                if len(al_final) > 0:
-                    for txt in al_texts:
-                        rows_dl.append({"type":"at-least (minimal)","rule":txt})
-                if len(am_final) > 0:
-                    for txt in am_texts:
-                        rows_dl.append({"type":"at-most (minimal)","rule":txt})
-                if st.session_state.get('al_texts_max'):
-                    for txt in st.session_state['al_texts_max']:
-                        rows_dl.append({"type":"at-least (maximal)","rule":txt})
-                if st.session_state.get('am_texts_max'):
-                    for txt in st.session_state['am_texts_max']:
-                        rows_dl.append({"type":"at-most (maximal)","rule":txt})
-                import pandas as _pd2
-                df_rules_dl = _pd2.DataFrame(rows_dl)
-                st.download_button("⬇ Download all rules as CSV",
-                                   df_rules_dl.to_csv(index=False),
-                                   file_name="drsa_rules_all.csv",
-                                   mime="text/csv",
-                                   use_container_width=True)
                 st.session_state['pipeline_result'] = res
                 al7 = res.get('step7_al_rules')
                 am7 = res.get('step7_am_rules')
