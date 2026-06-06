@@ -16,9 +16,11 @@ from drsa import (
     induce_atleast_rules, induce_atmost_rules,
     format_atleast_rules, format_atmost_rules,
     compute_relative_support, get_supporting_units,
-    classify_units, explain_unit, run_pipeline,
+    classify_units, explain_unit,
+    classify_new_units,
 )
 
+# ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="DRSA", page_icon="⚖️", layout="wide")
 st.markdown("""
 <style>
@@ -37,14 +39,76 @@ h1,h2,h3{font-family:'IBM Plex Mono',monospace;letter-spacing:-0.03em;}
 .class-ok{background:#f0fdf4;border-left:4px solid #16a34a;}
 .class-range{background:#fffbeb;border-left:4px solid #d97706;}
 .class-err{background:#fef2f2;border-left:4px solid #dc2626;}
-.step-header{background:#1e3a5f;color:white;border-radius:6px;padding:8px 14px;font-family:'IBM Plex Mono',monospace;font-size:0.85rem;margin:12px 0 6px 0;}
 </style>
 """, unsafe_allow_html=True)
 
+# ── Helper functions ───────────────────────────────────────────────────────────
+def show_rules(rules, texts, supps=None, units=None, rule_type="atleast"):
+    for i, txt in enumerate(texts):
+        extra = ""
+        if supps is not None and units is not None:
+            tags = "".join(f'<span class="tag">{u}</span>' for u in units[i])
+            extra = f'<br><span style="color:#6b7280;font-size:0.75rem;">Support: {supps[i]:.3f} &nbsp;·&nbsp; </span>{tags}'
+        st.markdown(f'<div class="rule-box {rule_type}">{txt}{extra}</div>', unsafe_allow_html=True)
+
+def show_explanation(name, s_minus, s_plus, al_m, am_m, al_texts, am_texts, idx):
+    exp = explain_unit(idx, s_minus, s_plus, al_m, am_m, al_texts, am_texts, name)
+    css = "class-ok" if not exp['contradictory'] and exp['s_minus']==exp['s_plus'] \
+          else "class-err" if exp['contradictory'] else "class-range"
+    st.markdown(f'<div class="class-box {css}"><b>{name}</b> → <b>{exp["assignment"]}</b></div>',
+                unsafe_allow_html=True)
+    if exp['matched_atleast']:
+        st.markdown("**Satisfied at-least rules:**")
+        for r in exp['matched_atleast']:
+            st.markdown(f'<div class="rule-box atleast">{r}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown("*No at-least rule satisfied → s⁻ = 1*")
+    if exp['matched_atmost']:
+        st.markdown("**Satisfied at-most rules:**")
+        for r in exp['matched_atmost']:
+            st.markdown(f'<div class="rule-box atmost">{r}</div>', unsafe_allow_html=True)
+    else:
+        st.markdown("*No at-most rule satisfied → s⁺ = p*")
+
+def rules_to_df(al_texts, am_texts, label_al="at-least", label_am="at-most",
+                al_supp=None, am_supp=None):
+    rows = []
+    for i, txt in enumerate(al_texts):
+        r = {"type": label_al, "rule": txt}
+        if al_supp is not None: r["support"] = round(float(al_supp[i]), 4)
+        rows.append(r)
+    for i, txt in enumerate(am_texts):
+        r = {"type": label_am, "rule": txt}
+        if am_supp is not None: r["support"] = round(float(am_supp[i]), 4)
+        rows.append(r)
+    return pd.DataFrame(rows)
+
+def bibtex_omega():
+    return """@article{corrente2026explainable,
+  title     = {An explainable and interpretable composite indicator based on decision rules},
+  author    = {Corrente, Salvatore and Greco, Salvatore and S{\\l}owi{\\'n}ski, Roman and Zappal{\\`a}, Silvano},
+  journal   = {Omega},
+  volume    = {142},
+  pages     = {103513},
+  year      = {2026},
+  publisher = {Elsevier},
+  doi       = {10.1016/j.omega.2026.103513}
+}"""
+
+def bibtex_softwarex():
+    return """@article{zappala2026drsa,
+  title   = {DRSA: A Python tool for explainable composite indicators},
+  author  = {Zappal{\\`a}, Silvano and Corrente, Salvatore and Greco, Salvatore and S{\\l}owi{\\'n}ski, Roman},
+  journal = {SoftwareX},
+  year    = {2026},
+  note    = {To appear}
+}"""
+
+# ── Header ─────────────────────────────────────────────────────────────────────
 st.title("⚖️ DRSA · Composite Indicator Tool")
 st.markdown("""<div class="info-banner">
 Dominance-based Rough Set Approach for explainable composite indicators.<br>
-Full pipeline: <b>rule induction → non-contradictory selection → minimal rule set (MILP) → classification</b><br>
+Implements <b>Algorithms 1, 2, 4</b> and full pipeline (Steps 1–7) from
 Corrente, Greco, Słowiński, Zappalà — <i>Omega 142</i> (2026), 103513.
 </div>""", unsafe_allow_html=True)
 
@@ -52,20 +116,35 @@ Corrente, Greco, Słowiński, Zappalà — <i>Omega 142</i> (2026), 103513.
 with st.sidebar:
     st.markdown("### 📂 Data")
     uploaded = st.file_uploader("Upload CSV or TXT", type=["csv","txt"],
-        help="Last column = class label (NaN for non-reference units). Optional first column = names.")
+        help="Last column = class label. Optional first column = unit names. NaN = non-reference unit.")
     sep = st.selectbox("Separator", [",",";","\\t"," "], index=0)
     sep_actual = "\t" if sep=="\\t" else sep
+
     st.markdown("---")
     st.markdown("### ⚙️ Settings")
-    min_conf = st.slider("Min confidence (c)", 0.0, 1.0, 1.0, 0.05)
-    handle_missing = st.checkbox("Missing values (Algorithm 4)", False)
-    random_seed = st.number_input("Random seed", value=1, min_value=0, step=1)
+    min_conf     = st.slider("Min confidence (c)", 0.0, 1.0, 1.0, 0.05)
+    handle_miss  = st.checkbox("Missing values (Algorithm 4)", False)
+    random_seed  = st.number_input("Random seed", value=1, min_value=0, step=1)
+
     st.markdown("---")
-    st.markdown("<div style='font-size:0.75rem;color:#9ca3af'>Corrente et al. (2026)<br>Omega 142, 103513</div>", unsafe_allow_html=True)
+    st.markdown("### 📄 Cite")
+    st.download_button("⬇ BibTeX — Omega 2026",
+                       bibtex_omega(),
+                       file_name="corrente2026.bib",
+                       mime="text/plain",
+                       use_container_width=True)
+    st.download_button("⬇ BibTeX — SoftwareX",
+                       bibtex_softwarex(),
+                       file_name="zappala2026drsa.bib",
+                       mime="text/plain",
+                       use_container_width=True)
+
+    st.markdown("---")
+    st.markdown("<div style='font-size:0.75rem;color:#9ca3af'>Corrente et al. (2026)<br>Omega 142, 103513</div>",
+                unsafe_allow_html=True)
 
 # ── Welcome ────────────────────────────────────────────────────────────────────
 if uploaded is None:
-    st.markdown("#### Getting started")
     c1,c2,c3 = st.columns(3)
     with c1:
         st.markdown("""
@@ -74,8 +153,8 @@ if uploaded is None:
 - Optional first column: unit names
 - Criteria columns (numeric)
 - Last column: class label
-  - Integer for reference units
-  - Empty/NaN for non-reference units
+  - Integer → reference unit
+  - Empty/NaN → non-reference unit
 """)
     with c2:
         st.markdown("""
@@ -87,17 +166,15 @@ A2,5,4,3,2
 A3,7,6,5,
 A4,6,5,4,
 ```
-A3, A4 are non-reference (no class).
+A3, A4 are non-reference.
 """)
     with c3:
         st.markdown("""
-**Full pipeline**
-1. Induce rules from reference units
-2. Greedy non-contradictory selection
-3. Fix reference classifications
-4. DRSA on all units
-5. MILP → minimal rule set
-6. Classify new units
+**Workflow**
+1. Load data & set directions
+2. Choose: rule induction only OR full pipeline
+3. Inspect classification
+4. Classify new units
 """)
     sample = pd.DataFrame({
         'Name':['A1','A2','A3','A4','A5','A6','A7','A8'],
@@ -126,425 +203,432 @@ df = df.apply(pd.to_numeric, errors='coerce')
 if unit_names is None:
     unit_names = [f'a{i+1}' for i in range(len(df))]
 
-n_units, n_cols = df.shape
-n_criteria = n_cols - 1
+n_units   = len(df)
+n_cols    = df.shape[1]
+n_crit    = n_cols - 1
 crit_names = list(df.columns)[:-1]
-matrix = df.values.astype(float)
+matrix    = df.values.astype(float)
 
-# Identify reference units (those with non-NaN class)
-ref_mask = ~np.isnan(matrix[:, -1])
+ref_mask    = ~np.isnan(matrix[:, -1])
 ref_indices = np.where(ref_mask)[0].tolist()
-n_ref = len(ref_indices)
-n_nonref = n_units - n_ref
 
 # ── TABS ───────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4 = st.tabs([
     "📋 Data & Setup",
-    "⚙️ Run Pipeline",
+    "⚙️ Run",
     "🔍 Classification",
     "🆕 New Units"
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
+# TAB 1 — Data & Setup
+# ══════════════════════════════════════════════════════════════════════════════
 with tab1:
     st.markdown("#### 📊 Dataset")
     st.dataframe(df_raw, use_container_width=True, height=250)
+
+    # Reference unit selection
+    st.markdown("#### 🎯 Reference units")
+    st.markdown("Units with a class value are pre-selected. You can modify the selection.")
+    selected_ref = st.multiselect(
+        "Select reference units",
+        options=unit_names,
+        default=[unit_names[i] for i in ref_indices],
+        help="Reference units are those classified by the DM."
+    )
+    if len(selected_ref) == 0:
+        st.error("Please select at least one reference unit."); st.stop()
+
+    ref_indices_sel = [unit_names.index(n) for n in selected_ref]
+    n_ref    = len(ref_indices_sel)
+    n_nonref = n_units - n_ref
+
     c1,c2,c3 = st.columns(3)
     c1.metric("Total units", n_units)
     c2.metric("Reference units", n_ref)
     c3.metric("Non-reference units", n_nonref)
 
-    st.markdown("#### 🎯 Reference units")
-    st.markdown("Units with a class value in the file are pre-selected. You can add or remove units.")
-    selected_ref_names = st.multiselect(
-        "Select reference units",
-        options=unit_names,
-        default=[unit_names[i] for i in ref_indices],
-        help="Reference units are those whose class is known and used to induce rules."
-    )
-    if len(selected_ref_names) == 0:
-        st.error("Please select at least one reference unit.")
-        st.stop()
-    ref_indices = [unit_names.index(n) for n in selected_ref_names]
-    n_ref    = len(ref_indices)
-    n_nonref = n_units - n_ref
-    c2.metric("Reference units", n_ref)
-    c3.metric("Non-reference units", n_nonref)
-
+    # Criteria directions
     st.markdown("#### 🔼 Criteria preference direction")
-    dir_cols = st.columns(min(n_criteria, 6))
+    dir_cols = st.columns(min(n_crit, 6))
     directions = {}
     for i, name in enumerate(crit_names):
         with dir_cols[i % len(dir_cols)]:
             directions[name] = st.selectbox(name, ["↑ Increasing","↓ Decreasing"], key=f"dir_{i}")
 
-    increasing_0 = [i for i,n in enumerate(crit_names) if "Increasing" in directions[n]]
-    decreasing_0 = [i for i,n in enumerate(crit_names) if "Decreasing" in directions[n]]
+    inc = [i for i,n in enumerate(crit_names) if "Increasing" in directions[n]]
+    dec = [i for i,n in enumerate(crit_names) if "Decreasing" in directions[n]]
 
-    st.session_state['increasing_0'] = increasing_0
-    st.session_state['decreasing_0'] = decreasing_0
-    st.session_state['matrix']       = matrix
-    st.session_state['unit_names']   = unit_names
-    st.session_state['crit_names']   = crit_names
-    st.session_state['ref_indices']  = ref_indices
+    # Save to session state
+    st.session_state.update({
+        'inc': inc, 'dec': dec,
+        'matrix': matrix, 'unit_names': unit_names,
+        'crit_names': crit_names, 'ref_indices': ref_indices_sel,
+        'n_units': n_units,
+    })
 
 # ══════════════════════════════════════════════════════════════════════════════
+# TAB 2 — Run
+# ══════════════════════════════════════════════════════════════════════════════
 with tab2:
-    if 'increasing_0' not in st.session_state:
-        st.info("Set up criteria directions in the **Data & Setup** tab first.")
-    else:
-        increasing_0 = st.session_state['increasing_0']
-        decreasing_0 = st.session_state['decreasing_0']
-        matrix       = st.session_state['matrix']
-        unit_names   = st.session_state['unit_names']
-        crit_names   = st.session_state['crit_names']
-        ref_indices  = st.session_state['ref_indices']
+    if 'inc' not in st.session_state:
+        st.info("Set up data and directions in the **Data & Setup** tab first.")
+        st.stop()
 
-        mode = st.radio("Mode", ["🔬 Rule induction only (Steps 1-2)", 
-                                  "🚀 Full pipeline (Steps 1-7)"],
-                        horizontal=True)
+    inc          = st.session_state['inc']
+    dec          = st.session_state['dec']
+    matrix       = st.session_state['matrix']
+    unit_names   = st.session_state['unit_names']
+    crit_names   = st.session_state['crit_names']
+    ref_idx      = st.session_state['ref_indices']
+    ref_matrix   = matrix[ref_idx, :]
+    ref_names    = [unit_names[i] for i in ref_idx]
+    all_crit     = matrix[:, :-1]
+    n_units      = st.session_state['n_units']
 
-        if st.button("▶ Run", type="primary", use_container_width=True):
-            if "only" in mode:
-                # ── Rule induction only ────────────────────────────────────────
-                ref_matrix = matrix[ref_indices, :]
-                with st.spinner("Inducing rules from reference units…"):
-                    al_rules, al_match, al_dec, _ = induce_atleast_rules(
-                        ref_matrix, increasing_0, decreasing_0, min_conf, handle_missing)
-                    am_rules, am_match, am_dec, _ = induce_atmost_rules(
-                        ref_matrix, increasing_0, decreasing_0, min_conf, handle_missing)
+    mode = st.radio(
+        "Mode",
+        ["🔬 Rule induction only (Steps 1-2)",
+         "🚀 Full pipeline (Steps 1-7)"],
+        horizontal=True
+    )
 
-                n_al = len(al_rules) if al_rules is not None and len(al_rules)>0 else 0
-                n_am = len(am_rules) if am_rules is not None and len(am_rules)>0 else 0
+    run_al = st.checkbox("At-least rules (R≥)", value=True, key="run_al")
+    run_am = st.checkbox("At-most rules (R≤)",  value=True, key="run_am")
 
-                st.session_state['al_rules'] = al_rules
-                st.session_state['am_rules'] = am_rules
-                st.session_state['al_match'] = al_match
-                st.session_state['am_match'] = am_match
-                st.session_state['al_dec']   = al_dec
-                st.session_state['am_dec']   = am_dec
-                st.session_state['pipeline_result'] = None
+    if st.button("▶ Run", type="primary", use_container_width=True):
 
-                mc1,mc2,mc3 = st.columns(3)
-                for col,val,lbl in zip([mc1,mc2,mc3],[n_al,n_am,n_al+n_am],
-                                        ["At-least (R≥)","At-most (R≤)","Total"]):
-                    col.markdown(f'<div class="metric-card"><div class="value">{val}</div>'
-                                 f'<div class="label">{lbl}</div></div>', unsafe_allow_html=True)
-                st.markdown("")
+        if "only" in mode:
+            # ── Rule induction only ────────────────────────────────────────
+            with st.spinner("Inducing rules…"):
+                al_r = am_r = None
+                al_m = al_d = am_m = am_d = None
+                if run_al:
+                    al_r, al_m, al_d, _ = induce_atleast_rules(
+                        ref_matrix, inc, dec, min_conf, handle_miss)
+                if run_am:
+                    am_r, am_m, am_d, _ = induce_atmost_rules(
+                        ref_matrix, inc, dec, min_conf, handle_miss)
 
-                ref_unit_names = [unit_names[i] for i in ref_indices]
+            n_al = len(al_r) if al_r is not None and len(al_r)>0 else 0
+            n_am = len(am_r) if am_r is not None and len(am_r)>0 else 0
 
-                if n_al > 0:
-                    st.markdown("### R≥ · At-Least Rules")
-                    al_texts = format_atleast_rules(al_rules, increasing_0, decreasing_0, crit_names)
-                    al_supp  = compute_relative_support(al_rules, al_match, al_dec)
-                    al_units = get_supporting_units(al_match, al_dec, ref_unit_names)
-                    st.session_state['al_texts'] = al_texts
-                    st.session_state['am_texts'] = []
-                    for txt,supp,units in zip(al_texts,al_supp,al_units):
-                        tags = "".join(f'<span class="tag">{u}</span>' for u in units)
-                        st.markdown(f'<div class="rule-box atleast">{txt}'
-                                    f'<br><span style="color:#6b7280;font-size:0.75rem;">Support: {supp:.3f} &nbsp;·&nbsp; </span>'
-                                    f'{tags}</div>', unsafe_allow_html=True)
-                if n_am > 0:
-                    st.markdown("### R≤ · At-Most Rules")
-                    am_texts = format_atmost_rules(am_rules, increasing_0, decreasing_0, crit_names)
-                    am_supp  = compute_relative_support(am_rules, am_match, am_dec)
-                    am_units = get_supporting_units(am_match, am_dec, ref_unit_names)
-                    st.session_state['am_texts'] = am_texts
-                    for txt,supp,units in zip(am_texts,am_supp,am_units):
-                        tags = "".join(f'<span class="tag">{u}</span>' for u in units)
-                        st.markdown(f'<div class="rule-box atmost">{txt}'
-                                    f'<br><span style="color:#6b7280;font-size:0.75rem;">Support: {supp:.3f} &nbsp;·&nbsp; </span>'
-                                    f'{tags}</div>', unsafe_allow_html=True)
+            # Save to session state
+            al_texts = format_atleast_rules(al_r, inc, dec, crit_names) if n_al>0 else []
+            am_texts = format_atmost_rules(am_r, inc, dec, crit_names) if n_am>0 else []
+            al_supp  = compute_relative_support(al_r, al_m, al_d) if n_al>0 else []
+            am_supp  = compute_relative_support(am_r, am_m, am_d) if n_am>0 else []
+            al_units = get_supporting_units(al_m, al_d, ref_names) if n_al>0 else []
+            am_units = get_supporting_units(am_m, am_d, ref_names) if n_am>0 else []
 
-            else:
-                # ── Full pipeline ──────────────────────────────────────────────
-                progress = st.progress(0)
-                status = st.empty()
+            st.session_state.update({
+                'al_rules': al_r, 'am_rules': am_r,
+                'al_texts': al_texts, 'am_texts': am_texts,
+                'al_supp': al_supp, 'am_supp': am_supp,
+                'al_units': al_units, 'am_units': am_units,
+                'pipeline_result': None,
+                'mode': 'induction',
+            })
 
-                status.info("⏳ Step 2: Inducing rules from reference units…")
-                progress.progress(10)
+            # Display metrics
+            mc1,mc2,mc3 = st.columns(3)
+            for col,val,lbl in zip([mc1,mc2,mc3],[n_al,n_am,n_al+n_am],
+                                    ["At-least (R≥)","At-most (R≤)","Total"]):
+                col.markdown(f'<div class="metric-card"><div class="value">{val}</div>'
+                             f'<div class="label">{lbl}</div></div>', unsafe_allow_html=True)
+            st.markdown("")
 
-                from drsa.core.rules import induce_atleast_rules as _ial, induce_atmost_rules as _iam
-                from drsa.core.step_forward import step_forward as _sf
-                from drsa.core.milp import solve_minimal_rules as _smr
-                from drsa.core.classifier import classify_units as _cu
-                import numpy as _np
+            if n_al > 0:
+                st.markdown("### R≥ · At-Least Rules")
+                show_rules(al_r, al_texts, al_supp, al_units, "atleast")
+            if n_am > 0:
+                st.markdown("### R≤ · At-Most Rules")
+                show_rules(am_r, am_texts, am_supp, am_units, "atmost")
 
-                ref_matrix = matrix[ref_indices, :]
-                al_r, al_m, al_d, _ = _ial(ref_matrix, increasing_0, decreasing_0, min_conf, handle_missing)
-                am_r, am_m, am_d, _ = _iam(ref_matrix, increasing_0, decreasing_0, min_conf, handle_missing)
-                n_al2 = len(al_r) if al_r is not None and len(al_r)>0 else 0
-                n_am2 = len(am_r) if am_r is not None and len(am_r)>0 else 0
-                status.success(f"✅ Step 2: {n_al2} at-least, {n_am2} at-most rules induced from reference units")
-                progress.progress(25)
-
-                status.info("⏳ Step 3-4: Greedy non-contradictory rule selection…")
-                all_criteria = matrix[:, :-1]
-                sel_al, sel_am, _, _ = _sf(al_r, am_r, al_m, am_m, al_d, am_d,
-                                           ref_matrix, all_criteria, increasing_0, decreasing_0,
-                                           random_seed=int(random_seed))
-                status.success(f"✅ Step 3-4: {len(sel_al)} at-least, {len(sel_am)} at-most rules selected")
-                progress.progress(45)
-
-                status.info("⏳ Step 5: Fixing reference unit classifications…")
-                n_units_p = len(matrix)
-                mat_nc = _np.hstack([all_criteria, _np.full((n_units_p,1), _np.nan)])
-                s_minus, s_plus, _, _ = _cu(mat_nc, sel_al, sel_am, increasing_0, decreasing_0)
-                s_minus_f = s_minus.copy(); s_plus_f = s_plus.copy()
-                for idx in ref_indices:
-                    dm_c = matrix[idx, -1]
-                    if not _np.isnan(dm_c):
-                        s_minus_f[idx] = dm_c; s_plus_f[idx] = dm_c
-                mat_sm = _np.hstack([all_criteria, s_minus_f.reshape(-1,1)])
-                mat_sp = _np.hstack([all_criteria, s_plus_f.reshape(-1,1)])
-                status.success("✅ Step 5: Reference unit classifications fixed")
-                progress.progress(55)
-
-                status.info("⏳ Step 6: Inducing rules from all units…")
-                al_r2, al_m2, al_d2, _ = _ial(mat_sm, increasing_0, decreasing_0, min_conf, handle_missing)
-                am_r2, am_m2, am_d2, _ = _iam(mat_sp, increasing_0, decreasing_0, min_conf, handle_missing)
-                n_al6 = len(al_r2) if al_r2 is not None and len(al_r2)>0 else 0
-                n_am6 = len(am_r2) if am_r2 is not None and len(am_r2)>0 else 0
-                status.success(f"✅ Step 6: {n_al6} at-least, {n_am6} at-most rules induced from all units")
-                progress.progress(75)
-
-                status.info("⏳ Step 7: MILP — finding minimal rule set…")
-                al_min, am_min, al_idx_min, am_idx_min, milp_ok, milp_msg = _smr(
-                    mat_sm, al_m2, mat_sp, am_m2, al_r2, am_r2)
-                if milp_ok:
-                    status.success(f"✅ Step 7: Minimal set — {len(al_min)} at-least, {len(am_min)} at-most rules")
-                else:
-                    status.error(f"⚠️ Step 7: {milp_msg}")
-                progress.progress(90)
-
-                status.info("⏳ Finalizing classification…")
-                res = {
-                    'step2_al_rules': al_r, 'step2_am_rules': am_r,
-                    'step3_al_rules': sel_al, 'step3_am_rules': sel_am,
-                    'step6_al_rules': al_r2, 'step6_am_rules': am_r2,
-                    'step7_al_rules': al_min, 'step7_am_rules': am_min,
-                    'step7_al_idx': al_idx_min, 'step7_am_idx': am_idx_min,
-                    'milp_success': milp_ok, 'milp_message': milp_msg,
-                    'matrix_s_minus': mat_sm, 'matrix_s_plus': mat_sp,
-                    'al_match2': al_m2, 'am_match2': am_m2,
-                    'ref_indices': ref_indices,
-                }
-                if milp_ok and al_min is not None:
-                    sm7, sp7, _, _ = _cu(mat_nc, al_min, am_min, increasing_0, decreasing_0)
-                    res['classification_step7'] = _np.column_stack([sm7, sp7])
-                else:
-                    sm6, sp6, _, _ = _cu(mat_nc, al_r2, am_r2, increasing_0, decreasing_0)
-                    res['classification_step7'] = _np.column_stack([sm6, sp6])
-                progress.progress(100)
-                status.success("🎉 Pipeline complete!")
-
-                # ── Show minimal rules ────────────────────────────────────────
-                al_final = al_min if (milp_ok and al_min is not None and len(al_min)>0) else al_r2
-                am_final = am_min if (milp_ok and am_min is not None and len(am_min)>0) else am_r2
-
-                steps_data = [
-                    ("Step 2 – Reference units", len(al_r) if al_r is not None else 0, len(am_r) if am_r is not None else 0),
-                    ("Step 3 – Greedy selection", len(sel_al), len(sel_am)),
-                    ("Step 6 – All units", n_al6, n_am6),
-                    ("Step 7 – Minimal (MILP)", len(al_final), len(am_final)),
-                ]
-                import pandas as _pd
-                df_steps = _pd.DataFrame(steps_data, columns=["Step","At-least","At-most"])
-                df_steps["Total"] = df_steps["At-least"] + df_steps["At-most"]
-                st.markdown("#### Pipeline summary")
-                st.dataframe(df_steps, use_container_width=True, hide_index=True)
-
-                # ── Maximal rules (Step 6) in expander ───────────────────
-                with st.expander(f"📂 Maximal rules — Step 6 ({n_al6} at-least, {n_am6} at-most)"):
-                    if al_r2 is not None and len(al_r2) > 0:
-                        st.markdown("**R≥ · At-Least Rules (maximal)**")
-                        al_texts_max = format_atleast_rules(al_r2, increasing_0, decreasing_0, crit_names)
-                        st.session_state['al_texts_max'] = al_texts_max
-                        for txt in al_texts_max:
-                            st.markdown(f'<div class="rule-box atleast">{txt}</div>', unsafe_allow_html=True)
-                    if am_r2 is not None and len(am_r2) > 0:
-                        st.markdown("**R≤ · At-Most Rules (maximal)**")
-                        am_texts_max = format_atmost_rules(am_r2, increasing_0, decreasing_0, crit_names)
-                        st.session_state['am_texts_max'] = am_texts_max
-                        for txt in am_texts_max:
-                            st.markdown(f'<div class="rule-box atmost">{txt}</div>', unsafe_allow_html=True)
-
-                # ── Minimal rules (Step 7) ────────────────────────────────────
-                if len(al_final) > 0:
-                    st.markdown("### R≥ · Minimal At-Least Rules — Step 7")
-                    al_texts = format_atleast_rules(al_final, increasing_0, decreasing_0, crit_names)
-                    st.session_state['al_texts'] = al_texts
-                    for txt in al_texts:
-                        st.markdown(f'<div class="rule-box atleast">{txt}</div>', unsafe_allow_html=True)
-                if len(am_final) > 0:
-                    st.markdown("### R≤ · Minimal At-Most Rules — Step 7")
-                    am_texts = format_atmost_rules(am_final, increasing_0, decreasing_0, crit_names)
-                    st.session_state['am_texts'] = am_texts
-                    for txt in am_texts:
-                        st.markdown(f'<div class="rule-box atmost">{txt}</div>', unsafe_allow_html=True)
-
-                # ── Download rules ────────────────────────────────────────
-                st.markdown("### 💾 Export rules")
-                import pandas as _pd2
-                rows_dl = []
-                if len(al_final) > 0:
-                    for txt in al_texts:
-                        rows_dl.append({"type":"at-least (minimal)","rule":txt})
-                if len(am_final) > 0:
-                    for txt in am_texts:
-                        rows_dl.append({"type":"at-most (minimal)","rule":txt})
-                if st.session_state.get('al_texts_max'):
-                    for txt in st.session_state['al_texts_max']:
-                        rows_dl.append({"type":"at-least (maximal)","rule":txt})
-                if st.session_state.get('am_texts_max'):
-                    for txt in st.session_state['am_texts_max']:
-                        rows_dl.append({"type":"at-most (maximal)","rule":txt})
-                df_rules_dl = _pd2.DataFrame(rows_dl)
-                st.download_button("⬇ Download all rules as CSV",
-                                   df_rules_dl.to_csv(index=False),
-                                   file_name="drsa_rules_all.csv",
+            # Download
+            if n_al + n_am > 0:
+                st.markdown("### 💾 Export")
+                df_dl = rules_to_df(al_texts, am_texts,
+                                    al_supp=al_supp if n_al>0 else None,
+                                    am_supp=am_supp if n_am>0 else None)
+                st.download_button("⬇ Download rules CSV",
+                                   df_dl.to_csv(index=False),
+                                   file_name="drsa_rules.csv",
                                    mime="text/csv",
                                    use_container_width=True)
 
-                st.session_state['pipeline_result'] = res
-                al7 = res.get('step7_al_rules')
-                am7 = res.get('step7_am_rules')
-                al6 = res.get('step6_al_rules')
-                am6 = res.get('step6_am_rules')
-                st.session_state['al_rules'] = al7 if (al7 is not None and len(al7) > 0) else al6
-                st.session_state['am_rules'] = am7 if (am7 is not None and len(am7) > 0) else am6
-                st.session_state['al_texts'] = []
-                st.session_state['am_texts'] = []
+        else:
+            # ── Full pipeline ──────────────────────────────────────────────
+            prog   = st.progress(0)
+            status = st.empty()
 
-                if 'error' in res:
-                    st.error(res['error']); st.stop()
+            # Step 2
+            status.info("⏳ Step 2: Inducing rules from reference units…")
+            prog.progress(10)
+            al_r, al_m, al_d, _ = induce_atleast_rules(ref_matrix, inc, dec, min_conf, handle_miss)
+            am_r, am_m, am_d, _ = induce_atmost_rules(ref_matrix, inc, dec, min_conf, handle_miss)
+            n_al2 = len(al_r) if al_r is not None and len(al_r)>0 else 0
+            n_am2 = len(am_r) if am_r is not None and len(am_r)>0 else 0
+            status.success(f"✅ Step 2: {n_al2} at-least, {n_am2} at-most rules")
+            prog.progress(20)
 
-                # Summary
-                def nrules(r): return len(r) if r is not None and len(r)>0 else 0
-                steps_data = [
-                    ("Step 2 – Reference units", nrules(res['step2_al_rules']), nrules(res['step2_am_rules'])),
-                    ("Step 3 – Greedy selection", nrules(res['step3_al_rules']), nrules(res['step3_am_rules'])),
-                    ("Step 6 – All units", nrules(res['step6_al_rules']), nrules(res['step6_am_rules'])),
-                    ("Step 7 – Minimal (MILP)", nrules(res['step7_al_rules']), nrules(res['step7_am_rules'])),
-                ]
-                df_steps = pd.DataFrame(steps_data, columns=["Step","At-least rules","At-most rules"])
-                df_steps["Total"] = df_steps["At-least rules"] + df_steps["At-most rules"]
-                st.markdown("#### Pipeline summary")
-                st.dataframe(df_steps, use_container_width=True, hide_index=True)
+            # Step 3-4
+            status.info("⏳ Step 3-4: Greedy non-contradictory selection…")
+            from drsa.core.step_forward import step_forward as _sf
+            sel_al, sel_am, _, _ = _sf(al_r, am_r, al_m, am_m, al_d, am_d,
+                                        ref_matrix, all_crit, inc, dec,
+                                        random_seed=int(random_seed))
+            status.success(f"✅ Step 3-4: {len(sel_al)} at-least, {len(sel_am)} at-most rules selected")
+            prog.progress(40)
 
-                milp_color = "success" if res['milp_success'] else "error"
-                if res['milp_success']:
-                    st.success(f"MILP: {res['milp_message']}")
-                else:
-                    st.error(f"MILP: {res['milp_message']}")
+            # Step 5
+            status.info("⏳ Step 5: Fixing reference unit classifications…")
+            from drsa.core.classifier import classify_units as _cu
+            mat_nc = np.hstack([all_crit, np.full((n_units,1), np.nan)])
+            s_minus, s_plus, _, _ = _cu(mat_nc, sel_al, sel_am, inc, dec)
+            s_minus_f = s_minus.copy(); s_plus_f = s_plus.copy()
+            for idx in ref_idx:
+                dm_c = matrix[idx, -1]
+                if not np.isnan(dm_c):
+                    s_minus_f[idx] = dm_c; s_plus_f[idx] = dm_c
+            mat_sm = np.hstack([all_crit, s_minus_f.reshape(-1,1)])
+            mat_sp = np.hstack([all_crit, s_plus_f.reshape(-1,1)])
+            status.success("✅ Step 5: Reference classifications fixed")
+            prog.progress(55)
 
-                # Show minimal rules
-                al_min = res['step7_al_rules']
-                am_min = res['step7_am_rules']
-                if al_min is not None and len(al_min) > 0:
+            # Step 6
+            status.info("⏳ Step 6: Inducing rules from all units…")
+            al_r2, al_m2, al_d2, _ = induce_atleast_rules(mat_sm, inc, dec, min_conf, handle_miss)
+            am_r2, am_m2, am_d2, _ = induce_atmost_rules(mat_sp, inc, dec, min_conf, handle_miss)
+            n_al6 = len(al_r2) if al_r2 is not None and len(al_r2)>0 else 0
+            n_am6 = len(am_r2) if am_r2 is not None and len(am_r2)>0 else 0
+            status.success(f"✅ Step 6: {n_al6} at-least, {n_am6} at-most rules")
+            prog.progress(70)
+
+            # Step 7 MILP
+            status.info("⏳ Step 7: MILP — minimal rule set…")
+            from drsa.core.milp import solve_minimal_rules as _smr
+            al_min, am_min, al_idx_min, am_idx_min, milp_ok, milp_msg = _smr(
+                mat_sm, al_m2, mat_sp, am_m2, al_r2, am_r2)
+            al_final = al_min if (milp_ok and al_min is not None and len(al_min)>0) else al_r2
+            am_final = am_min if (milp_ok and am_min is not None and len(am_min)>0) else am_r2
+            if milp_ok:
+                status.success(f"✅ Step 7: {len(al_final)} at-least, {len(am_final)} at-most minimal rules")
+            else:
+                status.error(f"⚠️ Step 7: {milp_msg}")
+            prog.progress(88)
+
+            # Final classification
+            status.info("⏳ Final classification…")
+            sm7, sp7, _, _ = _cu(mat_nc, al_final, am_final, inc, dec)
+            prog.progress(100)
+            status.success("🎉 Pipeline complete!")
+
+            # Format texts
+            al_texts_max = format_atleast_rules(al_r2, inc, dec, crit_names) if n_al6>0 else []
+            am_texts_max = format_atmost_rules(am_r2, inc, dec, crit_names) if n_am6>0 else []
+            al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names) if len(al_final)>0 else []
+            am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names) if len(am_final)>0 else []
+
+            # Save ALL to session state
+            st.session_state.update({
+                'al_rules': al_final, 'am_rules': am_final,
+                'al_rules_max': al_r2, 'am_rules_max': am_r2,
+                'al_texts': al_texts_min, 'am_texts': am_texts_min,
+                'al_texts_max': al_texts_max, 'am_texts_max': am_texts_max,
+                'al_match2': al_m2, 'am_match2': am_m2,
+                'matrix_s_minus': mat_sm, 'matrix_s_plus': mat_sp,
+                'classification_final': np.column_stack([sm7, sp7]),
+                'mode': 'pipeline',
+                'pipeline_result': {
+                    'step2': (n_al2, n_am2),
+                    'step3': (len(sel_al), len(sel_am)),
+                    'step6': (n_al6, n_am6),
+                    'step7': (len(al_final), len(am_final)),
+                    'milp_ok': milp_ok, 'milp_msg': milp_msg,
+                },
+            })
+
+            # Summary table
+            st.markdown("#### Pipeline summary")
+            df_steps = pd.DataFrame([
+                ("Step 2 – Reference units", n_al2, n_am2, n_al2+n_am2),
+                ("Step 3 – Greedy selection", len(sel_al), len(sel_am), len(sel_al)+len(sel_am)),
+                ("Step 6 – All units", n_al6, n_am6, n_al6+n_am6),
+                ("Step 7 – Minimal (MILP)", len(al_final), len(am_final), len(al_final)+len(am_final)),
+            ], columns=["Step","At-least","At-most","Total"])
+            st.dataframe(df_steps, use_container_width=True, hide_index=True)
+
+            # Maximal rules (expander)
+            with st.expander(f"📂 Maximal rules — Step 6 ({n_al6} at-least, {n_am6} at-most)"):
+                if al_texts_max:
+                    st.markdown("**R≥ At-Least (maximal)**")
+                    show_rules(al_r2, al_texts_max, rule_type="atleast")
+                if am_texts_max:
+                    st.markdown("**R≤ At-Most (maximal)**")
+                    show_rules(am_r2, am_texts_max, rule_type="atmost")
+
+            # Minimal rules
+            if al_texts_min:
+                st.markdown("### R≥ · Minimal At-Least Rules — Step 7")
+                show_rules(al_final, al_texts_min, rule_type="atleast")
+            if am_texts_min:
+                st.markdown("### R≤ · Minimal At-Most Rules — Step 7")
+                show_rules(am_final, am_texts_min, rule_type="atmost")
+
+            # Download
+            st.markdown("### 💾 Export rules")
+            c1, c2 = st.columns(2)
+            with c1:
+                df_min = rules_to_df(al_texts_min, am_texts_min,
+                                     "at-least (minimal)", "at-most (minimal)")
+                st.download_button("⬇ Minimal rules CSV",
+                                   df_min.to_csv(index=False),
+                                   file_name="drsa_rules_minimal.csv",
+                                   mime="text/csv", use_container_width=True)
+            with c2:
+                df_max = rules_to_df(al_texts_max, am_texts_max,
+                                     "at-least (maximal)", "at-most (maximal)")
+                st.download_button("⬇ Maximal rules CSV",
+                                   df_max.to_csv(index=False),
+                                   file_name="drsa_rules_maximal.csv",
+                                   mime="text/csv", use_container_width=True)
+
+    else:
+        # Show previously computed rules if available
+        if st.session_state.get('al_texts') or st.session_state.get('am_texts'):
+            al_texts = st.session_state.get('al_texts', [])
+            am_texts = st.session_state.get('am_texts', [])
+            mode_saved = st.session_state.get('mode', '')
+
+            if mode_saved == 'pipeline':
+                st.markdown("#### Previously computed results")
+                res = st.session_state.get('pipeline_result', {})
+                if res:
+                    df_steps = pd.DataFrame([
+                        ("Step 2", *res['step2'], sum(res['step2'])),
+                        ("Step 3", *res['step3'], sum(res['step3'])),
+                        ("Step 6", *res['step6'], sum(res['step6'])),
+                        ("Step 7", *res['step7'], sum(res['step7'])),
+                    ], columns=["Step","At-least","At-most","Total"])
+                    st.dataframe(df_steps, use_container_width=True, hide_index=True)
+
+                al_texts_max = st.session_state.get('al_texts_max', [])
+                am_texts_max = st.session_state.get('am_texts_max', [])
+                al_r2 = st.session_state.get('al_rules_max')
+                am_r2 = st.session_state.get('am_rules_max')
+                al_final = st.session_state.get('al_rules')
+                am_final = st.session_state.get('am_rules')
+
+                if al_texts_max or am_texts_max:
+                    with st.expander(f"📂 Maximal rules — Step 6"):
+                        if al_texts_max:
+                            st.markdown("**R≥ At-Least (maximal)**")
+                            show_rules(al_r2, al_texts_max, rule_type="atleast")
+                        if am_texts_max:
+                            st.markdown("**R≤ At-Most (maximal)**")
+                            show_rules(am_r2, am_texts_max, rule_type="atmost")
+
+                if al_texts:
                     st.markdown("### R≥ · Minimal At-Least Rules")
-                    al_texts = format_atleast_rules(al_min, increasing_0, decreasing_0, crit_names)
-                    st.session_state['al_texts'] = al_texts
-                    for txt in al_texts:
-                        st.markdown(f'<div class="rule-box atleast">{txt}</div>', unsafe_allow_html=True)
-                if am_min is not None and len(am_min) > 0:
+                    show_rules(al_final, al_texts, rule_type="atleast")
+                if am_texts:
                     st.markdown("### R≤ · Minimal At-Most Rules")
-                    am_texts = format_atmost_rules(am_min, increasing_0, decreasing_0, crit_names)
-                    st.session_state['am_texts'] = am_texts
-                    for txt in am_texts:
-                        st.markdown(f'<div class="rule-box atmost">{txt}</div>', unsafe_allow_html=True)
+                    show_rules(am_final, am_texts, rule_type="atmost")
 
+            else:
+                al_supp  = st.session_state.get('al_supp', [])
+                am_supp  = st.session_state.get('am_supp', [])
+                al_units = st.session_state.get('al_units', [])
+                am_units = st.session_state.get('am_units', [])
+                al_r = st.session_state.get('al_rules')
+                am_r = st.session_state.get('am_rules')
+                if al_texts:
+                    st.markdown("### R≥ · At-Least Rules")
+                    show_rules(al_r, al_texts, al_supp, al_units, "atleast")
+                if am_texts:
+                    st.markdown("### R≤ · At-Most Rules")
+                    show_rules(am_r, am_texts, am_supp, am_units, "atmost")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 3 — Classification
 # ══════════════════════════════════════════════════════════════════════════════
 with tab3:
     if 'al_rules' not in st.session_state:
-        st.info("Run the pipeline first in the **Run Pipeline** tab.")
+        st.info("Run the analysis in the **Run** tab first.")
     else:
-        al_rules    = st.session_state['al_rules']
-        am_rules    = st.session_state['am_rules']
-        al_texts    = st.session_state.get('al_texts', [])
-        am_texts    = st.session_state.get('am_texts', [])
-        unit_names  = st.session_state['unit_names']
-        matrix      = st.session_state['matrix']
-        increasing_0 = st.session_state['increasing_0']
-        decreasing_0 = st.session_state['decreasing_0']
-        res         = st.session_state.get('pipeline_result')
+        al_rules   = st.session_state['al_rules']
+        am_rules   = st.session_state['am_rules']
+        al_texts   = st.session_state.get('al_texts', [])
+        am_texts   = st.session_state.get('am_texts', [])
+        unit_names = st.session_state['unit_names']
+        matrix     = st.session_state['matrix']
+        inc        = st.session_state['inc']
+        dec        = st.session_state['dec']
 
         st.markdown("#### Classification of all units — equation (4)")
 
-        # Use pipeline classification if available, else compute fresh
-        if res is not None and 'classification_step7' in res:
-            cl = res['classification_step7']
-            s_minus = cl[:, 0]
-            s_plus  = cl[:, 1]
-            _, _, al_m, am_m = classify_units(
-                np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)]),
-                al_rules, am_rules, increasing_0, decreasing_0)
+        # Use saved classification if available, else compute
+        if 'classification_final' in st.session_state:
+            cl = st.session_state['classification_final']
+            s_minus = cl[:, 0]; s_plus = cl[:, 1]
+            mat_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
+            _, _, al_m, am_m = classify_units(mat_nc, al_rules, am_rules, inc, dec)
         else:
-            matrix_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
-            s_minus, s_plus, al_m, am_m = classify_units(
-                matrix_nc, al_rules, am_rules, increasing_0, decreasing_0)
+            mat_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
+            s_minus, s_plus, al_m, am_m = classify_units(mat_nc, al_rules, am_rules, inc, dec)
 
         rows = []
-        for i,name in enumerate(unit_names):
-            exp = explain_unit(i, s_minus, s_plus, al_m, am_m, al_texts, am_texts, name)
-            rows.append({"Unit":name,"s⁻":int(exp['s_minus']),"s⁺":int(exp['s_plus']),
-                         "Assignment":exp['assignment'],
-                         "Status":"⚠️ Contradictory" if exp['contradictory'] else "✅ OK"})
+        for i, name in enumerate(unit_names):
+            sm, sp = int(s_minus[i]), int(s_plus[i])
+            contra = sm > sp
+            assign = f"Class {sm}" if sm==sp else (f"Class {sm} to {sp}" if not contra else f"CONTRADICTORY (s⁻={sm} > s⁺={sp})")
+            rows.append({"Unit":name,"s⁻":sm,"s⁺":sp,"Assignment":assign,
+                         "Status":"⚠️ Contradictory" if contra else "✅ OK"})
 
         df_class = pd.DataFrame(rows)
         st.dataframe(df_class, use_container_width=True, height=380)
 
-        n_ok    = df_class['Status'].str.contains('OK').sum()
-        n_cont  = df_class['Status'].str.contains('Contr').sum()
+        n_ok = df_class['Status'].str.contains('OK').sum()
+        n_co = df_class['Status'].str.contains('Contr').sum()
         ca,cb = st.columns(2)
         ca.metric("Non-contradictory", n_ok)
-        cb.metric("Contradictory", n_cont)
+        cb.metric("Contradictory", n_co)
+        if n_co == 0:
+            st.success("All units classified without contradictions.")
+        else:
+            st.warning(f"{n_co} unit(s) have contradictory assignments.")
 
         st.markdown("#### Unit-by-unit explanation")
-        sel = st.selectbox("Select unit", unit_names)
-        idx = unit_names.index(sel)
-        exp = explain_unit(idx, s_minus, s_plus, al_m, am_m, al_texts, am_texts, sel)
-        css = "class-ok" if not exp['contradictory'] and exp['s_minus']==exp['s_plus'] \
-              else "class-err" if exp['contradictory'] else "class-range"
-        st.markdown(f'<div class="class-box {css}"><b>{sel}</b> → <b>{exp["assignment"]}</b></div>',
-                    unsafe_allow_html=True)
-        if exp['matched_atleast']:
-            st.markdown("**Satisfied at-least rules:**")
-            for r in exp['matched_atleast']:
-                st.markdown(f'<div class="rule-box atleast">{r}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown("*No at-least rule satisfied → s⁻ = 1*")
-        if exp['matched_atmost']:
-            st.markdown("**Satisfied at-most rules:**")
-            for r in exp['matched_atmost']:
-                st.markdown(f'<div class="rule-box atmost">{r}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown("*No at-most rule satisfied → s⁺ = p*")
+        sel = st.selectbox("Select unit", unit_names, key="sel_tab3")
+        show_explanation(sel, s_minus, s_plus, al_m, am_m,
+                         al_texts, am_texts, unit_names.index(sel))
 
-        st.download_button("⬇ Download classification CSV", df_class.to_csv(index=False),
-                           file_name="drsa_classification.csv", mime="text/csv",
-                           use_container_width=True)
+        st.download_button("⬇ Download classification CSV",
+                           df_class.to_csv(index=False),
+                           file_name="drsa_classification.csv",
+                           mime="text/csv", use_container_width=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
+# TAB 4 — New Units
+# ══════════════════════════════════════════════════════════════════════════════
 with tab4:
-    if 'pipeline_result' not in st.session_state or st.session_state['pipeline_result'] is None:
-        st.info("Run the **Full pipeline** first in the Run Pipeline tab to enable new unit classification.")
+    if st.session_state.get('mode') != 'pipeline':
+        st.info("Run the **Full pipeline** (Steps 1-7) first to enable new unit classification.")
     else:
         st.markdown("#### 🆕 Classify new units")
         st.markdown(
-            "Upload new units (without class column). "
-            "The tool applies MILP (6), (7) and (8) from the paper to handle contradictions."
+            "Upload new units **without** the class column. "
+            "The tool applies MILP (6), (7), (8) to handle contradictions."
         )
 
-        new_file = st.file_uploader("Upload new units (CSV or TXT)", type=["csv","txt"], key="new_units")
+        new_file = st.file_uploader("Upload new units", type=["csv","txt"], key="new_file")
         sep2 = st.selectbox("Separator", [",",";","\\t"," "], key="sep2")
-        sep2_actual = "\t" if sep2=="\\t" else sep2
+        sep2_act = "\t" if sep2=="\\t" else sep2
 
         if new_file is not None:
             try:
-                df_new_raw = pd.read_csv(new_file, sep=sep2_actual, engine="python")
+                df_new_raw = pd.read_csv(new_file, sep=sep2_act, engine="python")
             except Exception as e:
                 st.error(f"Could not read file: {e}"); st.stop()
 
@@ -559,128 +643,118 @@ with tab4:
                 new_names = [f'x{i+1}' for i in range(len(df_new))]
 
             st.dataframe(df_new_raw, use_container_width=True, height=180)
-
             new_matrix = df_new.values.astype(float)
-            res        = st.session_state['pipeline_result']
-            increasing_0 = st.session_state['increasing_0']
-            decreasing_0 = st.session_state['decreasing_0']
-            al_texts   = st.session_state.get('al_texts', [])
-            am_texts   = st.session_state.get('am_texts', [])
 
             if st.button("▶ Classify new units", type="primary", use_container_width=True):
-                from drsa import classify_new_units
+                prog2  = st.progress(0)
+                stat2  = st.empty()
 
-                prog_new = st.progress(0)
-                stat_new = st.empty()
-
-                stat_new.info("⏳ Step 1: Classifying new units with maximal rules (eq. 4)…")
-                prog_new.progress(20)
+                stat2.info("⏳ Classifying new units (MILP 6, 7, 8)…")
+                prog2.progress(20)
 
                 new_res = classify_new_units(
                     new_matrix,
-                    res['matrix_s_minus'],
-                    res['matrix_s_plus'],
-                    res['step6_al_rules'],
-                    res['al_match2'],
-                    res['step6_am_rules'],
-                    res['am_match2'],
-                    increasing_0,
-                    decreasing_0
+                    st.session_state['matrix_s_minus'],
+                    st.session_state['matrix_s_plus'],
+                    st.session_state['al_rules_max'],
+                    st.session_state['al_match2'],
+                    st.session_state['am_rules_max'],
+                    st.session_state['am_match2'],
+                    st.session_state['inc'],
+                    st.session_state['dec'],
                 )
+
+                prog2.progress(90)
 
                 if 'error' in new_res:
                     st.error(new_res['error']); st.stop()
 
-                n_contra = new_res['n_contradictions']
-                prog_new.progress(50)
-
-                if n_contra == 0:
-                    stat_new.success(f"✅ No contradictions found — applying MILP (8) for minimal rules")
+                n_co = new_res['n_contradictions']
+                if n_co == 0:
+                    stat2.success("✅ No contradictions — MILP (8) applied for minimal rules")
                 else:
-                    stat_new.warning(f"⚠️ {n_contra} contradictions found — running MILP (6) and (7)…")
+                    if new_res.get('milp_success'):
+                        stat2.success(f"✅ {n_co} contradictions resolved via MILP (6) and (7)")
+                    else:
+                        stat2.warning(f"⚠️ {n_co} contradictions — {new_res.get('milp_message','')}")
+                prog2.progress(100)
 
-                prog_new.progress(80)
-
-                if new_res.get('milp_success'):
-                    stat_new.success(f"✅ Classification complete — {new_res.get('milp_message','')}")
-                else:
-                    stat_new.error(f"⚠️ {new_res.get('milp_message','')}")
-                prog_new.progress(100)
-
-                # ── Results table ──────────────────────────────────────────
+                # Save results
                 s_minus_f = new_res['final_s_minus']
                 s_plus_f  = new_res['final_s_plus']
+                al_fin = new_res.get('step8_al_rules')
+                am_fin = new_res.get('step8_am_rules')
+                if al_fin is None or len(al_fin) == 0:
+                    al_fin = new_res.get('step7_al_rules', st.session_state['al_rules'])
+                if am_fin is None or len(am_fin) == 0:
+                    am_fin = new_res.get('step7_am_rules', st.session_state['am_rules'])
+
+                al_texts_new = format_atleast_rules(al_fin, st.session_state['inc'],
+                                                     st.session_state['dec'],
+                                                     st.session_state['crit_names']) if al_fin is not None and len(al_fin)>0 else []
+                am_texts_new = format_atmost_rules(am_fin, st.session_state['inc'],
+                                                    st.session_state['dec'],
+                                                    st.session_state['crit_names']) if am_fin is not None and len(am_fin)>0 else []
+
+                st.session_state.update({
+                    'new_s_minus': s_minus_f, 'new_s_plus': s_plus_f,
+                    'new_names': new_names, 'new_matrix': new_matrix,
+                    'new_al_rules': al_fin, 'new_am_rules': am_fin,
+                    'new_al_texts': al_texts_new, 'new_am_texts': am_texts_new,
+                    'new_res': new_res,
+                })
+
+            # Show results if available
+            if 'new_s_minus' in st.session_state and \
+               st.session_state.get('new_names') == new_names:
+
+                s_minus_f = st.session_state['new_s_minus']
+                s_plus_f  = st.session_state['new_s_plus']
+                new_names = st.session_state['new_names']
+                new_matrix = st.session_state['new_matrix']
+                al_fin    = st.session_state['new_al_rules']
+                am_fin    = st.session_state['new_am_rules']
+                al_texts_new = st.session_state['new_al_texts']
+                am_texts_new = st.session_state['new_am_texts']
 
                 rows = []
                 for i, name in enumerate(new_names):
-                    sm = int(s_minus_f[i])
-                    sp = int(s_plus_f[i])
+                    sm, sp = int(s_minus_f[i]), int(s_plus_f[i])
                     contra = sm > sp
-                    if sm == sp:
-                        assign = f"Class {sm}"
-                    elif not contra:
-                        assign = f"Class {sm} to {sp}"
-                    else:
-                        assign = f"CONTRADICTORY (s⁻={sm} > s⁺={sp})"
-                    rows.append({"Unit":name,"s⁻":sm,"s⁺":sp,
-                                 "Assignment":assign,
+                    assign = f"Class {sm}" if sm==sp else (f"Class {sm} to {sp}" if not contra else f"CONTRADICTORY (s⁻={sm} > s⁺={sp})")
+                    rows.append({"Unit":name,"s⁻":sm,"s⁺":sp,"Assignment":assign,
                                  "Status":"⚠️ Contradictory" if contra else "✅ OK"})
-
                 df_nc = pd.DataFrame(rows)
+
                 st.markdown("#### Classification results")
                 st.dataframe(df_nc, use_container_width=True)
 
-                # ── Unit explanation ───────────────────────────────────────
-                al8 = new_res.get('step8_al_rules')
-                am8 = new_res.get('step8_am_rules')
-                al7 = new_res.get('step7_al_rules')
-                am7 = new_res.get('step7_am_rules')
-                al_final = al8 if (al8 is not None and len(al8) > 0) else al7
-                am_final = am8 if (am8 is not None and len(am8) > 0) else am7
+                # Minimal rules for A ∪ A_new
+                if al_texts_new or am_texts_new:
+                    with st.expander("📂 Minimal rules for A ∪ A_new"):
+                        if al_texts_new:
+                            st.markdown("**R≥ At-Least:**")
+                            show_rules(al_fin, al_texts_new, rule_type="atleast")
+                        if am_texts_new:
+                            st.markdown("**R≤ At-Most:**")
+                            show_rules(am_fin, am_texts_new, rule_type="atmost")
 
-                if al_final is not None and len(al_final) > 0:
-                    st.markdown("#### Minimal rules for A ∪ A_new")
-                    al_texts_new = format_atleast_rules(al_final, increasing_0, decreasing_0,
-                                                         st.session_state['crit_names'])
-                    am_texts_new = format_atmost_rules(am_final, increasing_0, decreasing_0,
-                                                        st.session_state['crit_names']) if am_final is not None and len(am_final)>0 else []
+                # Unit explanation
+                st.markdown("#### Unit-by-unit explanation")
+                sel_new = st.selectbox("Select unit", new_names, key="sel_new")
+                idx_new = new_names.index(sel_new)
 
-                    st.markdown("**R≥ At-Least Rules:**")
-                    for txt in al_texts_new:
-                        st.markdown(f'<div class="rule-box atleast">{txt}</div>', unsafe_allow_html=True)
-                    if am_texts_new:
-                        st.markdown("**R≤ At-Most Rules:**")
-                        for txt in am_texts_new:
-                            st.markdown(f'<div class="rule-box atmost">{txt}</div>', unsafe_allow_html=True)
+                # Compute match for explanation
+                new_nc = np.hstack([new_matrix, np.full((len(new_matrix),1), np.nan)])
+                _, _, al_m_new, am_m_new = classify_units(
+                    new_nc, al_fin, am_fin,
+                    st.session_state['inc'], st.session_state['dec'])
 
-                    # Unit by unit explanation
-                    new_with_nan = np.hstack([new_matrix, np.full((len(new_matrix),1), np.nan)])
-                    _, _, al_m_exp, am_m_exp = classify_units(
-                        new_with_nan, al_final, am_final, increasing_0, decreasing_0)
+                show_explanation(sel_new, s_minus_f, s_plus_f,
+                                 al_m_new, am_m_new,
+                                 al_texts_new, am_texts_new, idx_new)
 
-                    st.markdown("#### Unit-by-unit explanation")
-                    sel_new = st.selectbox("Select unit", new_names, key="sel_new")
-                    idx_new = new_names.index(sel_new)
-                    exp_new = explain_unit(idx_new, s_minus_f, s_plus_f,
-                                          al_m_exp, am_m_exp,
-                                          al_texts_new, am_texts_new, sel_new)
-                    css = "class-ok" if not exp_new['contradictory'] and exp_new['s_minus']==exp_new['s_plus'] \
-                          else "class-err" if exp_new['contradictory'] else "class-range"
-                    st.markdown(f'<div class="class-box {css}"><b>{sel_new}</b> → <b>{exp_new["assignment"]}</b></div>',
-                                unsafe_allow_html=True)
-                    if exp_new['matched_atleast']:
-                        st.markdown("**Satisfied at-least rules:**")
-                        for r in exp_new['matched_atleast']:
-                            st.markdown(f'<div class="rule-box atleast">{r}</div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown("*No at-least rule satisfied → s⁻ = 1*")
-                    if exp_new['matched_atmost']:
-                        st.markdown("**Satisfied at-most rules:**")
-                        for r in exp_new['matched_atmost']:
-                            st.markdown(f'<div class="rule-box atmost">{r}</div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown("*No at-most rule satisfied → s⁺ = p*")
-
-                st.download_button("⬇ Download CSV", df_nc.to_csv(index=False),
-                                   file_name="drsa_new_units.csv", mime="text/csv",
-                                   use_container_width=True)
+                st.download_button("⬇ Download classification CSV",
+                                   df_nc.to_csv(index=False),
+                                   file_name="drsa_new_units.csv",
+                                   mime="text/csv", use_container_width=True)
