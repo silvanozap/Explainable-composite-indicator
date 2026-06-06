@@ -154,11 +154,22 @@ with tab1:
     c2.metric("Reference units", n_ref)
     c3.metric("Non-reference units", n_nonref)
 
-    if n_ref == 0:
-        st.error("No reference units found. Make sure some rows have a class value in the last column.")
+    st.markdown("#### 🎯 Reference units")
+    st.markdown("Units with a class value in the file are pre-selected. You can add or remove units.")
+    selected_ref_names = st.multiselect(
+        "Select reference units",
+        options=unit_names,
+        default=[unit_names[i] for i in ref_indices],
+        help="Reference units are those whose class is known and used to induce rules."
+    )
+    if len(selected_ref_names) == 0:
+        st.error("Please select at least one reference unit.")
         st.stop()
-
-    st.markdown(f"**Reference units:** {', '.join([unit_names[i] for i in ref_indices])}")
+    ref_indices = [unit_names.index(n) for n in selected_ref_names]
+    n_ref    = len(ref_indices)
+    n_nonref = n_units - n_ref
+    c2.metric("Reference units", n_ref)
+    c3.metric("Non-reference units", n_nonref)
 
     st.markdown("#### 🔼 Criteria preference direction")
     dir_cols = st.columns(min(n_criteria, 6))
