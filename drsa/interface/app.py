@@ -795,10 +795,11 @@ with tab4:
                             's⁺ final': new_res['final_s_plus'].astype(int),
                         })
                         st.dataframe(df_dbg, use_container_width=True)
-                    n_al7 = len(new_res.get('step7_al_rules') or [])
-                    n_am7 = len(new_res.get('step7_am_rules') or [])
-                    n_al8 = len(new_res.get('step8_al_rules') or [])
-                    n_am8 = len(new_res.get('step8_am_rules') or [])
+                    def _nrules(x): return len(x) if x is not None and hasattr(x,'__len__') and len(x)>0 else 0
+                    n_al7 = _nrules(new_res.get('step7_al_rules'))
+                    n_am7 = _nrules(new_res.get('step7_am_rules'))
+                    n_al8 = _nrules(new_res.get('step8_al_rules'))
+                    n_am8 = _nrules(new_res.get('step8_am_rules'))
                     st.markdown(f"**MILP(7) rules:** {n_al7} at-least, {n_am7} at-most")
                     st.markdown(f"**MILP(8) rules:** {n_al8} at-least, {n_am8} at-most")
                     st.markdown(f"**Message:** {new_res.get('milp_message','N/A')}")
