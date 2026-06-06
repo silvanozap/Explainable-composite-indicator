@@ -483,7 +483,7 @@ with tab2:
 
             # Download
             st.markdown("### 💾 Export rules")
-            c1, c2 = st.columns(2)
+            c1, c2, c3 = st.columns(3)
             with c1:
                 df_min = rules_to_df(al_texts_min, am_texts_min,
                                      "at-least (minimal)", "at-most (minimal)")
@@ -498,6 +498,21 @@ with tab2:
                                    df_max.to_csv(index=False),
                                    file_name="drsa_rules_maximal.csv",
                                    mime="text/csv", use_container_width=True)
+            with c3:
+                # MATLAB format: raw rule matrix [crit_idx, threshold, ..., class]
+                import io as _io
+                def rules_to_matlab_csv(rules):
+                    if rules is None or len(rules) == 0:
+                        return ""
+                    return pd.DataFrame(rules).to_csv(index=False, header=False)
+                matlab_str = "% AT-LEAST RULES\n"
+                matlab_str += rules_to_matlab_csv(al_final)
+                matlab_str += "\n% AT-MOST RULES\n"
+                matlab_str += rules_to_matlab_csv(am_final)
+                st.download_button("⬇ Rules for MATLAB (.csv)",
+                                   matlab_str,
+                                   file_name="drsa_rules_matlab.csv",
+                                   mime="text/plain", use_container_width=True)
 
     else:
         # Show previously computed rules if available
@@ -683,6 +698,34 @@ with tab4:
                     else:
                         stat2.warning(f"⚠️ {n_co} contradictions — {new_res.get('milp_message','')}")
                 prog2.progress(100)
+
+                # ── Debug info ─────────────────────────────────────────────
+                with st.expander("🔍 Debug info (MILP intermediates)"):
+                    st.markdown(f"**η total (units to reclassify):** {new_res.get('eta_total', 'N/A')}")
+                    eta = new_res.get('eta', None)
+                    if eta is not None:
+                        eta_on = np.where(eta == 1)[0].tolist()
+                        st.markdown(f"**η = 1 at positions:** {eta_on}")
+                    changed = new_res.get('changed_units', [])
+                    st.markdown(f"**Changed units in A:** {changed}")
+                    st.markdown(f"**Step 1 classification (maximal rules):**")
+                    sm1 = new_res.get('step1_s_minus', [])
+                    sp1 = new_res.get('step1_s_plus',  [])
+                    df_debug = pd.DataFrame({
+                        'Unit': new_names,
+                        's⁻ step1': sm1.astype(int) if len(sm1)>0 else [],
+                        's⁺ step1': sp1.astype(int) if len(sp1)>0 else [],
+                        's⁻ final': new_res['final_s_minus'].astype(int),
+                        's⁺ final': new_res['final_s_plus'].astype(int),
+                    })
+                    st.dataframe(df_debug, use_container_width=True)
+                    n_al7 = len(new_res.get('step7_al_rules', []))
+                    n_am7 = len(new_res.get('step7_am_rules', []))
+                    st.markdown(f"**MILP (7) rules selected:** {n_al7} at-least, {n_am7} at-most")
+                    n_al8 = len(new_res.get('step8_al_rules', []))
+                    n_am8 = len(new_res.get('step8_am_rules', []))
+                    st.markdown(f"**MILP (8) minimal rules:** {n_al8} at-least, {n_am8} at-most")
+                    st.markdown(f"**MILP message:** {new_res.get('milp_message', 'N/A')}")
 
                 # Save results
                 s_minus_f = new_res['final_s_minus']
