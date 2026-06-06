@@ -339,6 +339,49 @@ with tab2:
                     res['classification_step7'] = _np.column_stack([sm6, sp6])
                 progress.progress(100)
                 status.success("🎉 Pipeline complete!")
+
+                # ── Show minimal rules ────────────────────────────────────────
+                al_final = al_min if (milp_ok and al_min is not None and len(al_min)>0) else al_r2
+                am_final = am_min if (milp_ok and am_min is not None and len(am_min)>0) else am_r2
+
+                steps_data = [
+                    ("Step 2 – Reference units", len(al_r) if al_r is not None else 0, len(am_r) if am_r is not None else 0),
+                    ("Step 3 – Greedy selection", len(sel_al), len(sel_am)),
+                    ("Step 6 – All units", n_al6, n_am6),
+                    ("Step 7 – Minimal (MILP)", len(al_final), len(am_final)),
+                ]
+                import pandas as _pd
+                df_steps = _pd.DataFrame(steps_data, columns=["Step","At-least","At-most"])
+                df_steps["Total"] = df_steps["At-least"] + df_steps["At-most"]
+                st.markdown("#### Pipeline summary")
+                st.dataframe(df_steps, use_container_width=True, hide_index=True)
+
+                # ── Maximal rules (Step 6) in expander ───────────────────
+                with st.expander(f"📂 Maximal rules — Step 6 ({n_al6} at-least, {n_am6} at-most)"):
+                    if al_r2 is not None and len(al_r2) > 0:
+                        st.markdown("**R≥ · At-Least Rules (maximal)**")
+                        al_texts_max = format_atleast_rules(al_r2, increasing_0, decreasing_0, crit_names)
+                        for txt in al_texts_max:
+                            st.markdown(f'<div class="rule-box atleast">{txt}</div>', unsafe_allow_html=True)
+                    if am_r2 is not None and len(am_r2) > 0:
+                        st.markdown("**R≤ · At-Most Rules (maximal)**")
+                        am_texts_max = format_atmost_rules(am_r2, increasing_0, decreasing_0, crit_names)
+                        for txt in am_texts_max:
+                            st.markdown(f'<div class="rule-box atmost">{txt}</div>', unsafe_allow_html=True)
+
+                # ── Minimal rules (Step 7) ────────────────────────────────────
+                if len(al_final) > 0:
+                    st.markdown("### R≥ · Minimal At-Least Rules — Step 7")
+                    al_texts = format_atleast_rules(al_final, increasing_0, decreasing_0, crit_names)
+                    st.session_state['al_texts'] = al_texts
+                    for txt in al_texts:
+                        st.markdown(f'<div class="rule-box atleast">{txt}</div>', unsafe_allow_html=True)
+                if len(am_final) > 0:
+                    st.markdown("### R≤ · Minimal At-Most Rules — Step 7")
+                    am_texts = format_atmost_rules(am_final, increasing_0, decreasing_0, crit_names)
+                    st.session_state['am_texts'] = am_texts
+                    for txt in am_texts:
+                        st.markdown(f'<div class="rule-box atmost">{txt}</div>', unsafe_allow_html=True)
                 st.session_state['pipeline_result'] = res
                 al7 = res.get('step7_al_rules')
                 am7 = res.get('step7_am_rules')
@@ -460,13 +503,16 @@ with tab3:
 
 # ══════════════════════════════════════════════════════════════════════════════
 with tab4:
-    if 'al_rules' not in st.session_state:
-        st.info("Run the pipeline first in the **Run Pipeline** tab.")
+    if 'pipeline_result' not in st.session_state or st.session_state['pipeline_result'] is None:
+        st.info("Run the **Full pipeline** first in the Run Pipeline tab to enable new unit classification.")
     else:
-        st.markdown("#### Classify new units")
-        st.markdown("Upload a file with the same criteria columns, **without** the class column.")
+        st.markdown("#### 🆕 Classify new units")
+        st.markdown(
+            "Upload new units (without class column). "
+            "The tool applies MILP (6), (7) and (8) from the paper to handle contradictions."
+        )
 
-        new_file = st.file_uploader("Upload new units", type=["csv","txt"], key="new_units")
+        new_file = st.file_uploader("Upload new units (CSV or TXT)", type=["csv","txt"], key="new_units")
         sep2 = st.selectbox("Separator", [",",";","\\t"," "], key="sep2")
         sep2_actual = "\t" if sep2=="\\t" else sep2
 
@@ -488,51 +534,123 @@ with tab4:
 
             st.dataframe(df_new_raw, use_container_width=True, height=180)
 
-            matrix_new = np.hstack([df_new.values.astype(float),
-                                    np.full((len(df_new),1), np.nan)])
-
-            al_rules     = st.session_state['al_rules']
-            am_rules     = st.session_state['am_rules']
-            al_texts     = st.session_state.get('al_texts', [])
-            am_texts     = st.session_state.get('am_texts', [])
+            new_matrix = df_new.values.astype(float)
+            res        = st.session_state['pipeline_result']
             increasing_0 = st.session_state['increasing_0']
             decreasing_0 = st.session_state['decreasing_0']
+            al_texts   = st.session_state.get('al_texts', [])
+            am_texts   = st.session_state.get('am_texts', [])
 
-            s_minus, s_plus, al_m, am_m = classify_units(
-                matrix_new, al_rules, am_rules, increasing_0, decreasing_0)
+            if st.button("▶ Classify new units", type="primary", use_container_width=True):
+                from drsa import classify_new_units
 
-            rows = []
-            for i,name in enumerate(new_names):
-                exp = explain_unit(i, s_minus, s_plus, al_m, am_m, al_texts, am_texts, name)
-                rows.append({"Unit":name,"s⁻":int(exp['s_minus']),"s⁺":int(exp['s_plus']),
-                             "Assignment":exp['assignment'],
-                             "Status":"⚠️ Contradictory" if exp['contradictory'] else "✅ OK"})
+                prog_new = st.progress(0)
+                stat_new = st.empty()
 
-            df_nc = pd.DataFrame(rows)
-            st.markdown("#### Results")
-            st.dataframe(df_nc, use_container_width=True)
+                stat_new.info("⏳ Step 1: Classifying new units with maximal rules (eq. 4)…")
+                prog_new.progress(20)
 
-            sel_new = st.selectbox("Select unit to explain", new_names, key="sel_new")
-            idx_new = new_names.index(sel_new)
-            exp_new = explain_unit(idx_new, s_minus, s_plus, al_m, am_m,
-                                   al_texts, am_texts, sel_new)
-            css = "class-ok" if not exp_new['contradictory'] and exp_new['s_minus']==exp_new['s_plus'] \
-                  else "class-err" if exp_new['contradictory'] else "class-range"
-            st.markdown(f'<div class="class-box {css}"><b>{sel_new}</b> → <b>{exp_new["assignment"]}</b></div>',
-                        unsafe_allow_html=True)
-            if exp_new['matched_atleast']:
-                st.markdown("**Satisfied at-least rules:**")
-                for r in exp_new['matched_atleast']:
-                    st.markdown(f'<div class="rule-box atleast">{r}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown("*No at-least rule satisfied → s⁻ = 1*")
-            if exp_new['matched_atmost']:
-                st.markdown("**Satisfied at-most rules:**")
-                for r in exp_new['matched_atmost']:
-                    st.markdown(f'<div class="rule-box atmost">{r}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown("*No at-most rule satisfied → s⁺ = p*")
+                new_res = classify_new_units(
+                    new_matrix,
+                    res['matrix_s_minus'],
+                    res['matrix_s_plus'],
+                    res['step6_al_rules'],
+                    res['al_match2'],
+                    res['step6_am_rules'],
+                    res['am_match2'],
+                    increasing_0,
+                    decreasing_0
+                )
 
-            st.download_button("⬇ Download CSV", df_nc.to_csv(index=False),
-                               file_name="drsa_new_units.csv", mime="text/csv",
-                               use_container_width=True)
+                if 'error' in new_res:
+                    st.error(new_res['error']); st.stop()
+
+                n_contra = new_res['n_contradictions']
+                prog_new.progress(50)
+
+                if n_contra == 0:
+                    stat_new.success(f"✅ No contradictions found — applying MILP (8) for minimal rules")
+                else:
+                    stat_new.warning(f"⚠️ {n_contra} contradictions found — running MILP (6) and (7)…")
+
+                prog_new.progress(80)
+
+                if new_res.get('milp_success'):
+                    stat_new.success(f"✅ Classification complete — {new_res.get('milp_message','')}")
+                else:
+                    stat_new.error(f"⚠️ {new_res.get('milp_message','')}")
+                prog_new.progress(100)
+
+                # ── Results table ──────────────────────────────────────────
+                s_minus_f = new_res['final_s_minus']
+                s_plus_f  = new_res['final_s_plus']
+
+                rows = []
+                for i, name in enumerate(new_names):
+                    sm = int(s_minus_f[i])
+                    sp = int(s_plus_f[i])
+                    contra = sm > sp
+                    if sm == sp:
+                        assign = f"Class {sm}"
+                    elif not contra:
+                        assign = f"Class {sm} to {sp}"
+                    else:
+                        assign = f"CONTRADICTORY (s⁻={sm} > s⁺={sp})"
+                    rows.append({"Unit":name,"s⁻":sm,"s⁺":sp,
+                                 "Assignment":assign,
+                                 "Status":"⚠️ Contradictory" if contra else "✅ OK"})
+
+                df_nc = pd.DataFrame(rows)
+                st.markdown("#### Classification results")
+                st.dataframe(df_nc, use_container_width=True)
+
+                # ── Unit explanation ───────────────────────────────────────
+                al_final = new_res.get('step8_al_rules') or new_res.get('step7_al_rules')
+                am_final = new_res.get('step8_am_rules') or new_res.get('step7_am_rules')
+
+                if al_final is not None and len(al_final) > 0:
+                    st.markdown("#### Minimal rules for A ∪ A_new")
+                    al_texts_new = format_atleast_rules(al_final, increasing_0, decreasing_0,
+                                                         st.session_state['crit_names'])
+                    am_texts_new = format_atmost_rules(am_final, increasing_0, decreasing_0,
+                                                        st.session_state['crit_names']) if am_final is not None and len(am_final)>0 else []
+
+                    st.markdown("**R≥ At-Least Rules:**")
+                    for txt in al_texts_new:
+                        st.markdown(f'<div class="rule-box atleast">{txt}</div>', unsafe_allow_html=True)
+                    if am_texts_new:
+                        st.markdown("**R≤ At-Most Rules:**")
+                        for txt in am_texts_new:
+                            st.markdown(f'<div class="rule-box atmost">{txt}</div>', unsafe_allow_html=True)
+
+                    # Unit by unit explanation
+                    new_with_nan = np.hstack([new_matrix, np.full((len(new_matrix),1), np.nan)])
+                    _, _, al_m_exp, am_m_exp = classify_units(
+                        new_with_nan, al_final, am_final, increasing_0, decreasing_0)
+
+                    st.markdown("#### Unit-by-unit explanation")
+                    sel_new = st.selectbox("Select unit", new_names, key="sel_new")
+                    idx_new = new_names.index(sel_new)
+                    exp_new = explain_unit(idx_new, s_minus_f, s_plus_f,
+                                          al_m_exp, am_m_exp,
+                                          al_texts_new, am_texts_new, sel_new)
+                    css = "class-ok" if not exp_new['contradictory'] and exp_new['s_minus']==exp_new['s_plus'] \
+                          else "class-err" if exp_new['contradictory'] else "class-range"
+                    st.markdown(f'<div class="class-box {css}"><b>{sel_new}</b> → <b>{exp_new["assignment"]}</b></div>',
+                                unsafe_allow_html=True)
+                    if exp_new['matched_atleast']:
+                        st.markdown("**Satisfied at-least rules:**")
+                        for r in exp_new['matched_atleast']:
+                            st.markdown(f'<div class="rule-box atleast">{r}</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown("*No at-least rule satisfied → s⁻ = 1*")
+                    if exp_new['matched_atmost']:
+                        st.markdown("**Satisfied at-most rules:**")
+                        for r in exp_new['matched_atmost']:
+                            st.markdown(f'<div class="rule-box atmost">{r}</div>', unsafe_allow_html=True)
+                    else:
+                        st.markdown("*No at-most rule satisfied → s⁺ = p*")
+
+                st.download_button("⬇ Download CSV", df_nc.to_csv(index=False),
+                                   file_name="drsa_new_units.csv", mime="text/csv",
+                                   use_container_width=True)

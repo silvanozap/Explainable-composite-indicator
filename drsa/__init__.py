@@ -16,6 +16,7 @@ from .core.formatting import (
 )
 from .core.classifier import classify_units, explain_unit
 from .core.pipeline import run_pipeline
+from .core.new_units import classify_new_units
 
 __all__ = [
     "induce_atleast_rules",
@@ -27,4 +28,5 @@ __all__ = [
     "classify_units",
     "explain_unit",
     "run_pipeline",
+    "classify_new_units",
 ]
