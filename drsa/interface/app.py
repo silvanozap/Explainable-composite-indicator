@@ -399,15 +399,19 @@ with tab2:
             al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names) if _nlen(al_final)>0 else []
             am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names) if _nlen(am_final)>0 else []
 
-            # Units matching rules — for all units vs each rule
-            # Maximal rules match matrices
+            # Units matching rules — use already computed match matrices
+            # al_m2/am_m2 are (n_units x n_rules) for maximal rules
+            al_units_max = [[unit_names[j] for j in range(n_units) if al_m2[j,i]==1]
+                            for i in range(_nlen(al_r2))]
+            am_units_max = [[unit_names[j] for j in range(n_units) if am_m2[j,i]==1]
+                            for i in range(_nlen(am_r2))]
+            # For minimal rules, compute match matrix
             all_nc = np.hstack([all_crit, np.full((n_units,1), np.nan)])
-            _, _, al_m_all_max, am_m_all_max = _cu(all_nc, al_r2, am_r2, inc, dec)
-            _, _, al_m_all_min, am_m_all_min = _cu(all_nc, al_final, am_final, inc, dec)
-            al_units_max = get_matching_units(al_r2, al_m_all_max, unit_names, 'atleast', inc, dec, crit_names)
-            am_units_max = get_matching_units(am_r2, am_m_all_max, unit_names, 'atmost', inc, dec, crit_names)
-            al_units_min = get_matching_units(al_final, al_m_all_min, unit_names, 'atleast', inc, dec, crit_names)
-            am_units_min = get_matching_units(am_final, am_m_all_min, unit_names, 'atmost', inc, dec, crit_names)
+            _, _, al_m_min, am_m_min = _cu(all_nc, al_final, am_final, inc, dec)
+            al_units_min = [[unit_names[j] for j in range(n_units) if al_m_min[j,i]==1]
+                            for i in range(_nlen(al_final))]
+            am_units_min = [[unit_names[j] for j in range(n_units) if am_m_min[j,i]==1]
+                            for i in range(_nlen(am_final))]
 
             st.session_state.update({
                 'al_rules': al_final, 'am_rules': am_final,
@@ -791,7 +795,24 @@ with tab4:
                 st.markdown(f"**MILP(8) minimal rules:** "
                             f"{_nr(new_res.get('step8_al_rules'))} at-least, "
                             f"{_nr(new_res.get('step8_am_rules'))} at-most")
-                st.markdown(f"**Status:** {new_res.get('milp_message','N/A')}")
+
+
+            # ── Maximal rules MILP(7) expander ────────────────────────────
+            al7 = new_res.get('step7_al_rules')
+            am7 = new_res.get('step7_am_rules')
+            if _nlen(al7) > 0 or _nlen(am7) > 0:
+                al_texts7 = format_atleast_rules(al7, st.session_state['inc'],
+                    st.session_state['dec'], st.session_state['crit_names']) if _nlen(al7)>0 else []
+                am_texts7 = format_atmost_rules(am7, st.session_state['inc'],
+                    st.session_state['dec'], st.session_state['crit_names']) if _nlen(am7)>0 else []
+                with st.expander(f"📂 Maximal rules — MILP(7) "
+                                 f"({_nlen(al7)} at-least, {_nlen(am7)} at-most)"):
+                    if al_texts7:
+                        st.markdown("**R≥ At-Least:**")
+                        show_rules(al7, al_texts7, rule_type="atleast")
+                    if am_texts7:
+                        st.markdown("**R≤ At-Most:**")
+                        show_rules(am7, am_texts7, rule_type="atmost")
 
             # ── Minimal rules for A ∪ A_new ────────────────────────────────
             if al_texts_new or am_texts_new:
@@ -815,6 +836,66 @@ with tab4:
             show_explanation(sel_new, s_minus_f, s_plus_f,
                              al_m_new, am_m_new, al_texts_new, am_texts_new, idx_new)
 
+            st.markdown("### 💾 Export")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.download_button("⬇ Minimal rules CSV",
+                                   rules_to_df(al_texts_new, am_texts_new,
+                                       "at-least (minimal)", "at-most (minimal)").to_csv(index=False),
+                                   file_name="drsa_newunits_rules_minimal.csv",
+                                   mime="text/csv", use_container_width=True)
+            with c2:
+                al7_txt = format_atleast_rules(new_res.get('step7_al_rules'),
+                    st.session_state['inc'], st.session_state['dec'],
+                    st.session_state['crit_names']) if _nlen(new_res.get('step7_al_rules'))>0 else []
+                am7_txt = format_atmost_rules(new_res.get('step7_am_rules'),
+                    st.session_state['inc'], st.session_state['dec'],
+                    st.session_state['crit_names']) if _nlen(new_res.get('step7_am_rules'))>0 else []
+                st.download_button("⬇ Maximal rules CSV",
+                                   rules_to_df(al7_txt, am7_txt,
+                                       "at-least (maximal)", "at-most (maximal)").to_csv(index=False),
+                                   file_name="drsa_newunits_rules_maximal.csv",
+                                   mime="text/csv", use_container_width=True)
+            st.markdown("### 💾 Export")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.download_button("⬇ Minimal rules CSV",
+                                   rules_to_df(al_texts_new, am_texts_new,
+                                       "at-least (minimal)", "at-most (minimal)").to_csv(index=False),
+                                   file_name="drsa_newunits_rules_minimal.csv",
+                                   mime="text/csv", use_container_width=True)
+            with c2:
+                _al7 = new_res.get('step7_al_rules')
+                _am7 = new_res.get('step7_am_rules')
+                _al7_txt = format_atleast_rules(_al7, st.session_state['inc'],
+                    st.session_state['dec'], st.session_state['crit_names']) if _nlen(_al7)>0 else []
+                _am7_txt = format_atmost_rules(_am7, st.session_state['inc'],
+                    st.session_state['dec'], st.session_state['crit_names']) if _nlen(_am7)>0 else []
+                st.download_button("⬇ Maximal rules CSV",
+                                   rules_to_df(_al7_txt, _am7_txt,
+                                       "at-least (maximal)", "at-most (maximal)").to_csv(index=False),
+                                   file_name="drsa_newunits_rules_maximal.csv",
+                                   mime="text/csv", use_container_width=True)
+            st.markdown("### 💾 Export")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.download_button("⬇ Minimal rules CSV",
+                                   rules_to_df(al_texts_new, am_texts_new,
+                                       "at-least (minimal)", "at-most (minimal)").to_csv(index=False),
+                                   file_name="drsa_newunits_rules_minimal.csv",
+                                   mime="text/csv", use_container_width=True)
+            with c2:
+                _al7 = new_res.get('step7_al_rules')
+                _am7 = new_res.get('step7_am_rules')
+                _al7_txt = format_atleast_rules(_al7, st.session_state['inc'],
+                    st.session_state['dec'], st.session_state['crit_names']) if _nlen(_al7)>0 else []
+                _am7_txt = format_atmost_rules(_am7, st.session_state['inc'],
+                    st.session_state['dec'], st.session_state['crit_names']) if _nlen(_am7)>0 else []
+                st.download_button("⬇ Maximal rules CSV",
+                                   rules_to_df(_al7_txt, _am7_txt,
+                                       "at-least (maximal)", "at-most (maximal)").to_csv(index=False),
+                                   file_name="drsa_newunits_rules_maximal.csv",
+                                   mime="text/csv", use_container_width=True)
             st.download_button("⬇ Download classification CSV",
                                df_display.to_csv(index=False),
                                file_name="drsa_new_units.csv",
