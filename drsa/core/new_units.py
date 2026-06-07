@@ -322,14 +322,16 @@ def classify_new_units(new_units, mat_sm, mat_sp,
         ~np.all(cl_A7 == np.column_stack([mat_sm[:,-1], mat_sp[:,-1]]), axis=1)
     )[0].tolist()
     result['changed_units'] = changed
+    mat_sm_upd = mat_sm.copy()
     mat_sp_upd = mat_sp.copy()
     for i in changed:
+        mat_sm_upd[i, -1] = cl_A7[i, 0]
         mat_sp_upd[i, -1] = cl_A7[i, 1]
 
     # MILP (8): minimal rules for A union A_new
     new_sm8 = np.hstack([new_units, cl_new7[:, 0:1]])
     new_sp8 = np.hstack([new_units, cl_new7[:, 1:2]])
-    all_sm8 = np.vstack([mat_sm,     new_sm8])
+    all_sm8 = np.vstack([mat_sm_upd, new_sm8])
     all_sp8 = np.vstack([mat_sp_upd, new_sp8])
 
     # Support matrices for MILP(7) rules
