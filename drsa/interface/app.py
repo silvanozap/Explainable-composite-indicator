@@ -50,9 +50,12 @@ def _nlen(x):
 def show_rules(rules, texts, supps=None, units=None, rule_type="atleast"):
     for i, txt in enumerate(texts):
         extra = ""
-        if supps is not None and units is not None and i < len(units):
+        if units is not None and i < len(units) and len(units[i]) > 0:
             tags = "".join(f'<span class="tag">{u}</span>' for u in units[i])
-            extra = f'<br><span style="color:#6b7280;font-size:0.75rem;">Support: {supps[i]:.3f} &nbsp;·&nbsp; </span>{tags}'
+            if supps is not None and i < len(supps):
+                extra = f'<br><span style="color:#6b7280;font-size:0.75rem;">Support: {supps[i]:.3f} &nbsp;·&nbsp; </span>{tags}'
+            else:
+                extra = f'<br>{tags}'
         st.markdown(f'<div class="rule-box {rule_type}">{txt}{extra}</div>', unsafe_allow_html=True)
 
 def show_explanation(name, s_minus, s_plus, al_m, am_m, al_texts, am_texts, idx):
@@ -855,46 +858,7 @@ with tab4:
                                        "at-least (maximal)", "at-most (maximal)").to_csv(index=False),
                                    file_name="drsa_newunits_rules_maximal.csv",
                                    mime="text/csv", key="dl_new_max", use_container_width=True)
-            st.markdown("### 💾 Export")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.download_button("⬇ Minimal rules CSV",
-                                   rules_to_df(al_texts_new, am_texts_new,
-                                       "at-least (minimal)", "at-most (minimal)").to_csv(index=False),
-                                   file_name="drsa_newunits_rules_minimal.csv",
-                                   mime="text/csv", key="dl_new_min", use_container_width=True)
-            with c2:
-                _al7 = new_res.get('step7_al_rules')
-                _am7 = new_res.get('step7_am_rules')
-                _al7_txt = format_atleast_rules(_al7, st.session_state['inc'],
-                    st.session_state['dec'], st.session_state['crit_names']) if _nlen(_al7)>0 else []
-                _am7_txt = format_atmost_rules(_am7, st.session_state['inc'],
-                    st.session_state['dec'], st.session_state['crit_names']) if _nlen(_am7)>0 else []
-                st.download_button("⬇ Maximal rules CSV",
-                                   rules_to_df(_al7_txt, _am7_txt,
-                                       "at-least (maximal)", "at-most (maximal)").to_csv(index=False),
-                                   file_name="drsa_newunits_rules_maximal.csv",
-                                   mime="text/csv", key="dl_new_max", use_container_width=True)
-            st.markdown("### 💾 Export")
-            c1, c2 = st.columns(2)
-            with c1:
-                st.download_button("⬇ Minimal rules CSV",
-                                   rules_to_df(al_texts_new, am_texts_new,
-                                       "at-least (minimal)", "at-most (minimal)").to_csv(index=False),
-                                   file_name="drsa_newunits_rules_minimal.csv",
-                                   mime="text/csv", key="dl_new_min", use_container_width=True)
-            with c2:
-                _al7 = new_res.get('step7_al_rules')
-                _am7 = new_res.get('step7_am_rules')
-                _al7_txt = format_atleast_rules(_al7, st.session_state['inc'],
-                    st.session_state['dec'], st.session_state['crit_names']) if _nlen(_al7)>0 else []
-                _am7_txt = format_atmost_rules(_am7, st.session_state['inc'],
-                    st.session_state['dec'], st.session_state['crit_names']) if _nlen(_am7)>0 else []
-                st.download_button("⬇ Maximal rules CSV",
-                                   rules_to_df(_al7_txt, _am7_txt,
-                                       "at-least (maximal)", "at-most (maximal)").to_csv(index=False),
-                                   file_name="drsa_newunits_rules_maximal.csv",
-                                   mime="text/csv", key="dl_new_max", use_container_width=True)
+
             st.download_button("⬇ Download classification CSV",
                                df_display.to_csv(index=False),
                                file_name="drsa_new_units.csv",
