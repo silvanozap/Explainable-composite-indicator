@@ -192,7 +192,7 @@ A3, A4 are non-reference.
         'class':[1,2,3,1,'','',2,'']
     })
     st.download_button("⬇ Download sample CSV", sample.to_csv(index=False),
-                       file_name="drsa_sample.csv", mime="text/csv")
+                       file_name="drsa_sample.csv", mime="text/csv", key="dl_sample")
     st.stop()
 
 # ── Load data ──────────────────────────────────────────────────────────────────
@@ -340,7 +340,7 @@ with tab2:
                                     am_supp=am_supp if n_am>0 else None)
                 st.download_button("⬇ Download rules CSV", df_dl.to_csv(index=False),
                                    file_name="drsa_rules.csv", mime="text/csv",
-                                   use_container_width=True)
+                                   key="dl_rules_ind", use_container_width=True)
 
         else:
             # ── Full pipeline ──────────────────────────────────────────────
@@ -399,18 +399,17 @@ with tab2:
             al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names) if _nlen(al_final)>0 else []
             am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names) if _nlen(am_final)>0 else []
 
-            # Units matching rules — use already computed match matrices
-            # al_m2/am_m2 are (n_units x n_rules) for maximal rules
-            al_units_max = [[unit_names[j] for j in range(n_units) if al_m2[j,i]==1]
-                            for i in range(_nlen(al_r2))]
-            am_units_max = [[unit_names[j] for j in range(n_units) if am_m2[j,i]==1]
-                            for i in range(_nlen(am_r2))]
-            # For minimal rules, compute match matrix
+            # Compute match matrices for ALL units against maximal and minimal rules
             all_nc = np.hstack([all_crit, np.full((n_units,1), np.nan)])
-            _, _, al_m_min, am_m_min = _cu(all_nc, al_final, am_final, inc, dec)
-            al_units_min = [[unit_names[j] for j in range(n_units) if al_m_min[j,i]==1]
+            _, _, al_m_all_max, am_m_all_max = _cu(all_nc, al_r2,    am_r2,    inc, dec)
+            _, _, al_m_all_min, am_m_all_min = _cu(all_nc, al_final, am_final, inc, dec)
+            al_units_max = [[unit_names[j] for j in range(n_units) if al_m_all_max[j,i]==1]
+                            for i in range(_nlen(al_r2))]
+            am_units_max = [[unit_names[j] for j in range(n_units) if am_m_all_max[j,i]==1]
+                            for i in range(_nlen(am_r2))]
+            al_units_min = [[unit_names[j] for j in range(n_units) if al_m_all_min[j,i]==1]
                             for i in range(_nlen(al_final))]
-            am_units_min = [[unit_names[j] for j in range(n_units) if am_m_min[j,i]==1]
+            am_units_min = [[unit_names[j] for j in range(n_units) if am_m_all_min[j,i]==1]
                             for i in range(_nlen(am_final))]
 
             st.session_state.update({
@@ -466,13 +465,13 @@ with tab2:
                                      "at-least (minimal)", "at-most (minimal)")
                 st.download_button("⬇ Minimal rules CSV", df_min.to_csv(index=False),
                                    file_name="drsa_rules_minimal.csv", mime="text/csv",
-                                   use_container_width=True)
+                                   key="dl_min_run", use_container_width=True)
             with c2:
                 df_max = rules_to_df(al_texts_max, am_texts_max,
                                      "at-least (maximal)", "at-most (maximal)")
                 st.download_button("⬇ Maximal rules CSV", df_max.to_csv(index=False),
                                    file_name="drsa_rules_maximal.csv", mime="text/csv",
-                                   use_container_width=True)
+                                   key="dl_max_run", use_container_width=True)
 
     else:
         # ── Show previously computed results ───────────────────────────────
@@ -528,13 +527,13 @@ with tab2:
                                          "at-least (minimal)", "at-most (minimal)")
                     st.download_button("⬇ Minimal rules CSV", df_min.to_csv(index=False),
                                        file_name="drsa_rules_minimal.csv", mime="text/csv",
-                                       use_container_width=True)
+                                       key="dl_min_prev", use_container_width=True)
                 with c2:
                     df_max = rules_to_df(al_texts_max, am_texts_max,
                                          "at-least (maximal)", "at-most (maximal)")
                     st.download_button("⬇ Maximal rules CSV", df_max.to_csv(index=False),
                                        file_name="drsa_rules_maximal.csv", mime="text/csv",
-                                       use_container_width=True)
+                                       key="dl_max_prev", use_container_width=True)
             else:
                 al_supp  = st.session_state.get('al_supp', [])
                 am_supp  = st.session_state.get('am_supp', [])
@@ -610,7 +609,7 @@ with tab3:
 
         st.download_button("⬇ Download classification CSV", df_class.to_csv(index=False),
                            file_name="drsa_classification.csv", mime="text/csv",
-                           use_container_width=True)
+                           key="dl_classif", use_container_width=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 4
@@ -843,7 +842,7 @@ with tab4:
                                    rules_to_df(al_texts_new, am_texts_new,
                                        "at-least (minimal)", "at-most (minimal)").to_csv(index=False),
                                    file_name="drsa_newunits_rules_minimal.csv",
-                                   mime="text/csv", use_container_width=True)
+                                   mime="text/csv", key="dl_new_min", use_container_width=True)
             with c2:
                 al7_txt = format_atleast_rules(new_res.get('step7_al_rules'),
                     st.session_state['inc'], st.session_state['dec'],
@@ -855,7 +854,7 @@ with tab4:
                                    rules_to_df(al7_txt, am7_txt,
                                        "at-least (maximal)", "at-most (maximal)").to_csv(index=False),
                                    file_name="drsa_newunits_rules_maximal.csv",
-                                   mime="text/csv", use_container_width=True)
+                                   mime="text/csv", key="dl_new_max", use_container_width=True)
             st.markdown("### 💾 Export")
             c1, c2 = st.columns(2)
             with c1:
@@ -863,7 +862,7 @@ with tab4:
                                    rules_to_df(al_texts_new, am_texts_new,
                                        "at-least (minimal)", "at-most (minimal)").to_csv(index=False),
                                    file_name="drsa_newunits_rules_minimal.csv",
-                                   mime="text/csv", use_container_width=True)
+                                   mime="text/csv", key="dl_new_min", use_container_width=True)
             with c2:
                 _al7 = new_res.get('step7_al_rules')
                 _am7 = new_res.get('step7_am_rules')
@@ -875,7 +874,7 @@ with tab4:
                                    rules_to_df(_al7_txt, _am7_txt,
                                        "at-least (maximal)", "at-most (maximal)").to_csv(index=False),
                                    file_name="drsa_newunits_rules_maximal.csv",
-                                   mime="text/csv", use_container_width=True)
+                                   mime="text/csv", key="dl_new_max", use_container_width=True)
             st.markdown("### 💾 Export")
             c1, c2 = st.columns(2)
             with c1:
@@ -883,7 +882,7 @@ with tab4:
                                    rules_to_df(al_texts_new, am_texts_new,
                                        "at-least (minimal)", "at-most (minimal)").to_csv(index=False),
                                    file_name="drsa_newunits_rules_minimal.csv",
-                                   mime="text/csv", use_container_width=True)
+                                   mime="text/csv", key="dl_new_min", use_container_width=True)
             with c2:
                 _al7 = new_res.get('step7_al_rules')
                 _am7 = new_res.get('step7_am_rules')
@@ -895,7 +894,7 @@ with tab4:
                                    rules_to_df(_al7_txt, _am7_txt,
                                        "at-least (maximal)", "at-most (maximal)").to_csv(index=False),
                                    file_name="drsa_newunits_rules_maximal.csv",
-                                   mime="text/csv", use_container_width=True)
+                                   mime="text/csv", key="dl_new_max", use_container_width=True)
             st.download_button("⬇ Download classification CSV",
                                df_display.to_csv(index=False),
                                file_name="drsa_new_units.csv",
