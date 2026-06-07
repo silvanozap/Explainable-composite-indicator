@@ -90,6 +90,47 @@ def rules_to_df(al_texts, am_texts, label_al="at-least", label_am="at-most",
         rows.append(r)
     return pd.DataFrame(rows)
 
+def rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
+                 al_rules=None, am_rules=None):
+    """
+    Export rules in self-contained CSV format:
+      #directions,increasing,decreasing,...
+      type,class,crit1,crit2,...
+      at-least,2,0.762,,...
+    """
+    import io
+    buf = io.StringIO()
+    # directions row
+    dirs = ['increasing' if i in inc else 'decreasing' for i in range(len(crit_names))]
+    buf.write('#directions,' + ','.join(dirs) + '\n')
+    # header
+    buf.write('type,class,' + ','.join(crit_names) + '\n')
+    # at-least rules
+    if al_rules is not None and len(al_rules) > 0:
+        for rule in al_rules:
+            cl = int(rule[-1])
+            vals = [''] * len(crit_names)
+            body = rule[:-1]
+            pos = [int(body[k*2]) - 1 for k in range(len(body)//2) if body[k*2] != 0]
+            thr = [body[k*2+1] for k in range(len(body)//2) if body[k*2] != 0]
+            for p, t in zip(pos, thr):
+                if 0 <= p < len(crit_names):
+                    vals[p] = str(round(float(t), 6))
+            buf.write('at-least,' + str(cl) + ',' + ','.join(vals) + '\n')
+    # at-most rules
+    if am_rules is not None and len(am_rules) > 0:
+        for rule in am_rules:
+            cl = int(rule[-1])
+            vals = [''] * len(crit_names)
+            body = rule[:-1]
+            pos = [int(body[k*2]) - 1 for k in range(len(body)//2) if body[k*2] != 0]
+            thr = [body[k*2+1] for k in range(len(body)//2) if body[k*2] != 0]
+            for p, t in zip(pos, thr):
+                if 0 <= p < len(crit_names):
+                    vals[p] = str(round(float(t), 6))
+            buf.write('at-most,' + str(cl) + ',' + ','.join(vals) + '\n')
+    return buf.getvalue()
+
 def bibtex_omega():
     return """@article{corrente2026explainable,
   title     = {An explainable and interpretable composite indicator based on decision rules},
@@ -338,10 +379,10 @@ with tab2:
                 show_rules(am_r, am_texts, am_supp, am_units, "atmost")
             if n_al + n_am > 0:
                 st.markdown("### 💾 Export")
-                df_dl = rules_to_df(al_texts, am_texts,
-                                    al_supp=al_supp if n_al>0 else None,
-                                    am_supp=am_supp if n_am>0 else None)
-                st.download_button("⬇ Download rules CSV", df_dl.to_csv(index=False),
+                csv_rules = rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
+                                         al_rules=al_r if n_al>0 else None,
+                                         am_rules=am_r if n_am>0 else None)
+                st.download_button("⬇ Download rules CSV", csv_rules,
                                    file_name="drsa_rules.csv", mime="text/csv",
                                    key="dl_rules_ind", use_container_width=True)
 
@@ -464,15 +505,15 @@ with tab2:
             st.markdown("### 💾 Export rules")
             c1, c2 = st.columns(2)
             with c1:
-                df_min = rules_to_df(al_texts_min, am_texts_min,
-                                     "at-least (minimal)", "at-most (minimal)")
-                st.download_button("⬇ Minimal rules CSV", df_min.to_csv(index=False),
+                csv_min = rules_to_csv(al_texts_min, am_texts_min, crit_names, inc, dec,
+                                       al_rules=al_final, am_rules=am_final)
+                st.download_button("⬇ Minimal rules CSV", csv_min,
                                    file_name="drsa_rules_minimal.csv", mime="text/csv",
                                    key="dl_min_run", use_container_width=True)
             with c2:
-                df_max = rules_to_df(al_texts_max, am_texts_max,
-                                     "at-least (maximal)", "at-most (maximal)")
-                st.download_button("⬇ Maximal rules CSV", df_max.to_csv(index=False),
+                csv_max = rules_to_csv(al_texts_max, am_texts_max, crit_names, inc, dec,
+                                       al_rules=al_r2, am_rules=am_r2)
+                st.download_button("⬇ Maximal rules CSV", csv_max,
                                    file_name="drsa_rules_maximal.csv", mime="text/csv",
                                    key="dl_max_run", use_container_width=True)
 
@@ -524,17 +565,19 @@ with tab2:
 
                 # Persistent download buttons
                 st.markdown("### 💾 Export rules")
+                _inc = st.session_state.get('inc', []); _dec = st.session_state.get('dec', [])
+                _crit = st.session_state.get('crit_names', [])
                 c1, c2 = st.columns(2)
                 with c1:
-                    df_min = rules_to_df(al_texts, am_texts,
-                                         "at-least (minimal)", "at-most (minimal)")
-                    st.download_button("⬇ Minimal rules CSV", df_min.to_csv(index=False),
+                    csv_min_p = rules_to_csv(al_texts, am_texts, _crit, _inc, _dec,
+                                             al_rules=al_final, am_rules=am_final)
+                    st.download_button("⬇ Minimal rules CSV", csv_min_p,
                                        file_name="drsa_rules_minimal.csv", mime="text/csv",
                                        key="dl_min_prev", use_container_width=True)
                 with c2:
-                    df_max = rules_to_df(al_texts_max, am_texts_max,
-                                         "at-least (maximal)", "at-most (maximal)")
-                    st.download_button("⬇ Maximal rules CSV", df_max.to_csv(index=False),
+                    csv_max_p = rules_to_csv(al_texts_max, am_texts_max, _crit, _inc, _dec,
+                                             al_rules=al_r2, am_rules=am_r2)
+                    st.download_button("⬇ Maximal rules CSV", csv_max_p,
                                        file_name="drsa_rules_maximal.csv", mime="text/csv",
                                        key="dl_max_prev", use_container_width=True)
             else:
@@ -552,10 +595,13 @@ with tab2:
                     show_rules(am_r, am_texts, am_supp, am_units, "atmost")
                 if al_texts or am_texts:
                     st.markdown("### 💾 Export")
-                    df_dl = rules_to_df(al_texts, am_texts)
-                    st.download_button("⬇ Download rules CSV", df_dl.to_csv(index=False),
+                    _inc2 = st.session_state.get('inc',[]); _dec2 = st.session_state.get('dec',[])
+                    _crit2 = st.session_state.get('crit_names',[])
+                    csv_ind = rules_to_csv(al_texts, am_texts, _crit2, _inc2, _dec2,
+                                           al_rules=al_r, am_rules=am_r)
+                    st.download_button("⬇ Download rules CSV", csv_ind,
                                        file_name="drsa_rules.csv", mime="text/csv",
-                                       use_container_width=True)
+                                       key="dl_ind_prev", use_container_width=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 3
@@ -802,30 +848,53 @@ with tab4:
             # ── Maximal rules MILP(7) expander ────────────────────────────
             al7 = new_res.get('step7_al_rules')
             am7 = new_res.get('step7_am_rules')
+
+            # Compute match matrices for new units against MILP(7) and minimal rules
+            new_nc = np.hstack([new_matrix, np.full((len(new_matrix),1), np.nan)])
+            all_new_names = list(st.session_state['unit_names']) + list(new_names)
+            all_units_matrix = np.vstack([st.session_state['matrix_s_minus'][:,:-1], new_matrix])
+            all_nc_combined  = np.hstack([all_units_matrix, np.full((len(all_units_matrix),1), np.nan)])
+
             if _nlen(al7) > 0 or _nlen(am7) > 0:
                 al_texts7 = format_atleast_rules(al7, st.session_state['inc'],
                     st.session_state['dec'], st.session_state['crit_names']) if _nlen(al7)>0 else []
                 am_texts7 = format_atmost_rules(am7, st.session_state['inc'],
                     st.session_state['dec'], st.session_state['crit_names']) if _nlen(am7)>0 else []
+                _, _, al_m7_all, am_m7_all = classify_units(
+                    all_nc_combined, al7 if _nlen(al7)>0 else np.empty((0,1)),
+                    am7 if _nlen(am7)>0 else np.empty((0,1)),
+                    st.session_state['inc'], st.session_state['dec'])
+                al_units7 = [[all_new_names[j] for j in range(len(all_new_names)) if al_m7_all[j,i]==1]
+                             for i in range(_nlen(al7))]
+                am_units7 = [[all_new_names[j] for j in range(len(all_new_names)) if am_m7_all[j,i]==1]
+                             for i in range(_nlen(am7))]
                 with st.expander(f"📂 Maximal rules — MILP(7) "
                                  f"({_nlen(al7)} at-least, {_nlen(am7)} at-most)"):
                     if al_texts7:
                         st.markdown("**R≥ At-Least:**")
-                        show_rules(al7, al_texts7, rule_type="atleast")
+                        show_rules(al7, al_texts7, units=al_units7, rule_type="atleast")
                     if am_texts7:
                         st.markdown("**R≤ At-Most:**")
-                        show_rules(am7, am_texts7, rule_type="atmost")
+                        show_rules(am7, am_texts7, units=am_units7, rule_type="atmost")
 
             # ── Minimal rules for A ∪ A_new ────────────────────────────────
             if al_texts_new or am_texts_new:
+                _, _, al_m_fin, am_m_fin = classify_units(
+                    all_nc_combined, al_fin if _nlen(al_fin)>0 else np.empty((0,1)),
+                    am_fin if _nlen(am_fin)>0 else np.empty((0,1)),
+                    st.session_state['inc'], st.session_state['dec'])
+                al_units_fin = [[all_new_names[j] for j in range(len(all_new_names)) if al_m_fin[j,i]==1]
+                                for i in range(_nlen(al_fin))]
+                am_units_fin = [[all_new_names[j] for j in range(len(all_new_names)) if am_m_fin[j,i]==1]
+                                for i in range(_nlen(am_fin))]
                 with st.expander(f"📂 Minimal rules for A ∪ A_new "
                                  f"({_nlen(al_fin)} at-least, {_nlen(am_fin)} at-most)"):
                     if al_texts_new:
                         st.markdown("**R≥ At-Least:**")
-                        show_rules(al_fin, al_texts_new, rule_type="atleast")
+                        show_rules(al_fin, al_texts_new, units=al_units_fin, rule_type="atleast")
                     if am_texts_new:
                         st.markdown("**R≤ At-Most:**")
-                        show_rules(am_fin, am_texts_new, rule_type="atmost")
+                        show_rules(am_fin, am_texts_new, units=am_units_fin, rule_type="atmost")
 
             # ── Unit explanation ───────────────────────────────────────────
             st.markdown("#### Unit-by-unit explanation")
