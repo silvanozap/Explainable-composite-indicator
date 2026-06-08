@@ -179,22 +179,50 @@ with st.sidebar:
     sep_actual = "\t" if sep=="\\t" else sep
 
     st.markdown("---")
-    st.markdown("### ⚙️ Settings")
-    min_conf    = st.slider("Min confidence (c)", 0.0, 1.0, 1.0, 0.05)
-    handle_miss = st.checkbox("Missing values (Algorithm 4)", False)
-    random_seed = st.number_input("Random seed", value=1, min_value=0, step=1)
+    st.markdown("### 🚀 Quick start")
+    st.markdown(
+        "1. **Data & Setup** — upload dataset, set directions and settings\n"
+        "2. **Run** — induce rules (Steps 1–2) or full pipeline (Steps 1–7)\n"
+        "3. **Classification** — inspect classification of all units\n"
+        "4. **New Units** — classify new alternatives via MILP (6),(7),(8)\n"
+        "5. **Apply Rules** — load saved rules and classify alternatives"
+    )
+
+    with st.expander("📖 User guide"):
+        st.markdown("""
+**Input file**
+CSV/TXT · optional name column · criteria columns · last column = class label (integer = reference, empty = non-reference)
+
+**Rule induction (Steps 1–2)**
+Induces R≥ and R≤ rules from reference units via Algorithms 1, 2 or 4 (missing values).
+
+**Full pipeline (Steps 1–7)**
+Greedy selection (3–4) → classify all units (5) → induce from all units (6) → MILP minimisation (7).
+
+**New units (MILP 6–8)**
+Resolves contradictions for new alternatives via three MILP problems from the paper.
+
+**Apply Rules**
+Load an exported rules CSV to visualise rules and classify alternatives without re-running the pipeline.
+
+**Rules CSV format**
+```
+#directions,increasing,decreasing,...
+type,class,crit1,crit2,...
+at-least,2,0.762,,
+at-most,1,,2.71,
+```
+""")
 
     st.markdown("---")
     st.markdown("### 📄 Cite")
     st.download_button("⬇ BibTeX — Omega 2026", bibtex_omega(),
                        file_name="corrente2026.bib", mime="text/plain",
                        use_container_width=True)
-    st.download_button("⬇ BibTeX — SoftwareX", bibtex_softwarex(),
-                       file_name="zappala2026drsa.bib", mime="text/plain",
-                       use_container_width=True)
     st.markdown("---")
-    st.markdown("<div style='font-size:0.75rem;color:#9ca3af'>Corrente et al. (2026)<br>Omega 142, 103513</div>",
-                unsafe_allow_html=True)
+    st.markdown(
+        "<div style=\'font-size:0.75rem;color:#9ca3af\'>Corrente et al. (2026)<br>Omega 142, 103513</div>",
+        unsafe_allow_html=True)
 
 # ── TABS ───────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -304,11 +332,21 @@ if uploaded is not None:
         inc = [i for i,n in enumerate(crit_names) if "Increasing" in directions[n]]
         dec = [i for i,n in enumerate(crit_names) if "Decreasing" in directions[n]]
 
+        st.markdown("#### ⚙️ Settings")
+        sc1, sc2, sc3 = st.columns(3)
+        with sc1:
+            min_conf = st.slider("Min confidence (c)", 0.0, 1.0, 1.0, 0.05)
+        with sc2:
+            handle_miss = st.checkbox("Missing values (Algorithm 4)", False)
+        with sc3:
+            random_seed = st.number_input("Random seed", value=1, min_value=0, step=1)
+
         st.session_state.update({
             'inc': inc, 'dec': dec,
             'matrix': matrix, 'unit_names': unit_names,
             'crit_names': crit_names, 'ref_indices': ref_indices_sel,
             'n_units': n_units,
+            'min_conf': min_conf, 'handle_miss': handle_miss, 'random_seed': random_seed,
         })
 
     # ══════════════════════════════════════════════════════════════════════════════
@@ -941,46 +979,48 @@ if uploaded is not None:
     # ══════════════════════════════════════════════════════════════════════════════
 with tab5:
     st.markdown("#### 📂 Apply saved rules")
-    st.markdown(
-        "Load a rules file (exported from this tool) to visualise them and "
-        "optionally classify new alternatives."
-    )
 
-    # ── Sample files ───────────────────────────────────────────────────────────
-    with st.expander("📎 Download sample files"):
-        sample_rules = (
-            "#directions,increasing,increasing,increasing\n"
-            "type,class,g1,g2,g3\n"
-            "at-least,2,4.5,,\n"
-            "at-least,3,,5.0,\n"
-            "at-most,1,3.0,,\n"
-            "at-most,2,,4.0,2.5\n"
-        )
-        sample_alts = (
-            "Name,g1,g2,g3\n"
-            "x1,5.0,3.5,4.0\n"
-            "x2,2.0,4.5,1.5\n"
-            "x3,6.0,6.0,5.5\n"
-            "x4,3.5,2.0,3.0\n"
-        )
-        ca5s, cb5s = st.columns(2)
-        with ca5s:
-            st.download_button("⬇ Sample rules CSV", sample_rules,
-                               file_name="sample_rules.csv", mime="text/csv",
-                               key="dl_sample_rules", use_container_width=True)
-            st.caption("Format: #directions row + type/class/criteria columns")
-        with cb5s:
-            st.download_button("⬇ Sample alternatives CSV", sample_alts,
-                               file_name="sample_alternatives.csv", mime="text/csv",
-                               key="dl_sample_alts", use_container_width=True)
-            st.caption("Format: optional name column + criteria columns (no class)")
-
+    # ── File uploader (always visible) ─────────────────────────────────────────
     col_r, col_s = st.columns([3, 1])
     with col_r:
         rules_file = st.file_uploader("Upload rules CSV", type=["csv","txt"], key="rules_file")
     with col_s:
-        sep_r = st.selectbox("Separator", [",",";","\t"," "], key="sep_rules")
-        sep_r_act = "\t" if sep_r=="\t" else sep_r
+        sep_r = st.selectbox("Separator", [",",";","\\t"," "], key="sep_rules")
+        sep_r_act = "\t" if sep_r=="\\t" else sep_r
+
+    # ── Welcome (only when no file loaded) ─────────────────────────────────────
+    if rules_file is None:
+        st.markdown(
+            "Load a rules file (exported from this tool) to visualise them and "
+            "optionally classify new alternatives."
+        )
+        with st.expander("📎 Download sample files"):
+            sample_rules = (
+                "#directions,increasing,increasing,increasing\n"
+                "type,class,g1,g2,g3\n"
+                "at-least,2,4.5,,\n"
+                "at-least,3,,5.0,\n"
+                "at-most,1,3.0,,\n"
+                "at-most,2,,4.0,2.5\n"
+            )
+            sample_alts = (
+                "Name,g1,g2,g3\n"
+                "x1,5.0,3.5,4.0\n"
+                "x2,2.0,4.5,1.5\n"
+                "x3,6.0,6.0,5.5\n"
+                "x4,3.5,2.0,3.0\n"
+            )
+            ca5s, cb5s = st.columns(2)
+            with ca5s:
+                st.download_button("⬇ Sample rules CSV", sample_rules,
+                                   file_name="sample_rules.csv", mime="text/csv",
+                                   key="dl_sample_rules", use_container_width=True)
+                st.caption("Format: #directions row + type/class/criteria columns")
+            with cb5s:
+                st.download_button("⬇ Sample alternatives CSV", sample_alts,
+                                   file_name="sample_alternatives.csv", mime="text/csv",
+                                   key="dl_sample_alts", use_container_width=True)
+                st.caption("Format: optional name column + criteria columns (no class)")
 
     if rules_file is not None:
         try:
