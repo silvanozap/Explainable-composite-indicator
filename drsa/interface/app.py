@@ -22,6 +22,19 @@ from drsa import (
 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="DRSA", page_icon="⚖️", layout="wide")
+
+# ── MathJax ───────────────────────────────────────────────────────────────────
+import streamlit.components.v1 as _components
+_components.html("""
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$','$'],['\\(','\\)']] },
+  svg: { fontCache: 'global' }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+""", height=0)
+
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
@@ -192,9 +205,9 @@ with st.sidebar:
     st.markdown("### 🚀 Quick start")
     st.markdown(
         "1. **Data & Setup** — upload dataset, set directions and settings\n"
-        "2. **Run** — induce rules (Steps 1–2) or full pipeline (Steps 1–7)\n"
+        "2. **Run** — induce only rules or full pipeline\n"
         "3. **Classification** — inspect classification of all units\n"
-        "4. **New Units** — classify new alternatives via MILP (6),(7),(8)\n"
+        "4. **New Units** — classify new alternatives with previous induced rules\n"
         "5. **Apply Rules** — load saved rules and classify alternatives"
     )
 
@@ -426,10 +439,10 @@ if uploaded is not None:
                                  f'<div class="label">{lbl}</div></div>', unsafe_allow_html=True)
                 st.markdown("")
                 if n_al > 0:
-                    st.markdown("### R≥ · At-Least Rules")
+                    st.markdown("### $\\mathcal{R}^{\\geqslant}$ · At-Least Rules")
                     show_rules(al_r, al_texts, al_supp, al_units, "atleast")
                 if n_am > 0:
-                    st.markdown("### R≤ · At-Most Rules")
+                    st.markdown("### $\\mathcal{R}^{\\leqslant}$ · At-Most Rules")
                     show_rules(am_r, am_texts, am_supp, am_units, "atmost")
                 if n_al + n_am > 0:
                     st.markdown("### 💾 Export")
@@ -533,26 +546,26 @@ if uploaded is not None:
                 df_steps = pd.DataFrame([
                     ("Step 2 – Reference units", n_al2, n_am2, n_al2+n_am2),
                     ("Step 3 – Greedy selection", _nlen(sel_al), _nlen(sel_am), _nlen(sel_al)+_nlen(sel_am)),
-                    ("Step 6 – All units", n_al6, n_am6, n_al6+n_am6),
-                    ("Step 7 – Minimal (MILP)", _nlen(al_final), _nlen(am_final), _nlen(al_final)+_nlen(am_final)),
+                    ("Step 6 – Maximal set of rules", n_al6, n_am6, n_al6+n_am6),
+                    ("Step 7 – Minimal set of rules", _nlen(al_final), _nlen(am_final), _nlen(al_final)+_nlen(am_final)),
                 ], columns=["Step","At-least","At-most","Total"])
                 st.dataframe(df_steps, use_container_width=True, hide_index=True)
 
                 # Maximal rules expander
-                with st.expander(f"📂 Maximal rules — Step 6 ({n_al6} at-least, {n_am6} at-most)"):
+                with st.expander(f"📂 Maximal rules ({n_al6} at-least, {n_am6} at-most)"):
                     if al_texts_max:
-                        st.markdown("**R≥ At-Least (maximal)**")
+                        st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least (maximal)**")
                         show_rules(al_r2, al_texts_max, units=al_units_max, rule_type="atleast")
                     if am_texts_max:
-                        st.markdown("**R≤ At-Most (maximal)**")
+                        st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most (maximal)**")
                         show_rules(am_r2, am_texts_max, units=am_units_max, rule_type="atmost")
 
                 # Minimal rules
                 if al_texts_min:
-                    st.markdown("### R≥ · Minimal At-Least Rules — Step 7")
+                    st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
                     show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
                 if am_texts_min:
-                    st.markdown("### R≤ · Minimal At-Most Rules — Step 7")
+                    st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
                     show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
 
                 # Download — two persistent buttons
@@ -585,8 +598,8 @@ if uploaded is not None:
                         df_steps = pd.DataFrame([
                             ("Step 2", *res['step2'], sum(res['step2'])),
                             ("Step 3", *res['step3'], sum(res['step3'])),
-                            ("Step 6", *res['step6'], sum(res['step6'])),
-                            ("Step 7", *res['step7'], sum(res['step7'])),
+                            ("Step 6 – Maximal set of rules", *res['step6'], sum(res['step6'])),
+                            ("Step 7 – Minimal set of rules", *res['step7'], sum(res['step7'])),
                         ], columns=["Step","At-least","At-most","Total"])
                         st.dataframe(df_steps, use_container_width=True, hide_index=True)
 
@@ -602,19 +615,19 @@ if uploaded is not None:
                     am_units_min  = st.session_state.get('am_units_min', [])
 
                     if al_texts_max or am_texts_max:
-                        with st.expander("📂 Maximal rules — Step 6"):
+                        with st.expander("📂 Maximal rules"):
                             if al_texts_max:
-                                st.markdown("**R≥ At-Least (maximal)**")
+                                st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least (maximal)**")
                                 show_rules(al_r2, al_texts_max, units=al_units_max, rule_type="atleast")
                             if am_texts_max:
-                                st.markdown("**R≤ At-Most (maximal)**")
+                                st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most (maximal)**")
                                 show_rules(am_r2, am_texts_max, units=am_units_max, rule_type="atmost")
 
                     if al_texts:
-                        st.markdown("### R≥ · Minimal At-Least Rules")
+                        st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
                         show_rules(al_final, al_texts, units=al_units_min, rule_type="atleast")
                     if am_texts:
-                        st.markdown("### R≤ · Minimal At-Most Rules")
+                        st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
                         show_rules(am_final, am_texts, units=am_units_min, rule_type="atmost")
 
                     # Persistent download buttons
@@ -642,10 +655,10 @@ if uploaded is not None:
                     al_r     = st.session_state.get('al_rules')
                     am_r     = st.session_state.get('am_rules')
                     if al_texts:
-                        st.markdown("### R≥ · At-Least Rules")
+                        st.markdown("### $\\mathcal{R}^{\\geqslant}$ · At-Least Rules")
                         show_rules(al_r, al_texts, al_supp, al_units, "atleast")
                     if am_texts:
-                        st.markdown("### R≤ · At-Most Rules")
+                        st.markdown("### $\\mathcal{R}^{\\leqslant}$ · At-Most Rules")
                         show_rules(am_r, am_texts, am_supp, am_units, "atmost")
                     if al_texts or am_texts:
                         st.markdown("### 💾 Export")
@@ -897,10 +910,10 @@ if uploaded is not None:
                     st.markdown(f"**Changed classification of previous units:** "
                                 f"{', '.join(changed_names) if changed_names else 'None'}")
                     def _nr(x): return _nlen(x) if x is not None else 0
-                    st.markdown(f"**Maximal rules selected:** "
+                    st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ maximal rules selected:** "
                                 f"{_nr(new_res.get('step7_al_rules'))} at-least, "
                                 f"{_nr(new_res.get('step7_am_rules'))} at-most")
-                    st.markdown(f"**Minimal rules selected:** "
+                    st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ minimal rules selected:** "
                                 f"{_nr(new_res.get('step8_al_rules'))} at-least, "
                                 f"{_nr(new_res.get('step8_am_rules'))} at-most")
 
@@ -928,13 +941,13 @@ if uploaded is not None:
                                  for i in range(_nlen(al7))]
                     am_units7 = [[all_new_names[j] for j in range(len(all_new_names)) if am_m7_all[j,i]==1]
                                  for i in range(_nlen(am7))]
-                    with st.expander(f"📂 Maximal rules selected "
+                    with st.expander(f"📂 Maximal rules selected ({_nlen(al7)} at-least, {_nlen(am7)} at-most)"
                                      f"({_nlen(al7)} at-least, {_nlen(am7)} at-most)"):
                         if al_texts7:
-                            st.markdown("**R≥ At-Least:**")
+                            st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least:**")
                             show_rules(al7, al_texts7, units=al_units7, rule_type="atleast")
                         if am_texts7:
-                            st.markdown("**R≤ At-Most:**")
+                            st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most:**")
                             show_rules(am7, am_texts7, units=am_units7, rule_type="atmost")
 
                 # ── Minimal rules for A ∪ A_new ────────────────────────────────
@@ -947,13 +960,13 @@ if uploaded is not None:
                                     for i in range(_nlen(al_fin))]
                     am_units_fin = [[all_new_names[j] for j in range(len(all_new_names)) if am_m_fin[j,i]==1]
                                     for i in range(_nlen(am_fin))]
-                    with st.expander(f"📂 Minimal rules selected "
+                    with st.expander(f"📂 Minimal rules selected ({_nlen(al_fin)} at-least, {_nlen(am_fin)} at-most)"
                                      f"({_nlen(al_fin)} at-least, {_nlen(am_fin)} at-most)"):
                         if al_texts_new:
-                            st.markdown("**R≥ At-Least:**")
+                            st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least:**")
                             show_rules(al_fin, al_texts_new, units=al_units_fin, rule_type="atleast")
                         if am_texts_new:
-                            st.markdown("**R≤ At-Most:**")
+                            st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most:**")
                             show_rules(am_fin, am_texts_new, units=am_units_fin, rule_type="atmost")
 
                 # ── Unit explanation ───────────────────────────────────────────
@@ -1215,12 +1228,12 @@ x2,2.0,4.5,1.5
 
         # ── Display rules ───────────────────────────────────────────────────
         if n_al5 > 0:
-            st.markdown("### R≥ · At-Least Rules")
+            st.markdown("### $\\mathcal{R}^{\\geqslant}$ · At-Least Rules")
             show_rules(al_rules5, al_texts5,
                        units=al_units5 if alt_matrix5 is not None else None,
                        rule_type="atleast")
         if n_am5 > 0:
-            st.markdown("### R≤ · At-Most Rules")
+            st.markdown("### $\\mathcal{R}^{\\leqslant}$ · At-Most Rules")
             show_rules(am_rules5, am_texts5,
                        units=am_units5 if alt_matrix5 is not None else None,
                        rule_type="atmost")
