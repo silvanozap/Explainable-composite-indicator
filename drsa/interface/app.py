@@ -233,17 +233,8 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 # ── Welcome ────────────────────────────────────────────────────────────────────
 if uploaded is None:
     with tab1:
-        c1,c2,c3 = st.columns(3)
+        c1,c2 = st.columns(2)
         with c1:
-            st.markdown("""
-**Workflow**
-1. Upload dataset & set criteria directions
-2. Run rule induction (Steps 1–2) or full pipeline (Steps 1–7)
-3. Inspect classification of all units
-4. Classify new units via MILP (6),(7),(8)
-5. Apply saved rules on new alternatives
-""")
-        with c2:
             st.markdown("""
 **File format**
 - CSV or TXT
@@ -849,13 +840,18 @@ if uploaded is not None:
                     contra = sm > sp
                     assign = f"Class {sm}" if sm==sp else (f"Class {sm}–{sp}" if not contra
                              else f"CONTRADICTORY")
+                    sm_prev = int(new_res['step1_s_minus'][k]) if new_res.get('step1_s_minus') is not None else sm
+                    sp_prev = int(new_res['step1_s_plus'][k])  if new_res.get('step1_s_plus')  is not None else sp
                     rows_all.append({
                         "Unit": name,
-                        "s⁻ (prev)": "—", "s⁺ (prev)": "—",
+                        "s⁻ (prev)": sm_prev, "s⁺ (prev)": sp_prev,
                         "s⁻ (new)": sm, "s⁺ (new)": sp,
                         "Assignment": assign,
                         "Changed": "🆕 New" if not contra else "⚠️ Contradictory",
                         "_changed": True,
+                        "_sm_new": sm, "_sp_new": sp,
+                        "_assign_csv": f"{sm}-{sp}" if sm!=sp else str(sm),
+                        "_contra": contra,
                     })
 
                 df_all = pd.DataFrame(rows_all)
