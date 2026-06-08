@@ -174,11 +174,10 @@ def get_matching_units(rules, match_matrix, all_names, rule_type, inc, dec, crit
     return result
 
 # ── Header ─────────────────────────────────────────────────────────────────────
-st.title("⚖️ DRSA · Composite Indicator Tool")
+st.title("⚖️ An Explainable and Interpretable Composite Indicator")
 st.markdown("""<div class="info-banner">
-Dominance-based Rough Set Approach for explainable composite indicators.<br>
-Implements <b>Algorithms 1, 2, 4</b> and full pipeline (Steps 1–7) from
-Corrente, Greco, Słowiński, Zappalà — <i>Omega 142</i> (2026), 103513.
+Interactive tool to build a composite indicator based on the Dominance-based rough set approach<br>
+(Corrente, Greco, Słowiński, Zappalà — <i>Omega 142</i> (2026), 103513.)
 </div>""", unsafe_allow_html=True)
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
@@ -350,7 +349,7 @@ if uploaded is not None:
         with sc1:
             min_conf = st.slider("Min confidence (c)", 0.0, 1.0, 1.0, 0.05)
         with sc2:
-            handle_miss = st.checkbox("Missing values (Algorithm 4)", False)
+            handle_miss = st.checkbox("Missing value", False)
         with sc3:
             random_seed = st.number_input("Random seed", value=1, min_value=0, step=1)
 
@@ -382,10 +381,10 @@ if uploaded is not None:
         n_units    = st.session_state['n_units']
 
         mode = st.radio("Mode",
-            ["🔬 Rule induction only (Steps 1-2)", "🚀 Full pipeline (Steps 1-7)"],
+            ["🔬 Rule induction only", "🚀 Full pipeline"],
             horizontal=True)
 
-        if "only" in mode:
+        if "induction only" in mode.lower():
             run_al = st.checkbox("At-least rules (R≥)", value=True, key="run_al")
             run_am = st.checkbox("At-most rules (R≤)",  value=True, key="run_am")
         else:
@@ -393,7 +392,7 @@ if uploaded is not None:
 
         if st.button("▶ Run", type="primary", use_container_width=True):
 
-            if "only" in mode:
+            if "induction only" in mode.lower():
                 # ── Rule induction only ────────────────────────────────────────
                 with st.spinner("Inducing rules…"):
                     al_r = am_r = al_m = al_d = am_m = am_d = None
@@ -674,7 +673,7 @@ if uploaded is not None:
             inc        = st.session_state['inc']
             dec        = st.session_state['dec']
 
-            st.markdown("#### Classification of all units — equation (4)")
+            st.markdown("#### Classification of all units")
 
             if 'classification_final' in st.session_state:
                 cl = st.session_state['classification_final']
@@ -730,8 +729,7 @@ if uploaded is not None:
             st.info("Run the **Full pipeline** (Steps 1-7) first to enable new unit classification.")
         else:
             st.markdown("#### 🆕 Classify new units")
-            st.markdown("Upload new units **without** the class column. "
-                        "The tool applies MILP (6), (7), (8) to handle contradictions.")
+            st.markdown("Upload new units **without** the class column. The tool tries to handle contradictions.")
 
             new_file = st.file_uploader("Upload new units", type=["csv","txt"], key="new_file")
             sep2 = st.selectbox("Separator", [",",";","\\t"," "], key="sep2")
@@ -778,7 +776,7 @@ if uploaded is not None:
 
                     n_co = new_res['n_contradictions']
                     if n_co == 0:
-                        stat2.success("✅ No contradictions — MILP (8) applied for minimal rules")
+                        stat2.success("✅ No contradictions")
                     elif new_res.get('milp_success'):
                         stat2.success(f"✅ {n_co} contradictions resolved via MILP (6) and (7)")
                     else:
@@ -899,10 +897,10 @@ if uploaded is not None:
                     st.markdown(f"**Changed classification of previous units:** "
                                 f"{', '.join(changed_names) if changed_names else 'None'}")
                     def _nr(x): return _nlen(x) if x is not None else 0
-                    st.markdown(f"**MILP(7) rules selected:** "
+                    st.markdown(f"**Maximal rules selected:** "
                                 f"{_nr(new_res.get('step7_al_rules'))} at-least, "
                                 f"{_nr(new_res.get('step7_am_rules'))} at-most")
-                    st.markdown(f"**MILP(8) minimal rules:** "
+                    st.markdown(f"**Minimal rules selected:** "
                                 f"{_nr(new_res.get('step8_al_rules'))} at-least, "
                                 f"{_nr(new_res.get('step8_am_rules'))} at-most")
 
@@ -930,7 +928,7 @@ if uploaded is not None:
                                  for i in range(_nlen(al7))]
                     am_units7 = [[all_new_names[j] for j in range(len(all_new_names)) if am_m7_all[j,i]==1]
                                  for i in range(_nlen(am7))]
-                    with st.expander(f"📂 Maximal rules — MILP(7) "
+                    with st.expander(f"📂 Maximal rules selected "
                                      f"({_nlen(al7)} at-least, {_nlen(am7)} at-most)"):
                         if al_texts7:
                             st.markdown("**R≥ At-Least:**")
@@ -949,7 +947,7 @@ if uploaded is not None:
                                     for i in range(_nlen(al_fin))]
                     am_units_fin = [[all_new_names[j] for j in range(len(all_new_names)) if am_m_fin[j,i]==1]
                                     for i in range(_nlen(am_fin))]
-                    with st.expander(f"📂 Minimal rules for A ∪ A_new "
+                    with st.expander(f"📂 Minimal rules selected "
                                      f"({_nlen(al_fin)} at-least, {_nlen(am_fin)} at-most)"):
                         if al_texts_new:
                             st.markdown("**R≥ At-Least:**")
@@ -1163,7 +1161,7 @@ x2,2.0,4.5,1.5
         st.markdown("---")
         col_a, col_sa = st.columns([3, 1])
         with col_a:
-            alt_file5 = st.file_uploader("Upload alternatives (optional, without class column)",
+            alt_file5 = st.file_uploader("Upload alternatives (optional, without class column). Note: column names must correspond to criteria names of rules",
                                           type=["csv","txt"], key="alt_file5")
         with col_sa:
             sep_a5 = st.selectbox("Separator", [",",";","\t"," "], key="sep_alt5")
@@ -1230,7 +1228,7 @@ x2,2.0,4.5,1.5
         # ── Classification ──────────────────────────────────────────────────
         if alt_matrix5 is not None and s_minus5 is not None:
             st.markdown("---")
-            st.markdown("#### Classification — equation (4)")
+            st.markdown("#### Classification")
             rows5 = []
             for i, name in enumerate(alt_names5):
                 sm, sp = int(s_minus5[i]), int(s_plus5[i])
