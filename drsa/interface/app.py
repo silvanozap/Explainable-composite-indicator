@@ -264,8 +264,8 @@ ref_mask   = ~np.isnan(matrix[:, -1])
 ref_indices = np.where(ref_mask)[0].tolist()
 
 # ── TABS ───────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs([
-    "📋 Data & Setup", "⚙️ Run", "🔍 Classification", "🆕 New Units"
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📋 Data & Setup", "⚙️ Run", "🔍 Classification", "🆕 New Units", "📂 Apply Rules"
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -931,3 +931,191 @@ with tab4:
                                df_display.to_csv(index=False),
                                file_name="drsa_new_units.csv",
                                mime="text/csv", use_container_width=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TAB 5 — Apply Rules
+# ══════════════════════════════════════════════════════════════════════════════
+with tab5:
+    st.markdown("#### 📂 Apply saved rules")
+    st.markdown(
+        "Load a rules file (exported from this tool) to visualise them and "
+        "optionally classify new alternatives."
+    )
+
+    col_r, col_s = st.columns([3, 1])
+    with col_r:
+        rules_file = st.file_uploader("Upload rules CSV", type=["csv","txt"], key="rules_file")
+    with col_s:
+        sep_r = st.selectbox("Separator", [",",";","\t"," "], key="sep_rules")
+        sep_r_act = "\t" if sep_r=="\t" else sep_r
+
+    if rules_file is not None:
+        try:
+            raw_lines = rules_file.read().decode("utf-8").splitlines()
+        except Exception as e:
+            st.error(f"Could not read file: {e}"); st.stop()
+
+        # Parse #directions line
+        inc5 = []; dec5 = []; crit_names5 = []
+        directions_line = None
+        data_lines = []
+        for line in raw_lines:
+            if line.startswith("#directions"):
+                directions_line = line
+            else:
+                data_lines.append(line)
+
+        if directions_line is None:
+            st.error("Missing #directions line in rules file."); st.stop()
+
+        dir_parts = directions_line.split(sep_r_act)[1:]
+        # Parse header
+        import io
+        df_rules_raw = pd.read_csv(io.StringIO("\n".join(data_lines)), sep=sep_r_act)
+        crit_names5 = [c for c in df_rules_raw.columns if c not in ['type','class']]
+
+        for i, d in enumerate(dir_parts):
+            if i < len(crit_names5):
+                if d.strip() == 'increasing':
+                    inc5.append(i)
+                else:
+                    dec5.append(i)
+
+        # Parse rules into arrays
+        al_rules5 = []; am_rules5 = []
+        n_crit5 = len(crit_names5)
+        rule_width = n_crit5 * 2  # crit_idx, threshold pairs
+
+        for _, row in df_rules_raw.iterrows():
+            rtype = str(row.get('type','')).strip()
+            rclass = int(float(row.get('class', 0)))
+            rule_vec = []
+            for ci, cname in enumerate(crit_names5):
+                val = row.get(cname, '')
+                if pd.isna(val) or str(val).strip() == '':
+                    rule_vec.extend([0, 0])
+                else:
+                    rule_vec.extend([ci + 1, float(val)])
+            rule_vec.append(rclass)
+            if rtype == 'at-least':
+                al_rules5.append(rule_vec)
+            elif rtype == 'at-most':
+                am_rules5.append(rule_vec)
+
+        al_rules5 = np.array(al_rules5) if al_rules5 else np.empty((0, rule_width+1))
+        am_rules5 = np.array(am_rules5) if am_rules5 else np.empty((0, rule_width+1))
+
+        n_al5 = len(al_rules5); n_am5 = len(am_rules5)
+        al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5) if n_al5>0 else []
+        am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5) if n_am5>0 else []
+
+        mc1, mc2, mc3 = st.columns(3)
+        mc1.metric("At-least rules", n_al5)
+        mc2.metric("At-most rules", n_am5)
+        mc3.metric("Criteria", n_crit5)
+
+        st.markdown(f"**Criteria directions:** " +
+                    ", ".join(f"{crit_names5[i]} ({'↑' if i in inc5 else '↓'})"
+                              for i in range(len(crit_names5))))
+
+        # ── Load alternatives (optional) ───────────────────────────────────
+        st.markdown("---")
+        col_a, col_sa = st.columns([3, 1])
+        with col_a:
+            alt_file5 = st.file_uploader("Upload alternatives (optional, without class column)",
+                                          type=["csv","txt"], key="alt_file5")
+        with col_sa:
+            sep_a5 = st.selectbox("Separator", [",",";","\t"," "], key="sep_alt5")
+            sep_a5_act = "\t" if sep_a5=="\t" else sep_a5
+
+        alt_names5 = None; alt_matrix5 = None
+        if alt_file5 is not None:
+            try:
+                df_alt5_raw = pd.read_csv(alt_file5, sep=sep_a5_act, engine="python")
+            except Exception as e:
+                st.error(f"Could not read alternatives file: {e}"); st.stop()
+
+            df_alt5 = df_alt5_raw.copy()
+            fc5 = df_alt5.columns[0]
+            if pd.to_numeric(df_alt5[fc5], errors='coerce').isna().sum() > len(df_alt5)*0.5:
+                alt_names5 = df_alt5[fc5].astype(str).tolist()
+                df_alt5 = df_alt5.drop(columns=[fc5])
+            df_alt5 = df_alt5.apply(pd.to_numeric, errors='coerce')
+            # Drop last column if it looks like a class column (all integers 1..p)
+            last_col = df_alt5.iloc[:, -1]
+            if last_col.dropna().apply(float.is_integer).all() and last_col.max() <= 10:
+                df_alt5 = df_alt5.iloc[:, :-1]
+            # Keep only criteria columns that match the rules
+            common_cols = [c for c in crit_names5 if c in df_alt5.columns]
+            if len(common_cols) < n_crit5:
+                st.warning(f"Alternatives file has {len(common_cols)}/{n_crit5} matching criteria columns.")
+            df_alt5 = df_alt5[[c for c in crit_names5 if c in df_alt5.columns]]
+            if alt_names5 is None:
+                alt_names5 = [f'a{i+1}' for i in range(len(df_alt5))]
+            alt_matrix5 = df_alt5.values.astype(float)
+            st.dataframe(df_alt5_raw, use_container_width=True, height=200)
+
+        # ── Compute match units per rule ────────────────────────────────────
+        al_units5 = [[] for _ in range(n_al5)]
+        am_units5 = [[] for _ in range(n_am5)]
+        s_minus5 = s_plus5 = al_m5 = am_m5 = None
+
+        if alt_matrix5 is not None and n_crit5 == alt_matrix5.shape[1]:
+            p5 = 3  # default, will be overridden by rules
+            if n_al5 > 0:
+                p5 = max(p5, int(np.max(al_rules5[:, -1])))
+            if n_am5 > 0:
+                p5 = max(p5, int(np.max(am_rules5[:, -1])))
+            alt_nc5 = np.hstack([alt_matrix5, np.full((len(alt_matrix5),1), np.nan)])
+            s_minus5, s_plus5, al_m5, am_m5 = classify_units(
+                alt_nc5, al_rules5, am_rules5, inc5, dec5)
+            al_units5 = [[alt_names5[j] for j in range(len(alt_names5)) if al_m5[j,i]==1]
+                         for i in range(n_al5)]
+            am_units5 = [[alt_names5[j] for j in range(len(alt_names5)) if am_m5[j,i]==1]
+                         for i in range(n_am5)]
+
+        # ── Display rules ───────────────────────────────────────────────────
+        if n_al5 > 0:
+            st.markdown("### R≥ · At-Least Rules")
+            show_rules(al_rules5, al_texts5,
+                       units=al_units5 if alt_matrix5 is not None else None,
+                       rule_type="atleast")
+        if n_am5 > 0:
+            st.markdown("### R≤ · At-Most Rules")
+            show_rules(am_rules5, am_texts5,
+                       units=am_units5 if alt_matrix5 is not None else None,
+                       rule_type="atmost")
+
+        # ── Classification ──────────────────────────────────────────────────
+        if alt_matrix5 is not None and s_minus5 is not None:
+            st.markdown("---")
+            st.markdown("#### Classification — equation (4)")
+            rows5 = []
+            for i, name in enumerate(alt_names5):
+                sm, sp = int(s_minus5[i]), int(s_plus5[i])
+                contra = sm > sp
+                assign = f"Class {sm}" if sm==sp else (
+                    f"Class {sm} to {sp}" if not contra else
+                    f"CONTRADICTORY (s⁻={sm} > s⁺={sp})")
+                rows5.append({"Unit":name,"s⁻":sm,"s⁺":sp,
+                               "Assignment":assign,
+                               "Status":"⚠️ Contradictory" if contra else "✅ OK"})
+            df_class5 = pd.DataFrame(rows5)
+            st.dataframe(df_class5, use_container_width=True, height=350)
+
+            n_ok5 = df_class5['Status'].str.contains('OK').sum()
+            n_co5 = df_class5['Status'].str.contains('Contr').sum()
+            ca5, cb5 = st.columns(2)
+            ca5.metric("Non-contradictory", n_ok5)
+            cb5.metric("Contradictory", n_co5)
+
+            st.markdown("#### Unit-by-unit explanation")
+            sel5 = st.selectbox("Select unit", alt_names5, key="sel_tab5")
+            show_explanation(sel5, s_minus5, s_plus5, al_m5, am_m5,
+                             al_texts5, am_texts5, alt_names5.index(sel5))
+
+            st.download_button("⬇ Download classification CSV",
+                               df_class5.to_csv(index=False),
+                               file_name="drsa_applied_classification.csv",
+                               mime="text/csv", key="dl_apply_class",
+                               use_container_width=True)
