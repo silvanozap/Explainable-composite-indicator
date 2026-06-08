@@ -695,9 +695,16 @@ if uploaded is not None:
                              "Status":"⚠️ Contradictory" if contra else "✅ OK"})
 
             df_class = pd.DataFrame(rows)
+            df_class_csv = pd.DataFrame({
+                "Unit":          [r["Unit"] for r in rows],
+                "s-":            [r["s⁻"] for r in rows],
+                "s+":            [r["s⁺"] for r in rows],
+                "Assignment":    [f"{r['s⁻']}-{r['s⁺']}" if r['s⁻']!=r['s⁺'] else str(r['s⁻']) for r in rows],
+                "Contradiction": ["Y" if r["Status"].startswith("⚠️") else "N" for r in rows],
+            })
             st.dataframe(df_class, use_container_width=True, height=380)
-            n_ok = df_class_disp['Status'].str.contains('OK').sum()
-            n_co = df_class_disp['Status'].str.contains('Contr').sum()
+            n_ok = df_class['Status'].str.contains('OK').sum()
+            n_co = df_class['Status'].str.contains('Contr').sum()
             ca,cb = st.columns(2)
             ca.metric("Non-contradictory", n_ok)
             cb.metric("Contradictory", n_co)
