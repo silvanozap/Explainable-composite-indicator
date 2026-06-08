@@ -718,7 +718,7 @@ if uploaded is not None:
             show_explanation(sel, s_minus, s_plus, al_m, am_m,
                              al_texts, am_texts, unit_names.index(sel))
 
-            st.download_button("⬇ Download classification CSV", df_class.to_csv(index=False),
+            st.download_button("⬇ Download classification CSV", df_class_csv.to_csv(index=False),
                                file_name="drsa_classification.csv", mime="text/csv",
                                key="dl_classif", use_container_width=True)
 
@@ -989,10 +989,28 @@ if uploaded is not None:
                                        file_name="drsa_newunits_rules_maximal.csv",
                                        mime="text/csv", key="dl_new_max", use_container_width=True)
 
+                # Build clean CSV for download
+                df_new_csv = pd.DataFrame({
+                    "Unit":          df_all["Unit"],
+                    "s- (prev)":     df_all.get("s⁻ (prev)", df_all.get("s- (prev)", "—")),
+                    "s+ (prev)":     df_all.get("s⁺ (prev)", df_all.get("s+ (prev)", "—")),
+                    "s-":            df_all["s⁻ (new)"] if "s⁻ (new)" in df_all.columns else df_all["s- (new)"],
+                    "s+":            df_all["s⁺ (new)"] if "s⁺ (new)" in df_all.columns else df_all["s+ (new)"],
+                    "Assignment":    df_all.apply(lambda r: f"{r['s⁻ (new)']}-{r['s⁺ (new)']}"
+                                         if r['s⁻ (new)'] != r['s⁺ (new)'] and r['s⁻ (new)'] != '—'
+                                         else (str(r['s⁻ (new)']) if r['s⁻ (new)'] != '—' else '—'), axis=1),
+                    "Contradiction": df_all.apply(lambda r: "Y"
+                                         if str(r.get("s⁻ (new)", r.get("s- (new)", 0))) != "—"
+                                         and int(r.get("s⁻ (new)", r.get("s- (new)", 0))) >
+                                            int(r.get("s⁺ (new)", r.get("s+ (new)", 0)))
+                                         else "N", axis=1),
+                    "Changed":       df_all["Changed"].apply(lambda x:
+                                         "Y" if x in ["⚠️ Yes","🆕 New","⚠️ Contradictory"] else "N"),
+                })
                 st.download_button("⬇ Download classification CSV",
-                                   df_display.to_csv(index=False),
+                                   df_new_csv.to_csv(index=False),
                                    file_name="drsa_new_units.csv",
-                                   mime="text/csv", use_container_width=True)
+                                   mime="text/csv", key="dl_new_cl", use_container_width=True)
 
     # ══════════════════════════════════════════════════════════════════════════════
     # TAB 5 — Apply Rules
