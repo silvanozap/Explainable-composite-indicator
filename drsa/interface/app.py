@@ -908,23 +908,22 @@ with tab4:
                              al_m_new, am_m_new, al_texts_new, am_texts_new, idx_new)
 
             st.markdown("### 💾 Export")
+            _inc_n = st.session_state['inc']; _dec_n = st.session_state['dec']
+            _crit_n = st.session_state['crit_names']
             c1, c2 = st.columns(2)
             with c1:
-                st.download_button("⬇ Minimal rules CSV",
-                                   rules_to_df(al_texts_new, am_texts_new,
-                                       "at-least (minimal)", "at-most (minimal)").to_csv(index=False),
+                csv_new_min = rules_to_csv(al_texts_new, am_texts_new, _crit_n, _inc_n, _dec_n,
+                                           al_rules=al_fin, am_rules=am_fin)
+                st.download_button("⬇ Minimal rules CSV", csv_new_min,
                                    file_name="drsa_newunits_rules_minimal.csv",
                                    mime="text/csv", key="dl_new_min", use_container_width=True)
             with c2:
-                al7_txt = format_atleast_rules(new_res.get('step7_al_rules'),
-                    st.session_state['inc'], st.session_state['dec'],
-                    st.session_state['crit_names']) if _nlen(new_res.get('step7_al_rules'))>0 else []
-                am7_txt = format_atmost_rules(new_res.get('step7_am_rules'),
-                    st.session_state['inc'], st.session_state['dec'],
-                    st.session_state['crit_names']) if _nlen(new_res.get('step7_am_rules'))>0 else []
-                st.download_button("⬇ Maximal rules CSV",
-                                   rules_to_df(al7_txt, am7_txt,
-                                       "at-least (maximal)", "at-most (maximal)").to_csv(index=False),
+                _al7n = new_res.get('step7_al_rules'); _am7n = new_res.get('step7_am_rules')
+                _al7_txtn = format_atleast_rules(_al7n, _inc_n, _dec_n, _crit_n) if _nlen(_al7n)>0 else []
+                _am7_txtn = format_atmost_rules(_am7n, _inc_n, _dec_n, _crit_n) if _nlen(_am7n)>0 else []
+                csv_new_max = rules_to_csv(_al7_txtn, _am7_txtn, _crit_n, _inc_n, _dec_n,
+                                           al_rules=_al7n, am_rules=_am7n)
+                st.download_button("⬇ Maximal rules CSV", csv_new_max,
                                    file_name="drsa_newunits_rules_maximal.csv",
                                    mime="text/csv", key="dl_new_max", use_container_width=True)
 
