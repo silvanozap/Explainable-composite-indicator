@@ -942,16 +942,21 @@ if uploaded is not None:
                             st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most:**")
                             show_rules(am_fin, am_texts_new, units=am_units_fin, rule_type="atmost")
 
-                # ── Unit explanation ───────────────────────────────────────────
+                # ── Unit by unit explanation for ALL units (A + A_new) ─────
                 st.markdown("#### Unit-by-unit explanation")
-                sel_new = st.selectbox("Select unit", new_names, key="sel_new")
-                idx_new = new_names.index(sel_new)
-                new_nc  = np.hstack([new_matrix, np.full((len(new_matrix),1), np.nan)])
-                _, _, al_m_new, am_m_new = classify_units(
-                    new_nc, al_fin, am_fin,
+                all_names_expl = list(all_unit_names) + list(new_names)
+                all_crit_expl  = np.vstack([
+                    st.session_state['matrix_s_minus'][:,:-1],
+                    new_matrix
+                ])
+                all_nc_expl = np.hstack([all_crit_expl, np.full((len(all_crit_expl),1), np.nan)])
+                s_minus_all, s_plus_all, al_m_all, am_m_all = classify_units(
+                    all_nc_expl, al_fin, am_fin,
                     st.session_state['inc'], st.session_state['dec'])
-                show_explanation(sel_new, s_minus_f, s_plus_f,
-                                 al_m_new, am_m_new, al_texts_new, am_texts_new, idx_new)
+                sel_expl = st.selectbox("Select unit", all_names_expl, key="sel_new")
+                idx_expl = all_names_expl.index(sel_expl)
+                show_explanation(sel_expl, s_minus_all, s_plus_all,
+                                 al_m_all, am_m_all, al_texts_new, am_texts_new, idx_expl)
 
                 st.markdown("### 💾 Export")
                 _inc_n = st.session_state['inc']; _dec_n = st.session_state['dec']
