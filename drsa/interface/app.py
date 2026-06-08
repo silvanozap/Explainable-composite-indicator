@@ -685,8 +685,8 @@ if uploaded is not None:
 
             df_class = pd.DataFrame(rows)
             st.dataframe(df_class, use_container_width=True, height=380)
-            n_ok = df_class['Status'].str.contains('OK').sum()
-            n_co = df_class['Status'].str.contains('Contr').sum()
+            n_ok = df_class_disp['Status'].str.contains('OK').sum()
+            n_co = df_class_disp['Status'].str.contains('Contr').sum()
             ca,cb = st.columns(2)
             ca.metric("Non-contradictory", n_ok)
             cb.metric("Contradictory", n_co)
@@ -1198,17 +1198,26 @@ x2,2.0,4.5,1.5
             for i, name in enumerate(alt_names5):
                 sm, sp = int(s_minus5[i]), int(s_plus5[i])
                 contra = sm > sp
-                assign = f"Class {sm}" if sm==sp else (
-                    f"Class {sm} to {sp}" if not contra else
-                    f"CONTRADICTORY (s⁻={sm} > s⁺={sp})")
-                rows5.append({"Unit":name,"s⁻":sm,"s⁺":sp,
-                               "Assignment":assign,
-                               "Status":"⚠️ Contradictory" if contra else "✅ OK"})
+                assign_disp5 = f"Class {sm}" if sm==sp else (f"Class {sm} to {sp}" if not contra else f"CONTRADICTORY (s⁻={sm} > s⁺={sp})")
+                assign_csv5  = f"{sm}-{sp}" if sm!=sp else str(sm)
+                rows5.append({"Unit":name,
+                               "s⁻":sm,"s⁺":sp,
+                               "Assignment":assign_disp5,
+                               "Status":"⚠️ Contradictory" if contra else "✅ OK",
+                               "_sm":sm,"_sp":sp,"_assign_csv":assign_csv5,"_contra":contra})
             df_class5 = pd.DataFrame(rows5)
-            st.dataframe(df_class5, use_container_width=True, height=350)
+            df_class5_disp = df_class5[["Unit","s⁻","s⁺","Assignment","Status"]]
+            df_class5_csv  = pd.DataFrame({
+                "Unit":         df_class5["Unit"],
+                "s-":           df_class5["_sm"],
+                "s+":           df_class5["_sp"],
+                "Assignment":   df_class5["_assign_csv"],
+                "Contradiction":df_class5["_contra"].map({True:"Y", False:"N"}),
+            })
+            st.dataframe(df_class5_disp, use_container_width=True, height=350)
 
-            n_ok5 = df_class5['Status'].str.contains('OK').sum()
-            n_co5 = df_class5['Status'].str.contains('Contr').sum()
+            n_ok5 = df_class5_disp['Status'].str.contains('OK').sum()
+            n_co5 = df_class5_disp['Status'].str.contains('Contr').sum()
             ca5, cb5 = st.columns(2)
             ca5.metric("Non-contradictory", n_ok5)
             cb5.metric("Contradictory", n_co5)
@@ -1219,7 +1228,7 @@ x2,2.0,4.5,1.5
                              al_texts5, am_texts5, alt_names5.index(sel5))
 
             st.download_button("⬇ Download classification CSV",
-                               df_class5.to_csv(index=False),
+                               df_class5_csv.to_csv(index=False),
                                file_name="drsa_applied_classification.csv",
                                mime="text/csv", key="dl_apply_class",
                                use_container_width=True)
