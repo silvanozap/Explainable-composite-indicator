@@ -41,6 +41,17 @@ h1,h2,h3{font-family:'IBM Plex Mono',monospace;letter-spacing:-0.03em;}
 .class-err{background:#fef2f2;border-left:4px solid #dc2626;}
 .changed-row{background:#fef9c3;}
 </style>
+<style>
+/* Hide download button from all dataframe toolbars */
+[data-testid="stDataFrameResizable"] button[title="Download as CSV"],
+[data-testid="stDataFrameResizable"] button[aria-label="Download as CSV"],
+[data-testid="stElementToolbar"] button[title="Download as CSV"],
+[data-testid="stElementToolbar"] button[aria-label="Download as CSV"],
+button[title="Download as CSV"],
+button[aria-label="Download as CSV"] {
+    display: none !important;
+}
+</style>
 """, unsafe_allow_html=True)
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
