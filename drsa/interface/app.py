@@ -992,17 +992,18 @@ if uploaded is not None:
                 # Build clean CSV for download
                 df_new_csv = pd.DataFrame({
                     "Unit":          df_all["Unit"],
-                    "s- (prev)":     df_all.get("s⁻ (prev)", df_all.get("s- (prev)", "—")),
-                    "s+ (prev)":     df_all.get("s⁺ (prev)", df_all.get("s+ (prev)", "—")),
-                    "s-":            df_all["s⁻ (new)"] if "s⁻ (new)" in df_all.columns else df_all["s- (new)"],
-                    "s+":            df_all["s⁺ (new)"] if "s⁺ (new)" in df_all.columns else df_all["s+ (new)"],
-                    "Assignment":    df_all.apply(lambda r: f"{r['s⁻ (new)']}-{r['s⁺ (new)']}"
-                                         if r['s⁻ (new)'] != r['s⁺ (new)'] and r['s⁻ (new)'] != '—'
-                                         else (str(r['s⁻ (new)']) if r['s⁻ (new)'] != '—' else '—'), axis=1),
-                    "Contradiction": df_all.apply(lambda r: "Y"
-                                         if str(r.get("s⁻ (new)", r.get("s- (new)", 0))) != "—"
-                                         and int(r.get("s⁻ (new)", r.get("s- (new)", 0))) >
-                                            int(r.get("s⁺ (new)", r.get("s+ (new)", 0)))
+                    "s- (prev)":     df_all["s⁻ (prev)"].apply(lambda x: "-" if x == "—" else x),
+                    "s+ (prev)":     df_all["s⁺ (prev)"].apply(lambda x: "-" if x == "—" else x),
+                    "s-":            df_all["s⁻ (new)"],
+                    "s+":            df_all["s⁺ (new)"],
+                    "Assignment":    df_all.apply(lambda r:
+                                         f"{r['s⁻ (new)']}-{r['s⁺ (new)']}"
+                                         if r['s⁻ (new)'] != r['s⁺ (new)']
+                                         else str(r['s⁻ (new)']), axis=1),
+                    "Contradiction": df_all.apply(lambda r:
+                                         "Y" if isinstance(r['s⁻ (new)'], (int,float))
+                                         and isinstance(r['s⁺ (new)'], (int,float))
+                                         and int(r['s⁻ (new)']) > int(r['s⁺ (new)'])
                                          else "N", axis=1),
                     "Changed":       df_all["Changed"].apply(lambda x:
                                          "Y" if x in ["⚠️ Yes","🆕 New","⚠️ Contradictory"] else "N"),
