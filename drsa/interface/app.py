@@ -244,7 +244,7 @@ if uploaded is None:
   - Integer → reference unit
   - Empty/NaN → non-reference unit
 """)
-        with c3:
+        with c2:
             st.markdown("""
 **Example**
 ```
