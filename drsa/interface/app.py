@@ -211,31 +211,8 @@ with st.sidebar:
         "5. **Apply Rules** — load saved rules and classify alternatives"
     )
 
-    with st.expander("📖 User guide"):
-        st.markdown("""
-**Input file**
-CSV/TXT · optional name column · criteria columns · last column = class label (integer = reference, empty = non-reference)
-
-**Rule induction (Steps 1–2)**
-Induces R≥ and R≤ rules from reference units via Algorithms 1, 2 or 4 (missing values).
-
-**Full pipeline (Steps 1–7)**
-Greedy selection (3–4) → classify all units (5) → induce from all units (6) → MILP minimisation (7).
-
-**New units (MILP 6–8)**
-Resolves contradictions for new alternatives via three MILP problems from the paper.
-
-**Apply Rules**
-Load an exported rules CSV to visualise rules and classify alternatives without re-running the pipeline.
-
-**Rules CSV format**
-```
-#directions,increasing,decreasing,...
-type,class,crit1,crit2,...
-at-least,2,0.762,,
-at-most,1,,2.71,
-```
-""")
+    # User guide — coming soon as downloadable PDF
+    # with st.expander("📖 User guide"): (hidden for now)
 
     st.markdown("---")
     st.markdown("### 📄 Cite")
@@ -791,7 +768,7 @@ if uploaded is not None:
                     if n_co == 0:
                         stat2.success("✅ No contradictions")
                     elif new_res.get('milp_success'):
-                        stat2.success(f"✅ {n_co} contradictions resolved via MILP (6) and (7)")
+                        stat2.success(f"✅ Done")
                     else:
                         stat2.warning(f"⚠️ {n_co} contradictions — {new_res.get('milp_message','')}")
                     prog2.progress(100)
