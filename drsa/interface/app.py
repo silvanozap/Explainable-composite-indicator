@@ -290,6 +290,8 @@ if uploaded is not None:
     n_crit     = df.shape[1] - 1
     crit_names = list(df.columns)[:-1]
     matrix     = df.values.astype(float)
+    # Auto-detect missing values in criteria columns
+    handle_miss = bool(np.isnan(matrix[:, :-1]).any())
     ref_mask   = ~np.isnan(matrix[:, -1])
     ref_indices = np.where(ref_mask)[0].tolist()
 
@@ -330,7 +332,7 @@ if uploaded is not None:
         with sc1:
             min_conf = st.slider("Min confidence (c)", 0.0, 1.0, 1.0, 0.05)
         with sc2:
-            handle_miss = st.checkbox("Missing value", False)
+            pass  # missing value detection is automatic
         with sc3:
             random_seed = st.number_input("Random seed", value=1, min_value=0, step=1)
 
@@ -855,7 +857,7 @@ if uploaded is not None:
                     })
 
                 df_all = pd.DataFrame(rows_all)
-                df_display = df_all.drop(columns=['_changed'])
+                df_display = df_all[[c for c in df_all.columns if not c.startswith('_')]]
 
                 # Highlight changed rows
                 def highlight_changed(row):
