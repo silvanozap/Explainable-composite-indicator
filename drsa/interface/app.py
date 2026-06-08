@@ -232,9 +232,19 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 
 # ── Welcome ────────────────────────────────────────────────────────────────────
 if uploaded is None:
-    c1,c2,c3 = st.columns(3)
-    with c1:
-        st.markdown("""
+    with tab1:
+        c1,c2,c3 = st.columns(3)
+        with c1:
+            st.markdown("""
+**Workflow**
+1. Upload dataset & set criteria directions
+2. Run rule induction (Steps 1–2) or full pipeline (Steps 1–7)
+3. Inspect classification of all units
+4. Classify new units via MILP (6),(7),(8)
+5. Apply saved rules on new alternatives
+""")
+        with c2:
+            st.markdown("""
 **File format**
 - CSV or TXT
 - Optional first column: unit names
@@ -243,8 +253,8 @@ if uploaded is None:
   - Integer → reference unit
   - Empty/NaN → non-reference unit
 """)
-    with c2:
-        st.markdown("""
+        with c3:
+            st.markdown("""
 **Example**
 ```
 Name,g1,g2,g3,class
@@ -255,22 +265,14 @@ A4,6,5,4,
 ```
 A3, A4 are non-reference.
 """)
-    with c3:
-        st.markdown("""
-**Workflow**
-1. Load data & set directions
-2. Choose: rule induction only OR full pipeline
-3. Inspect classification
-4. Classify new units
-""")
-    sample = pd.DataFrame({
-        'Name':['A1','A2','A3','A4','A5','A6','A7','A8'],
-        'g1':[4,5,7,3,6,8,5,4],'g2':[3,4,6,2,5,7,4,3],
-        'g3':[2,3,5,1,4,6,3,2],
-        'class':[1,2,3,1,'','',2,'']
-    })
-    st.download_button("⬇ Download sample CSV", sample.to_csv(index=False),
-                       file_name="drsa_sample.csv", mime="text/csv", key="dl_sample")
+        sample = pd.DataFrame({
+            'Name':['A1','A2','A3','A4','A5','A6','A7','A8'],
+            'g1':[4,5,7,3,6,8,5,4],'g2':[3,4,6,2,5,7,4,3],
+            'g3':[2,3,5,1,4,6,3,2],
+            'class':[1,2,3,1,'','',2,'']
+        })
+        st.download_button("⬇ Download sample CSV", sample.to_csv(index=False),
+                           file_name="drsa_sample.csv", mime="text/csv", key="dl_sample")
     with tab2: st.info("Upload a file in the sidebar to get started.")
     with tab3: st.info("Upload a file in the sidebar to get started.")
     with tab4: st.info("Upload a file in the sidebar to get started.")
@@ -990,18 +992,47 @@ with tab5:
 
     # ── Welcome (only when no file loaded) ─────────────────────────────────────
     if rules_file is None:
-        st.markdown(
-            "Load a rules file (exported from this tool) to visualise them and "
-            "optionally classify new alternatives."
-        )
+        c1t5, c2t5, c3t5 = st.columns(3)
+        with c1t5:
+            st.markdown("""
+**Workflow**
+1. Load a rules CSV file
+2. Load an alternatives file (optional)
+3. Visualize rules with matching units
+4. Inspect classification
+""")
+        with c2t5:
+            st.markdown("""
+**File format**
+- CSV or TXT
+- Two files:
+  - **Rules**: `#directions` row + type/class/criteria
+  - **Units** (optional): name column + criteria (no class)
+""")
+        with c3t5:
+            st.markdown("""
+**Rules example**
+```
+#directions,increasing,increasing,decreasing
+type,class,g1,g2,g3
+at-least,2,4.5,,
+at-most,1,,,2.5
+```
+**Units example**
+```
+Name,g1,g2,g3
+x1,5.0,3.5,4.0
+x2,2.0,4.5,1.5
+```
+""")
         with st.expander("📎 Download sample files"):
             sample_rules = (
-                "#directions,increasing,increasing,increasing\n"
+                "#directions,increasing,increasing,decreasing\n"
                 "type,class,g1,g2,g3\n"
                 "at-least,2,4.5,,\n"
                 "at-least,3,,5.0,\n"
-                "at-most,1,3.0,,\n"
-                "at-most,2,,4.0,2.5\n"
+                "at-most,1,,,2.5\n"
+                "at-most,2,,4.0,\n"
             )
             sample_alts = (
                 "Name,g1,g2,g3\n"
