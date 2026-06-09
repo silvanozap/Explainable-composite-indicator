@@ -81,13 +81,13 @@ def classify_units(example_matrix: np.ndarray,
     am_matched = np.zeros((n_units, n_am), dtype=float)
 
     if n_am > 0:
-        # At-most rules were built by negating evaluations, so we compare with negated ev
+        # At-most rules internal representation:
+        # duality negates ALL criteria, then invert_direction re-negates decreasing
+        # Result: decreasing criteria have ORIGINAL values, increasing have NEGATED values
         ev_work_am = ev.copy()
-        for i_col in range(ev_work_am.shape[1]):
+        for i_col in increasing:
             ev_work_am[:, i_col] = -ev_work_am[:, i_col]
-        # Also negate decreasing (double negation = original, but increasing become negated)
-        # Actually: atmost duality negates ALL criteria, so compare ev_work_am against rule thresholds
-        ev_work_am = -ev.copy()  # all negated
+        # decreasing criteria stay as original (double negation cancelled out)
 
         for i, rule in enumerate(atmost_rules):
             rule_body = rule[:-1]
