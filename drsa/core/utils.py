@@ -133,13 +133,13 @@ def check_rule_creation(at_least_rules: np.ndarray, ev_a: np.ndarray,
             D[i] = True
             continue
 
-        # C3: d_i < t
-        if d_i < t:
+        # C3: L_a > conf(r_i)  [MATLAB order: L_a check before d_i < t]
+        if L_a > conf[i]:
             D[i] = True
             continue
 
-        # C4: L_a > conf(r_i)
-        if L_a > conf[i]:
+        # C4: d_i < t
+        if d_i < t:
             D[i] = True
 
     return bool(np.all(D))
