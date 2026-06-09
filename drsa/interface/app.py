@@ -1219,7 +1219,15 @@ x2,2.0,4.5,1.5
                 if pd.isna(val) or str(val).strip() == '':
                     rule_vec.extend([0, 0])
                 else:
-                    rule_vec.extend([ci + 1, float(val)])
+                    v = float(val)
+                    # Re-negate to restore internal format:
+                    # at-least: decreasing criteria are stored negated
+                    # at-most:  increasing criteria are stored negated
+                    if rtype == 'at-least' and ci in dec5:
+                        v = -v
+                    elif rtype == 'at-most' and ci in inc5:
+                        v = -v
+                    rule_vec.extend([ci + 1, v])
             rule_vec.append(rclass)
             if rtype == 'at-least':
                 al_rules5.append(rule_vec)
