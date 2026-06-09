@@ -1274,10 +1274,7 @@ x2,2.0,4.5,1.5
                 df_alt5 = df_alt5.drop(columns=[fc5])
             df_alt5 = df_alt5.apply(pd.to_numeric, errors='coerce')
             # Drop last column if it looks like a class column (all integers 1..p)
-            last_col = df_alt5.iloc[:, -1]
-            if last_col.dropna().apply(lambda x: float(x).is_integer()).all() and last_col.max() <= 10:
-                df_alt5 = df_alt5.iloc[:, :-1]
-            # Keep only criteria columns that match the rules
+            # Keep only criteria columns that match the rules (by name)
             common_cols = [c for c in crit_names5 if c in df_alt5.columns]
             if len(common_cols) < n_crit5:
                 st.warning(f"Alternatives file has {len(common_cols)}/{n_crit5} matching criteria columns.")
