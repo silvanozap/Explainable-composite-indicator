@@ -139,7 +139,6 @@ def rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
         if rules is None or len(rules) == 0: return
         for rule in rules:
             cl = int(rule[-1])
-            # Use score label if available
             cl_out = score_map[cl] if score_map and cl in score_map else cl
             vals = [''] * len(crit_names)
             body = rule[:-1]
@@ -147,6 +146,13 @@ def rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
             thr = [body[k*2+1] for k in range(len(body)//2) if body[k*2] != 0]
             for p, t in zip(pos, thr):
                 if 0 <= p < len(crit_names):
+                    # Un-negate thresholds:
+                    # at-least: decreasing criteria are negated internally
+                    # at-most:  increasing criteria are negated internally
+                    if rtype == 'at-least' and p in dec:
+                        t = -t
+                    elif rtype == 'at-most' and p in inc:
+                        t = -t
                     vals[p] = str(round(float(t), 6))
             buf.write(rtype + ',' + str(cl_out) + ',' + ','.join(vals) + '\n')
     write_rules(al_rules, 'at-least')
