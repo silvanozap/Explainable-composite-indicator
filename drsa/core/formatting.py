@@ -10,7 +10,8 @@ def format_atleast_rules(rules: np.ndarray,
                           increasing: list,
                           decreasing: list,
                           criterion_names: list = None,
-                          n_decimals: int = 4) -> list:
+                          n_decimals: int = 4,
+                          score_map: dict = None) -> list:
     """
     Convert at-least rule matrix to natural language strings.
 
@@ -57,10 +58,12 @@ def format_atleast_rules(rules: np.ndarray,
                 parts.append(f'{name}(a) ≥ {round(threshold, n_decimals)}')
 
         rule_class = int(rule[-1])
+        class_label = score_map[rule_class] if score_map and rule_class in score_map else rule_class
+        mode_word = "Score" if score_map else "Class"
         condition = ' and '.join(parts)
         text = (f'r≥{i+1}: If {condition}, '
-                f'then a is assigned to at least Class {rule_class} '
-                f'(d≥{i+1} = {rule_class})')
+                f'then a is assigned to at least {mode_word} {class_label} '
+                f'(d≥{i+1} = {class_label})')
         result.append(text)
 
     return result
@@ -70,7 +73,8 @@ def format_atmost_rules(rules: np.ndarray,
                          increasing: list,
                          decreasing: list,
                          criterion_names: list = None,
-                         n_decimals: int = 4) -> list:
+                         n_decimals: int = 4,
+                         score_map: dict = None) -> list:
     """
     Convert at-most rule matrix to natural language strings.
 
@@ -102,10 +106,12 @@ def format_atmost_rules(rules: np.ndarray,
                 parts.append(f'{name}(a) ≤ {round(-threshold, n_decimals)}')
 
         rule_class = int(rule[-1])
+        class_label = score_map[rule_class] if score_map and rule_class in score_map else rule_class
+        mode_word = "Score" if score_map else "Class"
         condition = ' and '.join(parts)
         text = (f'r≤{i+1}: If {condition}, '
-                f'then a is assigned to at most Class {rule_class} '
-                f'(d≤{i+1} = {rule_class})')
+                f'then a is assigned to at most {mode_word} {class_label} '
+                f'(d≤{i+1} = {class_label})')
         result.append(text)
 
     return result
