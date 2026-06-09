@@ -321,37 +321,27 @@ if uploaded is not None:
         st.dataframe(df_raw, use_container_width=True, height=250)
 
         # ── Class / Score ──────────────────────────────────────────────────────
-        col_mode, col_info = st.columns([2, 3])
-        with col_mode:
-            last_col_name = df.columns[-1]
-            col_mode_val = st.radio(
-                f"Last column '{last_col_name}' is:",
-                ["Class", "Score"], horizontal=True, key="col_mode"
-            )
+        col_mode_val = st.radio(
+            "Last column type:",
+            ["Class", "Score"], horizontal=True, key="col_mode_radio"
+        )
         # Build score mapping if Score selected
-        score_map = None   # class_idx -> score_value
-        score_map_inv = None  # score_value -> class_idx
+        score_map = None
+        score_map_inv = None
         if col_mode_val == "Score":
             raw_scores = sorted(matrix_raw[:, -1][~np.isnan(matrix_raw[:, -1])].tolist())
             unique_scores = sorted(set(raw_scores))
             score_map     = {i+1: v for i, v in enumerate(unique_scores)}
             score_map_inv = {v: i+1 for i, v in enumerate(unique_scores)}
-            # Convert last column to class indices
             matrix = matrix_raw.copy()
             for i in range(len(matrix)):
                 if not np.isnan(matrix[i, -1]):
                     matrix[i, -1] = score_map_inv[matrix[i, -1]]
-            with col_info:
-                st.markdown("**Score → Class mapping:**")
-                mapping_str = " | ".join([f"{v}→{k}" for k, v in score_map.items()])
-                st.caption(mapping_str)
         else:
             matrix = matrix_raw.copy()
 
-        # Save to session state
         st.session_state['score_map']     = score_map
         st.session_state['score_map_inv'] = score_map_inv
-        st.session_state['col_mode']      = col_mode_val
 
         st.markdown("#### 🎯 Reference units")
         selected_ref = st.multiselect(
@@ -394,7 +384,6 @@ if uploaded is not None:
             'n_units': n_units,
             'min_conf': min_conf, 'handle_miss': handle_miss, 'random_seed': random_seed,
             'score_map': score_map, 'score_map_inv': score_map_inv,
-            'col_mode': col_mode_val,
         })
 
     # ══════════════════════════════════════════════════════════════════════════════
