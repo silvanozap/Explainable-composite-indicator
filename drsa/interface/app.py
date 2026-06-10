@@ -1329,15 +1329,15 @@ x2,2.0,4.5,1.5
 
         # ── Display rules ───────────────────────────────────────────────────
         if n_al5 > 0:
-            st.markdown("### $\\mathcal{R}^{\\geqslant}$ · At-Least Rules")
-            show_rules(al_rules5, al_texts5,
-                       units=al_units5 if alt_matrix5 is not None else None,
-                       rule_type="atleast")
+            with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · At-Least Rules ({n_al5})", expanded=False):
+                show_rules(al_rules5, al_texts5,
+                           units=al_units5 if alt_matrix5 is not None else None,
+                           rule_type="atleast")
         if n_am5 > 0:
-            st.markdown("### $\\mathcal{R}^{\\leqslant}$ · At-Most Rules")
-            show_rules(am_rules5, am_texts5,
-                       units=am_units5 if alt_matrix5 is not None else None,
-                       rule_type="atmost")
+            with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · At-Most Rules ({n_am5})", expanded=False):
+                show_rules(am_rules5, am_texts5,
+                           units=am_units5 if alt_matrix5 is not None else None,
+                           rule_type="atmost")
 
         # ── Classification ──────────────────────────────────────────────────
         if alt_matrix5 is not None and s_minus5 is not None:
