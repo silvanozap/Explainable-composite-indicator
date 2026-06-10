@@ -244,8 +244,19 @@ with st.sidebar:
         "5. **Apply Rules** — load saved rules and classify alternatives"
     )
 
-    # User guide — coming soon as downloadable PDF
-    # with st.expander("📖 User guide"): (hidden for now)
+    # ── User guide ────────────────────────────────────────────────────────────
+    st.markdown("### 📖 User guide")
+    _guide_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))),
+        'assets', 'user_guide.pdf')
+    if _os.path.exists(_guide_path):
+        with open(_guide_path, 'rb') as _f:
+            st.download_button("⬇ User Guide (PDF)", _f.read(),
+                               file_name="EI-SCORE_user_guide.pdf",
+                               mime="application/pdf",
+                               use_container_width=True)
+    else:
+        st.caption("User guide coming soon.")
 
     st.markdown("---")
     st.markdown("### 📄 Cite")
