@@ -223,7 +223,7 @@ with _col_title:
     st.title("EI-SCORE")
     st.markdown("**Explainable-Interpretable and Simple Customized Overall Ranking Engine**")
 st.markdown("""<div class="info-banner">
-User friendly GUI to build your customized composite indicator based on Decision Rules
+User-friendly GUI to build your customized composite indicator based on Decision Rules
 </div>""", unsafe_allow_html=True)
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
@@ -498,20 +498,20 @@ if uploaded is not None:
                 # ── Full pipeline ──────────────────────────────────────────────
                 prog = st.progress(0); status = st.empty()
 
-                status.info("⏳ Step 2: Inducing rules from reference units…"); prog.progress(10)
+                status.info("⏳ Step 1/4: Inducing rules from reference units…"); prog.progress(10)
                 al_r, al_m, al_d, _ = induce_atleast_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                 am_r, am_m, am_d, _ = induce_atmost_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                 n_al2 = _nlen(al_r); n_am2 = _nlen(am_r)
-                status.success(f"✅ Step 2: {n_al2} at-least, {n_am2} at-most"); prog.progress(20)
+                status.success(f"✅ Step 1/4: {n_al2} at-least, {n_am2} at-most"); prog.progress(20)
 
-                status.info("⏳ Step 3-4: Greedy selection…"); prog.progress(30)
+                status.info("⏳ Step 2/4: Greedy selection…"); prog.progress(30)
                 from drsa.core.step_forward import step_forward as _sf
                 sel_al, sel_am, _, _ = _sf(al_r, am_r, al_m, am_m, al_d, am_d,
                                             ref_matrix, all_crit, inc, dec,
                                             random_seed=int(random_seed))
-                status.success(f"✅ Step 3-4: {_nlen(sel_al)} at-least, {_nlen(sel_am)} selected"); prog.progress(45)
+                status.success(f"✅ Step 2/4: {_nlen(sel_al)} at-least, {_nlen(sel_am)} selected"); prog.progress(45)
 
-                status.info("⏳ Step 5: Fixing classifications…"); prog.progress(50)
+                status.info("⏳ Step 3/4: Fixing classifications…"); prog.progress(50)
                 from drsa.core.classifier import classify_units as _cu
                 mat_nc = np.hstack([all_crit, np.full((n_units,1), np.nan)])
                 s_minus, s_plus, _, _ = _cu(mat_nc, sel_al, sel_am, inc, dec)
@@ -522,23 +522,23 @@ if uploaded is not None:
                         s_minus_f[idx] = dm_c; s_plus_f[idx] = dm_c
                 mat_sm = np.hstack([all_crit, s_minus_f.reshape(-1,1)])
                 mat_sp = np.hstack([all_crit, s_plus_f.reshape(-1,1)])
-                status.success("✅ Step 5 done"); prog.progress(55)
+                status.success("✅ Step 3/4: done"); prog.progress(55)
 
-                status.info("⏳ Step 6: Inducing rules from all units…"); prog.progress(60)
+                status.info("⏳ Step 4/5: Inducing rules from all units…"); prog.progress(60)
                 al_r2, al_m2, al_d2, _ = induce_atleast_rules(mat_sm, inc, dec, min_conf, handle_miss)
                 am_r2, am_m2, am_d2, _ = induce_atmost_rules(mat_sp, inc, dec, min_conf, handle_miss)
                 n_al6 = _nlen(al_r2); n_am6 = _nlen(am_r2)
-                status.success(f"✅ Step 6: {n_al6} at-least, {n_am6} at-most"); prog.progress(70)
+                status.success(f"✅ Step 4/5: {n_al6} at-least, {n_am6} at-most"); prog.progress(70)
 
-                status.info("⏳ Step 7: MILP — minimal rule set…"); prog.progress(75)
+                status.info("⏳ Step 5/5: Find minimal rule set…"); prog.progress(75)
                 from drsa.core.milp import solve_minimal_rules as _smr
                 al_min, am_min, _, _, milp_ok, milp_msg = _smr(mat_sm, al_m2, mat_sp, am_m2, al_r2, am_r2)
                 al_final = al_min if (milp_ok and _nlen(al_min)>0) else al_r2
                 am_final = am_min if (milp_ok and _nlen(am_min)>0) else am_r2
                 if milp_ok:
-                    status.success(f"✅ Step 7: {_nlen(al_final)} at-least, {_nlen(am_final)} minimal rules")
+                    status.success(f"✅ Step 5/5: {_nlen(al_final)} at-least, {_nlen(am_final)} minimal rules")
                 else:
-                    status.error(f"⚠️ Step 7: {milp_msg}")
+                    status.error(f"⚠️ Step 5/5: {milp_msg}")
                 prog.progress(88)
 
                 status.info("⏳ Final classification…")
