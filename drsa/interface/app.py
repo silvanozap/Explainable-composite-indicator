@@ -135,8 +135,6 @@ def rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
     buf.write('#directions,' + ','.join(dirs) + '\n')
     if score_map:
         buf.write('#mode,score\n')
-        labels = [str(score_map[k]) for k in sorted(score_map.keys())]
-        buf.write('#labels,' + ','.join(labels) + '\n')
     else:
         buf.write('#mode,class\n')
     buf.write('type,class,' + ','.join(crit_names) + '\n')
@@ -341,8 +339,8 @@ if uploaded is not None:
 
         # ── Class / Score ──────────────────────────────────────────────────────
         col_mode_val = st.radio(
-            "Last column type:",
-            ["Class", "Score"], horizontal=True, key="col_mode_radio"
+            "**Problem type:**",
+            ["Classification", "Scoring"], horizontal=True, key="col_mode_radio"
         )
         # Build score mapping if Score selected
         score_map = None
@@ -470,11 +468,11 @@ if uploaded is not None:
                                  f'<div class="label">{lbl}</div></div>', unsafe_allow_html=True)
                 st.markdown("")
                 if n_al > 0:
-                    st.markdown("### $\\mathcal{R}^{\\geqslant}$ · At-Least Rules")
-                    show_rules(al_r, al_texts, al_supp, al_units, "atleast")
+                    with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · At-Least Rules ({n_al})", expanded=False):
+                        show_rules(al_r, al_texts, al_supp, al_units, "atleast")
                 if n_am > 0:
-                    st.markdown("### $\\mathcal{R}^{\\leqslant}$ · At-Most Rules")
-                    show_rules(am_r, am_texts, am_supp, am_units, "atmost")
+                    with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · At-Most Rules ({n_am})", expanded=False):
+                        show_rules(am_r, am_texts, am_supp, am_units, "atmost")
                 if n_al + n_am > 0:
                     st.markdown("### 💾 Export")
                     csv_rules = rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
@@ -691,11 +689,11 @@ if uploaded is not None:
                     al_r     = st.session_state.get('al_rules')
                     am_r     = st.session_state.get('am_rules')
                     if al_texts:
-                        st.markdown("### $\\mathcal{R}^{\\geqslant}$ · At-Least Rules")
-                        show_rules(al_r, al_texts, al_supp, al_units, "atleast")
+                        with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · At-Least Rules ({_nlen(al_r)})", expanded=False):
+                            show_rules(al_r, al_texts, al_supp, al_units, "atleast")
                     if am_texts:
-                        st.markdown("### $\\mathcal{R}^{\\leqslant}$ · At-Most Rules")
-                        show_rules(am_r, am_texts, am_supp, am_units, "atmost")
+                        with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · At-Most Rules ({_nlen(am_r)})", expanded=False):
+                            show_rules(am_r, am_texts, am_supp, am_units, "atmost")
                     if al_texts or am_texts:
                         st.markdown("### 💾 Export")
                         _inc2 = st.session_state.get('inc',[]); _dec2 = st.session_state.get('dec',[])
@@ -1139,7 +1137,6 @@ x2,2.0,4.5,1.5
         sample_rules_score = (
             "#directions,increasing,increasing,decreasing\n"
             "#mode,score\n"
-            "#labels,0,16.67,41.67,50,66.67,100\n"
             "type,class,g1,g2,g3\n"
             "at-least,16.67,4.5,,\n"
             "at-least,41.67,,5.0,\n"
@@ -1189,24 +1186,25 @@ x2,2.0,4.5,1.5
 
         dir_parts = directions_line.split(sep_r_act)[1:]
 
-        # Parse #mode and #labels
-        mode_line   = next((l for l in raw_lines if l.startswith('#mode')), None)
-        labels_line = next((l for l in raw_lines if l.startswith('#labels')), None)
+        # Parse #mode
+        mode_line = next((l for l in raw_lines if l.startswith('#mode')), None)
         file_mode = 'class'
         file_score_map = None
         file_score_map_inv = None
         if mode_line:
             file_mode = mode_line.split(sep_r_act)[1].strip()
-        if file_mode == 'score' and labels_line:
-            label_vals = [float(v) for v in labels_line.split(sep_r_act)[1:] if v.strip()]
-            file_score_map     = {i+1: v for i, v in enumerate(label_vals)}
-            file_score_map_inv = {v: i+1 for i, v in enumerate(label_vals)}
 
         # Filter out metadata lines for parsing
         data_lines = [l for l in raw_lines if not l.startswith('#')]
+        # Build score map from class column values if mode=score (after parsing)
         import io
         df_rules_raw = pd.read_csv(io.StringIO("\n".join(data_lines)), sep=sep_r_act)
         crit_names5 = [c for c in df_rules_raw.columns if c not in ['type','class']]
+        # Build score_map from unique class values if mode=score
+        if file_mode == 'score':
+            raw_vals = sorted(set(float(v) for v in df_rules_raw['class'].dropna()))
+            file_score_map     = {i+1: v for i, v in enumerate(raw_vals)}
+            file_score_map_inv = {v: i+1 for i, v in enumerate(raw_vals)}
 
         for i, d in enumerate(dir_parts):
             if i < len(crit_names5):
