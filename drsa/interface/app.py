@@ -21,7 +21,7 @@ from drsa import (
 )
 
 # ── Page config ────────────────────────────────────────────────────────────────
-st.set_page_config(page_title="DRSA", page_icon="⚖️", layout="wide")
+st.set_page_config(page_title="EI-SCORE", page_icon="📊", layout="wide")
 
 # ── MathJax ───────────────────────────────────────────────────────────────────
 import streamlit.components.v1 as _components
@@ -209,10 +209,18 @@ def get_matching_units(rules, match_matrix, all_names, rule_type, inc, dec, crit
     return result
 
 # ── Header ─────────────────────────────────────────────────────────────────────
-st.title("⚖️ An Explainable and Interpretable Composite Indicator")
+# ── Logo + Title ──────────────────────────────────────────────────────────────
+import os as _os
+_logo_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), 'assets', 'logo.png')
+_col_logo, _col_title = st.columns([1, 5])
+with _col_logo:
+    if _os.path.exists(_logo_path):
+        st.image(_logo_path, width=110)
+with _col_title:
+    st.title("EI-SCORE")
+    st.markdown("**Explainable-Interpretable and Simple Customized Overall Ranking Engine**")
 st.markdown("""<div class="info-banner">
-Interactive tool to build a composite indicator based on the Dominance-based rough set approach<br>
-(Corrente, Greco, Słowiński, Zappalà — <i>Omega 142</i> (2026), 103513.)
+User friendly GUI to build your customized composite indicator based on Decision Rules
 </div>""", unsafe_allow_html=True)
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
