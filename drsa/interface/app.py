@@ -254,7 +254,7 @@ with st.sidebar:
                        use_container_width=True)
     st.markdown("---")
     st.markdown(
-        "<div style=\'font-size:0.75rem;color:#9ca3af\'>Corrente et al. (2026)<br>Omega 142, 103513</div>",
+        "<div style='font-size:0.75rem;color:#9ca3af'>S. Corrente, S. Greco, R. Słowiński, S. Zappalà<br>Omega 142, 103513, 2026<br><a href='https://doi.org/10.1016/j.omega.2026.103513' target='_blank' style='color:#9ca3af'>DOI:10.1016/j.omega.2026.103513</a></div>",
         unsafe_allow_html=True)
 
 # ── TABS ───────────────────────────────────────────────────────────────────────
