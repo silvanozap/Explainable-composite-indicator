@@ -574,10 +574,10 @@ if uploaded is not None:
                 # Summary
                 st.markdown("#### Pipeline summary")
                 df_steps = pd.DataFrame([
-                    ("Step 2 – Reference units", n_al2, n_am2, n_al2+n_am2),
-                    ("Step 3 – Greedy selection", _nlen(sel_al), _nlen(sel_am), _nlen(sel_al)+_nlen(sel_am)),
-                    ("Step 6 – Maximal set of rules", n_al6, n_am6, n_al6+n_am6),
-                    ("Step 7 – Minimal set of rules", _nlen(al_final), _nlen(am_final), _nlen(al_final)+_nlen(am_final)),
+                    ("Rules initially induced", n_al2, n_am2, n_al2+n_am2),
+                    ("Greedy selection of rules", _nlen(sel_al), _nlen(sel_am), _nlen(sel_al)+_nlen(sel_am)),
+                    ("Maximal set of rules", n_al6, n_am6, n_al6+n_am6),
+                    ("Minimal set of rules", _nlen(al_final), _nlen(am_final), _nlen(al_final)+_nlen(am_final)),
                 ], columns=["Step","At-least","At-most","Total"])
                 st.dataframe(df_steps, use_container_width=True, hide_index=True)
 
@@ -774,7 +774,7 @@ if uploaded is not None:
     # ══════════════════════════════════════════════════════════════════════════════
     with tab4:
         if st.session_state.get('mode') != 'pipeline':
-            st.info("Run the **Full pipeline** (Steps 1-7) first to enable new unit classification.")
+            st.info("Run the **Full pipeline** first to enable new unit classification.")
         else:
             st.markdown("#### 🆕 Classify new units")
             st.markdown("Upload new units **without** the class column. The tool tries to handle contradictions.")

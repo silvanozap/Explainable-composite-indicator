@@ -143,7 +143,7 @@ Upload your dataset, select criterion preference directions (increasing/decreasi
 
 ### Tab 2 — Run
 - **Rule induction only**: induces at-least (R≥) and at-most (R≤) rules from reference units
-- **Full pipeline**: greedy selection of rules to avoid contraddictory classification of all units, rule induction from all units and find and minimal set of rules.
+- **Full pipeline**: greedy selection of rules to avoid contradictory classification of all units, rule induction from all units and find and minimal set of rules.
 
 ### Tab 3 — Classification
 Displays classification of all units with lower (s⁻) and upper (s⁺) class bounds. Unit-by-unit explanation available.
