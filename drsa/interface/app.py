@@ -55,6 +55,11 @@ h1,h2,h3{font-family:'IBM Plex Mono',monospace;letter-spacing:-0.03em;}
 .changed-row{background:#fef9c3;}
 </style>
 <style>
+/* Hide fullscreen button from images */
+[data-testid="stImage"] button,
+[data-testid="stImageContainer"] button {
+    display: none !important;
+}
 /* Hide download button from all dataframe toolbars */
 [data-testid="stDataFrameResizable"] button[title="Download as CSV"],
 [data-testid="stDataFrameResizable"] button[aria-label="Download as CSV"],
@@ -215,7 +220,7 @@ _logo_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_o
 _col_logo, _col_title = st.columns([1, 5])
 with _col_logo:
     if _os.path.exists(_logo_path):
-        st.image(_logo_path, width=110)
+        st.image(_logo_path, width=150)
 with _col_title:
     st.title("EI-SCORE")
     st.markdown("**Explainable-Interpretable and Simple Customized Overall Ranking Engine**")
@@ -1102,7 +1107,7 @@ with tab5:
 **File format**
 - CSV or TXT
 - Two files:
-  - **Rules**: `#directions` row + type/class/criteria
+  - **Rules**: `#directions`, `#mode` rows + type/class/criteria
   - **Units** (optional): name column + criteria (no class)
 """)
         with c3t5:
@@ -1110,6 +1115,7 @@ with tab5:
 **Rules example**
 ```
 #directions,increasing,increasing,decreasing
+#mode,class
 type,class,g1,g2,g3
 at-least,2,4.5,,
 at-most,1,,,2.5
@@ -1121,45 +1127,46 @@ x1,5.0,3.5,4.0
 x2,2.0,4.5,1.5
 ```
 """)
-        with st.expander("📎 Download sample files"):
-            sample_rules_class = (
-                "#directions,increasing,increasing,decreasing\n"
-                "#mode,class\n"
-                "type,class,g1,g2,g3\n"
-                "at-least,2,4.5,,\n"
-                "at-least,3,,5.0,\n"
-                "at-most,1,,,2.5\n"
-                "at-most,2,,4.0,\n"
-            )
-        sample_rules_score = (
-                "#directions,increasing,increasing,decreasing\n"
-                "#mode,score\n"
-                "#labels,0,16.67,41.67,50,66.67,100\n"
-                "type,class,g1,g2,g3\n"
-                "at-least,16.67,4.5,,\n"
-                "at-least,41.67,,5.0,\n"
-                "at-most,0,,,2.5\n"
-                "at-most,16.67,,4.0,\n"
-            )
-        sample_rules = sample_rules_class  # default
-        sample_alts = (
-                "Name,g1,g2,g3\n"
-                "x1,5.0,3.5,4.0\n"
-                "x2,2.0,4.5,1.5\n"
-                "x3,6.0,6.0,5.5\n"
-                "x4,3.5,2.0,3.0\n"
+        sample_rules_class = (
+            "#directions,increasing,increasing,decreasing\n"
+            "#mode,class\n"
+            "type,class,g1,g2,g3\n"
+            "at-least,2,4.5,,\n"
+            "at-least,3,,5.0,\n"
+            "at-most,1,,,2.5\n"
+            "at-most,2,,4.0,\n"
         )
-        ca5s, cb5s = st.columns(2)
-        with ca5s:
-                st.download_button("⬇ Sample rules CSV", sample_rules,
-                                   file_name="sample_rules.csv", mime="text/csv",
-                                   key="dl_sample_rules", use_container_width=True)
-                st.caption("Format: #directions row + type/class/criteria columns")
-        with cb5s:
-                st.download_button("⬇ Sample alternatives CSV", sample_alts,
-                                   file_name="sample_alternatives.csv", mime="text/csv",
-                                   key="dl_sample_alts", use_container_width=True)
-                st.caption("Format: optional name column + criteria columns (no class)")
+        sample_rules_score = (
+            "#directions,increasing,increasing,decreasing\n"
+            "#mode,score\n"
+            "#labels,0,16.67,41.67,50,66.67,100\n"
+            "type,class,g1,g2,g3\n"
+            "at-least,16.67,4.5,,\n"
+            "at-least,41.67,,5.0,\n"
+            "at-most,0,,,2.5\n"
+            "at-most,16.67,,4.0,\n"
+        )
+        sample_alts = (
+            "Name,g1,g2,g3\n"
+            "x1,5.0,3.5,4.0\n"
+            "x2,2.0,4.5,1.5\n"
+            "x3,6.0,6.0,5.5\n"
+            "x4,3.5,2.0,3.0\n"
+        )
+        sc1, sc2, sc3 = st.columns(3)
+        with sc1:
+            st.download_button("⬇ Sample rules (Class)", sample_rules_class,
+                               file_name="sample_rules_class.csv", mime="text/csv",
+                               key="dl_sample_rules_class", use_container_width=True)
+        with sc2:
+            st.download_button("⬇ Sample rules (Score)", sample_rules_score,
+                               file_name="sample_rules_score.csv", mime="text/csv",
+                               key="dl_sample_rules_score", use_container_width=True)
+        with sc3:
+            st.download_button("⬇ Sample alternatives", sample_alts,
+                               file_name="sample_alternatives.csv", mime="text/csv",
+                               key="dl_sample_alts", use_container_width=True)
+
 
     if rules_file is not None:
         try:
