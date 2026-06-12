@@ -1482,16 +1482,16 @@ x2,2.0,4.5,1.5
                                        np.full(n_new, 1))
                         s_plus_new5  = new_res5.get('s_plus_final',
                                        np.full(n_new, 1))
-                        al_fin5 = new_res5.get('al_rules_final', al_rules5)
-                        am_fin5 = new_res5.get('am_rules_final', am_rules5)
+                        al_fin5 = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
+                        am_fin5 = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
 
                         st.session_state['new_res5']       = new_res5
                         st.session_state['new_names5']     = new_names5
                         st.session_state['new_matrix5']    = new_matrix5
                         st.session_state['s_minus_new5']   = s_minus_new5
                         st.session_state['s_plus_new5']    = s_plus_new5
-                        st.session_state['al_fin5']        = al_fin5
-                        st.session_state['am_fin5']        = am_fin5
+                        st.session_state['al_fin5'] = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
+                        st.session_state['am_fin5'] = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
                         st.session_state['alt_names5_prev'] = alt_names5
                         st.session_state['s_minus5_prev']   = s_minus5
                         st.session_state['s_plus5_prev']    = s_plus5
@@ -1515,8 +1515,8 @@ x2,2.0,4.5,1.5
                     st.markdown("#### Assignment results")
                     al7_5 = new_res5.get('step7_al_rules')
                     am7_5 = new_res5.get('step7_am_rules')
-                    al_fin5 = new_res5.get('al_rules_final', al_rules5)
-                    am_fin5 = new_res5.get('am_rules_final', am_rules5)
+                    al_fin5 = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
+                    am_fin5 = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
                     all_m5v = np.vstack([alt_matrix5, new_matrix5])
                     all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
                     # s-(new)/s+(new) from MILP(7) maximal rules
@@ -1529,8 +1529,8 @@ x2,2.0,4.5,1.5
                     all_names_new5 = list(alt_names5_p) + list(new_names5)
 
                     # Previous units — check if assignment changed
-                    al_fin5 = new_res5.get('al_rules_final', al_rules5)
-                    am_fin5 = new_res5.get('am_rules_final', am_rules5)
+                    al_fin5 = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
+                    am_fin5 = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
                     step1_sm5 = new_res5.get('step1_s_minus', None)
                     step1_sp5 = new_res5.get('step1_s_plus',  None)
                     changed5  = new_res5.get('changed_units', [])
@@ -1591,8 +1591,8 @@ x2,2.0,4.5,1.5
                        st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ maximal rules selected:** "
                                     f"{_nlen(new_res5.get('step7_al_rules'))} at-least, "
                                     f"{_nlen(new_res5.get('step7_am_rules'))} at-most")
-                       al_fin5_tmp = new_res5.get('al_rules_final', al_rules5)
-                       am_fin5_tmp = new_res5.get('am_rules_final', am_rules5)
+                       al_fin5_tmp = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
+                       am_fin5_tmp = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
                        st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ minimal rules selected:** "
                                     f"{_nlen(al_fin5_tmp)} at-least, {_nlen(am_fin5_tmp)} at-most")
 
