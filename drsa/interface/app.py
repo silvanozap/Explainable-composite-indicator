@@ -866,10 +866,11 @@ if uploaded is not None:
                         am_fin = new_res.get('step7_am_rules', st.session_state['am_rules'])
 
                     al_texts_new = format_atleast_rules(al_fin, st.session_state['inc'],
-                        st.session_state['dec'], st.session_state['crit_names']) if _nlen(al_fin)>0 else []
+                        st.session_state['dec'], st.session_state['crit_names'],
+                        score_map=st.session_state.get('score_map')) if _nlen(al_fin)>0 else []
                     am_texts_new = format_atmost_rules(am_fin, st.session_state['inc'],
-                        st.session_state['dec'], st.session_state['crit_names']) if _nlen(am_fin)>0 else []
-
+                        st.session_state['dec'], st.session_state['crit_names'],
+                        score_map=st.session_state.get('score_map')) if _nlen(am_fin)>0 else []
                     st.session_state.update({
                         'new_s_minus':   new_res['final_s_minus'],
                         'new_s_plus':    new_res['final_s_plus'],
@@ -1005,9 +1006,11 @@ if uploaded is not None:
 
                 if _nlen(al7) > 0 or _nlen(am7) > 0:
                     al_texts7 = format_atleast_rules(al7, st.session_state['inc'],
-                        st.session_state['dec'], st.session_state['crit_names']) if _nlen(al7)>0 else []
+                        st.session_state['dec'], st.session_state['crit_names'],
+                        score_map=st.session_state.get('score_map')) if _nlen(al7)>0 else []
                     am_texts7 = format_atmost_rules(am7, st.session_state['inc'],
-                        st.session_state['dec'], st.session_state['crit_names']) if _nlen(am7)>0 else []
+                        st.session_state['dec'], st.session_state['crit_names'],
+                        score_map=st.session_state.get('score_map')) if _nlen(am7)>0 else []
                     _, _, al_m7_all, am_m7_all = classify_units(
                         all_nc_combined, al7 if _nlen(al7)>0 else np.empty((0,1)),
                         am7 if _nlen(am7)>0 else np.empty((0,1)),
@@ -1073,8 +1076,10 @@ if uploaded is not None:
                                        mime="text/csv", key="dl_new_min", use_container_width=True)
                 with c2:
                     _al7n = new_res.get('step7_al_rules'); _am7n = new_res.get('step7_am_rules')
-                    _al7_txtn = format_atleast_rules(_al7n, _inc_n, _dec_n, _crit_n) if _nlen(_al7n)>0 else []
-                    _am7_txtn = format_atmost_rules(_am7n, _inc_n, _dec_n, _crit_n) if _nlen(_am7n)>0 else []
+                    _al7_txtn = format_atleast_rules(_al7n, _inc_n, _dec_n, _crit_n,
+                        score_map=st.session_state.get('score_map')) if _nlen(_al7n)>0 else []
+                    _am7_txtn = format_atmost_rules(_am7n, _inc_n, _dec_n, _crit_n,
+                        score_map=st.session_state.get('score_map')) if _nlen(_am7n)>0 else []
                     csv_new_max = rules_to_csv(_al7_txtn, _am7_txtn, _crit_n, _inc_n, _dec_n,
                                                al_rules=_al7n, am_rules=_am7n,
                                        score_map=st.session_state.get('score_map'))
