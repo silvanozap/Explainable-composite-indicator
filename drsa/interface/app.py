@@ -271,7 +271,7 @@ with st.sidebar:
         st.caption("User guide coming soon.")
 
     st.markdown("---")
-    st.markdown("### 📄 Cite")
+    st.markdown("### 📄 How to cite")
     st.download_button("⬇ BibTeX", bibtex(),
                        file_name="eiscore.bib", mime="text/plain",
                        use_container_width=True)
