@@ -337,27 +337,18 @@ if uploaded is not None:
     # Auto-detect missing values in criteria columns
     handle_miss = bool(np.isnan(matrix_raw[:, :-1]).any())
     ref_mask   = ~np.isnan(matrix_raw[:, -1])
-    # ── Problem type (outside tabs so always rendered) ────────────────────────
-    col_mode_val = st.radio(
-        "**Problem type:**",
-        ["Classification", "Scoring"], horizontal=True, key="col_mode_radio"
-    )
-    # Build score mapping
-    score_map = None
-    score_map_inv = None
-    if col_mode_val == "Scoring":
-        raw_scores = sorted(matrix_raw[:, -1][~np.isnan(matrix_raw[:, -1])].tolist())
-        unique_scores = sorted(set(raw_scores))
-        score_map     = {i+1: v for i, v in enumerate(unique_scores)}
-        score_map_inv = {v: i+1 for i, v in enumerate(unique_scores)}
+    # Score map initialized — will be set by radio in Tab 2
+    score_map     = st.session_state.get('score_map')
+    score_map_inv = st.session_state.get('score_map_inv')
+    # Apply score mapping to matrix if needed
+    col_mode_val = st.session_state.get('col_mode_radio', 'Classification')
+    if col_mode_val == 'Scoring' and score_map_inv:
         matrix = matrix_raw.copy()
         for i in range(len(matrix)):
-            if not np.isnan(matrix[i, -1]):
+            if not np.isnan(matrix[i, -1]) and matrix[i, -1] in score_map_inv:
                 matrix[i, -1] = score_map_inv[matrix[i, -1]]
     else:
         matrix = matrix_raw.copy()
-    st.session_state['score_map']     = score_map
-    st.session_state['score_map_inv'] = score_map_inv
     ref_indices = np.where(ref_mask)[0].tolist()
     # score_map will be set in tab1 after user choice
     matrix = matrix_raw.copy()
@@ -368,29 +359,6 @@ if uploaded is not None:
     with tab1:
         st.markdown("#### 📊 Dataset")
         st.dataframe(df_raw, use_container_width=True, height=250)
-
-        # ── Class / Score ──────────────────────────────────────────────────────
-        col_mode_val = st.radio(
-            "**Problem type:**",
-            ["Classification", "Scoring"], horizontal=True, key="col_mode_radio"
-        )
-        # Build score mapping if Score selected
-        score_map = None
-        score_map_inv = None
-        if col_mode_val == "Score":
-            raw_scores = sorted(matrix_raw[:, -1][~np.isnan(matrix_raw[:, -1])].tolist())
-            unique_scores = sorted(set(raw_scores))
-            score_map     = {i+1: v for i, v in enumerate(unique_scores)}
-            score_map_inv = {v: i+1 for i, v in enumerate(unique_scores)}
-            matrix = matrix_raw.copy()
-            for i in range(len(matrix)):
-                if not np.isnan(matrix[i, -1]):
-                    matrix[i, -1] = score_map_inv[matrix[i, -1]]
-        else:
-            matrix = matrix_raw.copy()
-
-        st.session_state['score_map']     = score_map
-        st.session_state['score_map_inv'] = score_map_inv
 
         st.markdown("#### 🎯 Reference units")
         selected_ref = st.multiselect(
@@ -442,6 +410,29 @@ if uploaded is not None:
         if 'inc' not in st.session_state:
             st.info("Set up data and directions in the **Data & Setup** tab first.")
             st.stop()
+
+        # ── Problem type ───────────────────────────────────────────────────────
+        col_mode_val = st.radio(
+            "**Problem type:**",
+            ["Classification", "Scoring"], horizontal=True, key="col_mode_radio"
+        )
+        # Build score mapping
+        _raw_sc = sorted(matrix_raw[:, -1][~np.isnan(matrix_raw[:, -1])].tolist())
+        _uniq_sc = sorted(set(_raw_sc))
+        if col_mode_val == "Scoring":
+            score_map     = {i+1: v for i, v in enumerate(_uniq_sc)}
+            score_map_inv = {v: i+1 for i, v in enumerate(_uniq_sc)}
+            matrix = matrix_raw.copy()
+            for _j in range(len(matrix)):
+                if not np.isnan(matrix[_j, -1]):
+                    matrix[_j, -1] = score_map_inv[matrix[_j, -1]]
+        else:
+            score_map = None; score_map_inv = None
+            matrix = matrix_raw.copy()
+        st.session_state["score_map"]     = score_map
+        st.session_state["score_map_inv"] = score_map_inv
+        st.session_state["matrix"]        = matrix
+        st.markdown("---")
 
         inc        = st.session_state['inc']
         dec        = st.session_state['dec']
@@ -768,17 +759,19 @@ if uploaded is not None:
             rows = []
             for i, name in enumerate(unit_names):
                 sm, sp = int(s_minus[i]), int(s_plus[i])
-                contra = sm > sp
-                assign = f"Class {sm}" if sm==sp else (f"Class {sm} to {sp}" if not contra
-                         else f"CONTRADICTORY (s⁻={sm} > s⁺={sp})")
-                rows.append({"Unit":name,"s⁻":sm,"s⁺":sp,"Assignment":assign,
+                contra  = sm > sp
+                _smap3  = st.session_state.get('score_map')
+                sm_lbl3 = _fmt_class(sm, _smap3)
+                sp_lbl3 = _fmt_class(sp, _smap3)
+                assign  = _assign_str(sm, sp, _smap3)
+                rows.append({"Unit":name,"s⁻":sm_lbl3,"s⁺":sp_lbl3,"Assignment":assign,
                              "Status":"⚠️ Contradictory" if contra else "✅ OK"})
 
             df_class = pd.DataFrame(rows)
             df_class_csv = pd.DataFrame({
                 "Unit":          [r["Unit"] for r in rows],
                 "s-":            [r["s⁻"] for r in rows],
-                "s+":            [r["s⁺"] for r in rows],
+                "s+":            [r["s⁺"] for r in rows],  # already score labels
                 "Assignment":    [f"{r['s⁻']}-{r['s⁺']}" if r['s⁻']!=r['s⁺'] else str(r['s⁻']) for r in rows],
                 "Contradiction": ["Y" if r["Status"].startswith("⚠️") else "N" for r in rows],
             })
@@ -923,15 +916,20 @@ if uploaded is not None:
                     else:
                         sm_new = sm_orig; sp_new = sp_orig
                     changed_flag = i in changed
-                    assign_orig = f"Class {sm_orig}" if sm_orig==sp_orig else f"Class {sm_orig}–{sp_orig}"
-                    assign_new  = f"Class {sm_new}"  if sm_new==sp_new   else f"Class {sm_new}–{sp_new}"
+                    _smap4a = st.session_state.get('score_map')
+                    sm_o = _fmt_class(sm_orig, _smap4a); sp_o = _fmt_class(sp_orig, _smap4a)
+                    sm_n = _fmt_class(sm_new,  _smap4a); sp_n = _fmt_class(sp_new,  _smap4a)
+                    assign_new = _assign_str(sm_new, sp_new, _smap4a)
                     rows_all.append({
                         "Unit": name,
-                        "s⁻ (prev)": sm_orig, "s⁺ (prev)": sp_orig,
-                        "s⁻ (new)": sm_new,  "s⁺ (new)": sp_new,
+                        "s⁻ (prev)": sm_o, "s⁺ (prev)": sp_o,
+                        "s⁻ (new)": sm_n,  "s⁺ (new)": sp_n,
                         "Assignment": assign_new,
                         "Changed": "⚠️ Yes" if changed_flag else "",
                         "_changed": changed_flag,
+                        "_sm_new": sm_n, "_sp_new": sp_n,
+                        "_assign_csv": f"{sm_n}-{sp_n}" if sm_new!=sp_new else str(sm_n),
+                        "_contra": False,
                     })
                 # New units A_new
                 n_existing = len(all_unit_names)
