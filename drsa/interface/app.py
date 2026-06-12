@@ -251,9 +251,9 @@ with st.sidebar:
     st.markdown(
         "1. **Data & Setup** — upload dataset, set directions and settings\n"
         "2. **Run** — induce only rules or full pipeline\n"
-        "3. **Classification** — inspect classification of all units\n"
-        "4. **New Units** — classify new alternatives with previous induced rules\n"
-        "5. **Apply Rules** — load saved rules and classify alternatives"
+        "3. **Assignment** — inspect assignment of all units\n"
+        "4. **New Units** — assign new units with previous induced rules\n"
+        "5. **Apply Rules** — load saved rules and assign units"
     )
 
     # ── User guide ────────────────────────────────────────────────────────────
@@ -285,7 +285,7 @@ with st.sidebar:
 
 # ── TABS ───────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📋 Data & Setup", "⚙️ Run", "🔍 Classification", "🆕 New Units", "📂 Apply Rules"
+    "📋 Data & Setup", "⚙️ Run", "🔍 Assignment", "🆕 New Units", "📂 Apply Rules"
 ])
 
 
@@ -539,7 +539,7 @@ if uploaded is not None:
                                             random_seed=int(random_seed))
                 status.success(f"✅ Step 2/4: {_nlen(sel_al)} at-least, {_nlen(sel_am)} selected"); prog.progress(45)
 
-                status.info("⏳ Step 3/4: Fixing classifications…"); prog.progress(50)
+                status.info("⏳ Step 3/4: Fixing assignments…"); prog.progress(50)
                 from drsa.core.classifier import classify_units as _cu
                 mat_nc = np.hstack([all_crit, np.full((n_units,1), np.nan)])
                 s_minus, s_plus, _, _ = _cu(mat_nc, sel_al, sel_am, inc, dec)
@@ -569,7 +569,7 @@ if uploaded is not None:
                     status.error(f"⚠️ Step 5/5: {milp_msg}")
                 prog.progress(88)
 
-                status.info("⏳ Final classification…")
+                status.info("⏳ Final assignment…")
                 sm7, sp7, _, _ = _cu(mat_nc, al_final, am_final, inc, dec)
                 prog.progress(100); status.success("🎉 Pipeline complete!")
 
@@ -760,7 +760,7 @@ if uploaded is not None:
             inc        = st.session_state['inc']
             dec        = st.session_state['dec']
 
-            st.markdown("#### Classification of all units")
+            st.markdown("#### Assignment of all units")
 
             if 'classification_final' in st.session_state:
                 cl = st.session_state['classification_final']
@@ -797,7 +797,7 @@ if uploaded is not None:
             ca.metric("Non-contradictory", n_ok)
             cb.metric("Contradictory", n_co)
             if n_co == 0:
-                st.success("All units classified without contradictions.")
+                st.success("All units assigned without contradictions.")
             else:
                 st.warning(f"{n_co} unit(s) have contradictory assignments.")
 
@@ -806,8 +806,8 @@ if uploaded is not None:
             show_explanation(sel, s_minus, s_plus, al_m, am_m,
                              al_texts, am_texts, unit_names.index(sel))
 
-            st.download_button("⬇ Download classification CSV", df_class_csv.to_csv(index=False),
-                               file_name="drsa_classification.csv", mime="text/csv",
+            st.download_button("⬇ Download assignment CSV", df_class_csv.to_csv(index=False),
+                               file_name="drsa_assignment.csv", mime="text/csv",
                                key="dl_classif", use_container_width=True)
 
     # ══════════════════════════════════════════════════════════════════════════════
@@ -815,9 +815,9 @@ if uploaded is not None:
     # ══════════════════════════════════════════════════════════════════════════════
     with tab4:
         if st.session_state.get('mode') != 'pipeline':
-            st.info("Run the **Full pipeline** first to enable new unit classification.")
+            st.info("Run the **Full pipeline** first to enable new unit assignment.")
         else:
-            st.markdown("#### 🆕 Classify new units")
+            st.markdown("#### 🆕 Assign new units")
             st.markdown("Upload new units **without** the class column. The tool tries to handle contradictions.")
 
             new_file = st.file_uploader("Upload new units", type=["csv","txt"], key="new_file")
@@ -843,7 +843,7 @@ if uploaded is not None:
 
                 st.dataframe(df_new_raw, use_container_width=True, height=180)
 
-                if st.button("▶ Classify new units", type="primary", use_container_width=True):
+                if st.button("▶ Assign new units", type="primary", use_container_width=True):
                     prog2 = st.progress(0); stat2 = st.empty()
                     stat2.info("⏳ Running MILP (6), (7), (8)…"); prog2.progress(20)
 
@@ -913,7 +913,7 @@ if uploaded is not None:
                 changed    = st.session_state.get('new_changed', [])
 
                 # ── Classification results: A + A_new ──────────────────────────
-                st.markdown("#### Classification results")
+                st.markdown("#### Assignment results")
 
                 # Get original classifications of A
                 mat_sm_orig = st.session_state['matrix_s_minus']
@@ -992,7 +992,7 @@ if uploaded is not None:
                                if int(s_minus_f[k]) <= int(s_plus_f[k]))
                 ca, cb, cc = st.columns(3)
                 ca.metric("Changed in A", n_changed)
-                cb.metric("New units classified", n_new_ok)
+                cb.metric("New units assigned", n_new_ok)
                 cc.metric("New contradictions", len(new_names) - n_new_ok)
 
                 # ── Summary result ─────────────────────────────────────────────
@@ -1121,7 +1121,7 @@ if uploaded is not None:
                     "Changed":       df_all["Changed"].apply(lambda x:
                                          "Y" if x in ["⚠️ Yes","🆕 New","⚠️ Contradictory"] else "N"),
                 })
-                st.download_button("⬇ Download classification CSV",
+                st.download_button("⬇ Download assignment CSV",
                                    df_new_csv.to_csv(index=False),
                                    file_name="drsa_new_units.csv",
                                    mime="text/csv", key="dl_new_cl", use_container_width=True)
@@ -1147,9 +1147,9 @@ with tab5:
             st.markdown("""
 **Workflow**
 1. Load a rules CSV file
-2. Load an alternatives file (optional)
+2. Load an units file (optional)
 3. Visualize rules with matching units
-4. Inspect classification
+4. Inspect assignment
 """)
         with c2t5:
             st.markdown("""
@@ -1211,8 +1211,8 @@ x2,2.0,4.5,1.5
                                file_name="sample_rules_score.csv", mime="text/csv",
                                key="dl_sample_rules_score", use_container_width=True)
         with sc3:
-            st.download_button("⬇ Sample alternatives", sample_alts,
-                               file_name="sample_alternatives.csv", mime="text/csv",
+            st.download_button("⬇ Sample units", sample_alts,
+                               file_name="sample_units.csv", mime="text/csv",
                                key="dl_sample_alts", use_container_width=True)
 
 
@@ -1314,11 +1314,11 @@ x2,2.0,4.5,1.5
                     ", ".join(f"{crit_names5[i]} ({'↑' if i in inc5 else '↓'})"
                               for i in range(len(crit_names5))))
 
-        # ── Load alternatives (optional) ───────────────────────────────────
+        # ── Load units (optional) ───────────────────────────────────
         st.markdown("---")
         col_a, col_sa = st.columns([3, 1])
         with col_a:
-            alt_file5 = st.file_uploader("Upload alternatives (optional, without class column). Note: column names must correspond to criteria names of rules",
+            alt_file5 = st.file_uploader("Upload units (optional, without class column). Note: column names must correspond to criteria names of rules",
                                           type=["csv","txt"], key="alt_file5")
         with col_sa:
             sep_a5 = st.selectbox("Separator", [",",";","\t"," "], key="sep_alt5")
@@ -1329,7 +1329,7 @@ x2,2.0,4.5,1.5
             try:
                 df_alt5_raw = pd.read_csv(alt_file5, sep=sep_a5_act, engine="python")
             except Exception as e:
-                st.error(f"Could not read alternatives file: {e}"); st.stop()
+                st.error(f"Could not read units file: {e}"); st.stop()
 
             df_alt5 = df_alt5_raw.copy()
             fc5 = df_alt5.columns[0]
@@ -1341,7 +1341,7 @@ x2,2.0,4.5,1.5
             # Keep only criteria columns that match the rules (by name)
             common_cols = [c for c in crit_names5 if c in df_alt5.columns]
             if len(common_cols) < n_crit5:
-                st.warning(f"Alternatives file has {len(common_cols)}/{n_crit5} matching criteria columns.")
+                st.warning(f"Units file has {len(common_cols)}/{n_crit5} matching criteria columns.")
             df_alt5 = df_alt5[[c for c in crit_names5 if c in df_alt5.columns]]
             if alt_names5 is None:
                 alt_names5 = [f'a{i+1}' for i in range(len(df_alt5))]
@@ -1382,7 +1382,7 @@ x2,2.0,4.5,1.5
         # ── Classification ──────────────────────────────────────────────────
         if alt_matrix5 is not None and s_minus5 is not None:
             st.markdown("---")
-            st.markdown("#### Classification")
+            st.markdown("#### Assignment")
             rows5 = []
             for i, name in enumerate(alt_names5):
                 sm, sp = int(s_minus5[i]), int(s_plus5[i])
@@ -1417,8 +1417,8 @@ x2,2.0,4.5,1.5
             show_explanation(sel5, s_minus5, s_plus5, al_m5, am_m5,
                              al_texts5, am_texts5, alt_names5.index(sel5))
 
-            st.download_button("⬇ Download classification CSV",
+            st.download_button("⬇ Download assignment CSV",
                                df_class5_csv.to_csv(index=False),
-                               file_name="drsa_applied_classification.csv",
+                               file_name="drsa_applied_assignment.csv",
                                mime="text/csv", key="dl_apply_class",
                                use_container_width=True)
