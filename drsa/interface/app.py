@@ -180,8 +180,8 @@ def _assign_str(sm, sp, score_map):
     else:
         return f"CONTRADICTORY ({lm} > {lp})"
 
-def bibtex_omega():
-    return """@article{corrente2026explainable,
+def bibtex():
+    return """@article{corrente2026,
   title     = {An explainable and interpretable composite indicator based on decision rules},
   author    = {Corrente, Salvatore and Greco, Salvatore and S{\\l}owi{\\'n}ski, Roman and Zappal{\\`a}, Silvano},
   journal   = {Omega},
@@ -190,7 +190,19 @@ def bibtex_omega():
   year      = {2026},
   publisher = {Elsevier},
   doi       = {10.1016/j.omega.2026.103513}
-}"""
+}
+@article{greco2001,
+  title     = {Rough sets theory for multicriteria decision analysis},
+  author    = {Greco, Salvatore and Matarazzo, Benedetto and Slowinski, Roman},
+  journal   = {European journal of operational research},
+  volume    = {129},
+  number    = {1},
+  pages     = {1--47},
+  year      = {2001},
+  publisher = {Elsevier},
+  doi       = {10.1016/S0377-2217(00)00167-3}
+}
+"""
 
 def bibtex_softwarex():
     return """@article{zappala2026drsa,
@@ -260,7 +272,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 📄 Cite")
-    st.download_button("⬇ BibTeX", bibtex_omega(),
+    st.download_button("⬇ BibTeX", bibtex(),
                        file_name="corrente2026.bib", mime="text/plain",
                        use_container_width=True)
     st.markdown("---")
