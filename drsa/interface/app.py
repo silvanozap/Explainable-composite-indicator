@@ -1422,3 +1422,288 @@ x2,2.0,4.5,1.5
                                file_name="drsa_applied_assignment.csv",
                                mime="text/csv", key="dl_apply_class",
                                use_container_width=True)
+
+        # ── New units section ───────────────────────────────────────────────
+        if alt_matrix5 is not None and s_minus5 is not None:
+            st.markdown("---")
+            st.markdown("#### 🆕 Assign new units")
+            st.markdown("Upload new units to classify them using the loaded rules (MILP 6).")
+
+            col_nu, col_sep_nu = st.columns([3,1])
+            with col_nu:
+                new_file5 = st.file_uploader("Upload new units (without class column)",
+                                              type=["csv","txt"], key="new_file5")
+            with col_sep_nu:
+                sep_nu5 = st.selectbox("Separator", [",",";","\t"," "], key="sep_nu5")
+                sep_nu5_act = "\t" if sep_nu5=="\t" else sep_nu5
+
+            if new_file5 is not None:
+                try:
+                    df_new5_raw = pd.read_csv(new_file5, sep=sep_nu5_act, engine="python")
+                except Exception as e:
+                    st.error(f"Could not read file: {e}"); st.stop()
+
+                # Parse new units
+                df_new5 = df_new5_raw.copy()
+                fc_new5 = df_new5.columns[0]
+                if pd.to_numeric(df_new5[fc_new5], errors='coerce').isna().sum() > len(df_new5)*0.5:
+                    new_names5 = df_new5[fc_new5].astype(str).tolist()
+                    df_new5 = df_new5.drop(columns=[fc_new5])
+                else:
+                    new_names5 = [f'x{i+1}' for i in range(len(df_new5))]
+                df_new5 = df_new5.apply(pd.to_numeric, errors='coerce')
+                df_new5 = df_new5[[c for c in crit_names5 if c in df_new5.columns]]
+                new_matrix5 = df_new5.values.astype(float)
+
+                st.dataframe(df_new5_raw, use_container_width=True, height=150)
+
+                if st.button("▶ Assign new units", type="primary",
+                             use_container_width=True, key="btn_assign_new5"):
+                    from drsa.core.new_units import classify_new_units
+
+                    # Build combined matrix: previous units + their classification
+                    # s_minus5 and s_plus5 are already computed from eq.(4)
+                    n_prev = len(alt_names5)
+                    n_new  = len(new_names5)
+
+                    # Matrix for previous units (criteria only)
+                    prev_nc = np.hstack([alt_matrix5,
+                                         np.full((n_prev,1), np.nan)])
+                    # Add s- and s+ as last col for MILP input
+                    mat_sm = np.column_stack([alt_matrix5, s_minus5])
+                    mat_sp = np.column_stack([alt_matrix5, s_plus5])
+
+                    try:
+                        new_res5 = classify_new_units(
+                            new_matrix5, mat_sm, mat_sp,
+                            al_rules5, am_rules5, inc5, dec5)
+
+                        s_minus_new5 = new_res5.get('s_minus_final',
+                                       np.full(n_new, 1))
+                        s_plus_new5  = new_res5.get('s_plus_final',
+                                       np.full(n_new, 1))
+                        al_fin5 = new_res5.get('al_rules_final', al_rules5)
+                        am_fin5 = new_res5.get('am_rules_final', am_rules5)
+
+                        st.session_state['new_res5']       = new_res5
+                        st.session_state['new_names5']     = new_names5
+                        st.session_state['new_matrix5']    = new_matrix5
+                        st.session_state['s_minus_new5']   = s_minus_new5
+                        st.session_state['s_plus_new5']    = s_plus_new5
+                        st.session_state['al_fin5']        = al_fin5
+                        st.session_state['am_fin5']        = am_fin5
+                        st.session_state['alt_names5_prev'] = alt_names5
+                        st.session_state['s_minus5_prev']   = s_minus5
+                        st.session_state['s_plus5_prev']    = s_plus5
+                        st.success("✅ Done")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+
+                # Show results if available
+                if st.session_state.get('new_res5') is not None:
+                    new_res5     = st.session_state['new_res5']
+                    new_names5   = st.session_state['new_names5']
+                    new_matrix5  = st.session_state['new_matrix5']
+                    s_minus_new5 = st.session_state['s_minus_new5']
+                    s_plus_new5  = st.session_state['s_plus_new5']
+                    al_fin5      = st.session_state['al_fin5']
+                    am_fin5      = st.session_state['am_fin5']
+                    alt_names5_p = st.session_state['alt_names5_prev']
+                    s_minus5_p   = st.session_state['s_minus5_prev']
+                    s_plus5_p    = st.session_state['s_plus5_prev']
+
+                    st.markdown("#### Assignment results")
+                    rows_new5 = []
+                    all_names_new5 = list(alt_names5_p) + list(new_names5)
+
+                    # Previous units
+                    for i, name in enumerate(alt_names5_p):
+                        sm = int(s_minus5_p[i]); sp = int(s_plus5_p[i])
+                        sm_l = _fmt_class(sm, file_score_map)
+                        sp_l = _fmt_class(sp, file_score_map)
+                        rows_new5.append({
+                            "Unit": name,
+                            "s⁻": sm_l, "s⁺": sp_l,
+                            "Assignment": _assign_str(sm, sp, file_score_map),
+                            "New": "",
+                            "_changed": False,
+                        })
+                    # New units
+                    for k, name in enumerate(new_names5):
+                        sm = int(s_minus_new5[k]); sp = int(s_plus_new5[k])
+                        contra = sm > sp
+                        sm_l = _fmt_class(sm, file_score_map)
+                        sp_l = _fmt_class(sp, file_score_map)
+                        rows_new5.append({
+                            "Unit": name,
+                            "s⁻": sm_l, "s⁺": sp_l,
+                            "Assignment": _assign_str(sm, sp, file_score_map),
+                            "New": "🆕",
+                            "_changed": True,
+                        })
+
+                    df_new5_disp = pd.DataFrame(rows_new5)
+                    df_new5_show = df_new5_disp[[c for c in df_new5_disp.columns
+                                                  if not c.startswith('_')]]
+
+                    def _hl_new5(row):
+                        orig = rows_new5[row.name]
+                        if orig['_changed']:
+                            return ['background-color: #fef9c3'] * len(row)
+                        return [''] * len(row)
+
+                    st.dataframe(df_new5_show.style.apply(_hl_new5, axis=1),
+                                 use_container_width=True, height=400)
+
+                    # Unit explanation
+                    st.markdown("#### Unit-by-unit explanation")
+                    al_texts_fin5 = format_atleast_rules(al_fin5, inc5, dec5,
+                        crit_names5, score_map=file_score_map) if _nlen(al_fin5)>0 else []
+                    am_texts_fin5 = format_atmost_rules(am_fin5, inc5, dec5,
+                        crit_names5, score_map=file_score_map) if _nlen(am_fin5)>0 else []
+
+                    all_matrix_new5 = np.vstack([alt_matrix5, new_matrix5])
+                    all_nc_new5 = np.hstack([all_matrix_new5,
+                                             np.full((len(all_matrix_new5),1), np.nan)])
+                    sm_all5, sp_all5, al_m_all5, am_m_all5 = classify_units(
+                        all_nc_new5, al_fin5, am_fin5, inc5, dec5)
+
+                    sel_new5 = st.selectbox("Select unit", all_names_new5, key="sel_new5")
+                    idx_new5 = all_names_new5.index(sel_new5)
+                    show_explanation(sel_new5, sm_all5, sp_all5,
+                                     al_m_all5, am_m_all5,
+                                     al_texts_fin5, am_texts_fin5, idx_new5)
+
+                    # Download
+                    df_new5_csv = pd.DataFrame({
+                        "Unit":     [r["Unit"] for r in rows_new5],
+                        "s-":       [r["s⁻"] for r in rows_new5],
+                        "s+":       [r["s⁺"] for r in rows_new5],
+                        "Assignment": [r["Assignment"] for r in rows_new5],
+                        "New":      [r["New"] for r in rows_new5],
+                    })
+                    st.download_button("⬇ Download assignment CSV",
+                                       df_new5_csv.to_csv(index=False),
+                                       file_name="drsa_new_assignment.csv",
+                                       mime="text/csv", key="dl_new5",
+                                       use_container_width=True)
+
+        # ── New units section ───────────────────────────────────────────────
+        if alt_matrix5 is not None and s_minus5 is not None:
+            st.markdown("---")
+            st.markdown("#### 🆕 Assign new units")
+            st.markdown("Upload new units to assign them using the loaded rules.")
+
+            col_nu, col_sep_nu = st.columns([3,1])
+            with col_nu:
+                new_file5 = st.file_uploader("Upload new units (without class column)",
+                                              type=["csv","txt"], key="new_file5")
+            with col_sep_nu:
+                sep_nu5 = st.selectbox("Separator", [",",";","\t"," "], key="sep_nu5")
+                sep_nu5_act = "\t" if sep_nu5=="\t" else sep_nu5
+
+            if new_file5 is not None:
+                try:
+                    df_new5_raw = pd.read_csv(new_file5, sep=sep_nu5_act, engine="python")
+                except Exception as e:
+                    st.error(f"Could not read file: {e}")
+                else:
+                    df_new5 = df_new5_raw.copy()
+                    fc_new5 = df_new5.columns[0]
+                    if pd.to_numeric(df_new5[fc_new5], errors='coerce').isna().sum() > len(df_new5)*0.5:
+                        new_names5 = df_new5[fc_new5].astype(str).tolist()
+                        df_new5 = df_new5.drop(columns=[fc_new5])
+                    else:
+                        new_names5 = [f'x{i+1}' for i in range(len(df_new5))]
+                    df_new5 = df_new5.apply(pd.to_numeric, errors='coerce')
+                    df_new5 = df_new5[[c for c in crit_names5 if c in df_new5.columns]]
+                    new_matrix5 = df_new5.values.astype(float)
+                    st.dataframe(df_new5_raw, use_container_width=True, height=150)
+
+                    if st.button("▶ Assign new units", type="primary",
+                                 use_container_width=True, key="btn_assign_new5"):
+                        from drsa.core.new_units import classify_new_units
+                        mat_sm5 = np.column_stack([alt_matrix5, s_minus5])
+                        mat_sp5 = np.column_stack([alt_matrix5, s_plus5])
+                        try:
+                            new_res5 = classify_new_units(
+                                new_matrix5, mat_sm5, mat_sp5,
+                                al_rules5, am_rules5, inc5, dec5)
+                            st.session_state['new_res5']        = new_res5
+                            st.session_state['new_names5']      = new_names5
+                            st.session_state['new_matrix5']     = new_matrix5
+                            st.session_state['alt_names5_prev'] = list(alt_names5)
+                            st.session_state['s_minus5_prev']   = s_minus5.copy()
+                            st.session_state['s_plus5_prev']    = s_plus5.copy()
+                            st.success("✅ Done")
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+
+                    if st.session_state.get('new_res5') is not None:
+                        new_res5     = st.session_state['new_res5']
+                        new_names5   = st.session_state['new_names5']
+                        new_matrix5  = st.session_state['new_matrix5']
+                        s_minus_new5 = new_res5.get('s_minus_final', np.ones(len(new_names5)))
+                        s_plus_new5  = new_res5.get('s_plus_final',  np.ones(len(new_names5)))
+                        al_fin5      = new_res5.get('al_rules_final', al_rules5)
+                        am_fin5      = new_res5.get('am_rules_final', am_rules5)
+                        alt_names5_p = st.session_state['alt_names5_prev']
+                        s_minus5_p   = st.session_state['s_minus5_prev']
+                        s_plus5_p    = st.session_state['s_plus5_prev']
+
+                        st.markdown("#### Assignment results")
+                        rows_new5 = []
+                        for i, name in enumerate(alt_names5_p):
+                            sm = int(s_minus5_p[i]); sp = int(s_plus5_p[i])
+                            rows_new5.append({
+                                "Unit": name,
+                                "s\u207b": _fmt_class(sm, file_score_map),
+                                "s\u207a": _fmt_class(sp, file_score_map),
+                                "Assignment": _assign_str(sm, sp, file_score_map),
+                                "New": "", "_changed": False,
+                            })
+                        for k, name in enumerate(new_names5):
+                            sm = int(s_minus_new5[k]); sp = int(s_plus_new5[k])
+                            rows_new5.append({
+                                "Unit": name,
+                                "s\u207b": _fmt_class(sm, file_score_map),
+                                "s\u207a": _fmt_class(sp, file_score_map),
+                                "Assignment": _assign_str(sm, sp, file_score_map),
+                                "New": "\U0001f195", "_changed": True,
+                            })
+
+                        df_n5 = pd.DataFrame(rows_new5)
+                        df_n5_show = df_n5[[c for c in df_n5.columns if not c.startswith('_')]]
+                        def _hl5(row):
+                            return (['background-color: #fef9c3']*len(row)
+                                    if rows_new5[row.name]['_changed'] else ['']*len(row))
+                        st.dataframe(df_n5_show.style.apply(_hl5, axis=1),
+                                     use_container_width=True, height=400)
+
+                        # Unit explanation
+                        st.markdown("#### Unit-by-unit explanation")
+                        al_txt_f5 = format_atleast_rules(al_fin5, inc5, dec5, crit_names5,
+                            score_map=file_score_map) if _nlen(al_fin5)>0 else []
+                        am_txt_f5 = format_atmost_rules(am_fin5, inc5, dec5, crit_names5,
+                            score_map=file_score_map) if _nlen(am_fin5)>0 else []
+                        all_m5 = np.vstack([alt_matrix5, new_matrix5])
+                        all_nc5 = np.hstack([all_m5, np.full((len(all_m5),1), np.nan)])
+                        sm_a5, sp_a5, alm_a5, amm_a5 = classify_units(
+                            all_nc5, al_fin5, am_fin5, inc5, dec5)
+                        all_names_n5 = list(alt_names5_p) + list(new_names5)
+                        sel5n = st.selectbox("Select unit", all_names_n5, key="sel_new5")
+                        show_explanation(sel5n, sm_a5, sp_a5, alm_a5, amm_a5,
+                                         al_txt_f5, am_txt_f5, all_names_n5.index(sel5n))
+
+                        df_n5_csv = pd.DataFrame({
+                            "Unit":       [r["Unit"] for r in rows_new5],
+                            "s-":         [r["s\u207b"] for r in rows_new5],
+                            "s+":         [r["s\u207a"] for r in rows_new5],
+                            "Assignment": [r["Assignment"] for r in rows_new5],
+                            "New":        ["Y" if r["_changed"] else "N" for r in rows_new5],
+                        })
+                        st.download_button("⬇ Download assignment CSV",
+                                           df_n5_csv.to_csv(index=False),
+                                           file_name="drsa_new_assignment.csv",
+                                           mime="text/csv", key="dl_new5",
+                                           use_container_width=True)
