@@ -337,15 +337,25 @@ if uploaded is not None:
     # Auto-detect missing values in criteria columns
     handle_miss = bool(np.isnan(matrix_raw[:, :-1]).any())
     ref_mask   = ~np.isnan(matrix_raw[:, -1])
-    # Build score_map early from session_state radio value
-    _col_mode_early = st.session_state.get('col_mode_radio', 'Classification')
-    if _col_mode_early == 'Scoring':
-        _raw_scores_early = sorted(set(
-            float(v) for v in matrix_raw[:, -1] if not np.isnan(v)))
-        score_map     = {i+1: v for i, v in enumerate(_raw_scores_early)}
-        score_map_inv = {v: i+1 for i, v in enumerate(_raw_scores_early)}
+    # ── Problem type (outside tabs so always rendered) ────────────────────────
+    col_mode_val = st.radio(
+        "**Problem type:**",
+        ["Classification", "Scoring"], horizontal=True, key="col_mode_radio"
+    )
+    # Build score mapping
+    score_map = None
+    score_map_inv = None
+    if col_mode_val == "Scoring":
+        raw_scores = sorted(matrix_raw[:, -1][~np.isnan(matrix_raw[:, -1])].tolist())
+        unique_scores = sorted(set(raw_scores))
+        score_map     = {i+1: v for i, v in enumerate(unique_scores)}
+        score_map_inv = {v: i+1 for i, v in enumerate(unique_scores)}
+        matrix = matrix_raw.copy()
+        for i in range(len(matrix)):
+            if not np.isnan(matrix[i, -1]):
+                matrix[i, -1] = score_map_inv[matrix[i, -1]]
     else:
-        score_map = None; score_map_inv = None
+        matrix = matrix_raw.copy()
     st.session_state['score_map']     = score_map
     st.session_state['score_map_inv'] = score_map_inv
     ref_indices = np.where(ref_mask)[0].tolist()
