@@ -1516,75 +1516,156 @@ x2,2.0,4.5,1.5
                     rows_new5 = []
                     all_names_new5 = list(alt_names5_p) + list(new_names5)
 
-                    # Previous units
+                    # Previous units — check if assignment changed
+                    al_fin5 = new_res5.get('al_rules_final', al_rules5)
+                    am_fin5 = new_res5.get('am_rules_final', am_rules5)
+                    step1_sm5 = new_res5.get('step1_s_minus', None)
+                    step1_sp5 = new_res5.get('step1_s_plus',  None)
+                    changed5  = new_res5.get('changed_units', [])
+
                     for i, name in enumerate(alt_names5_p):
-                        sm = int(s_minus5_p[i]); sp = int(s_plus5_p[i])
-                        sm_l = _fmt_class(sm, file_score_map)
-                        sp_l = _fmt_class(sp, file_score_map)
-                        rows_new5.append({
-                            "Unit": name,
-                            "s⁻": sm_l, "s⁺": sp_l,
-                            "Assignment": _assign_str(sm, sp, file_score_map),
-                            "New": "",
-                            "_changed": False,
-                        })
+                         sm_o = int(s_minus5_p[i]); sp_o = int(s_plus5_p[i])
+                         # Recompute with new rules
+                         all_m5_tmp = np.vstack([alt_matrix5, new_matrix5])
+                         all_nc5_tmp = np.hstack([all_m5_tmp, np.full((len(all_m5_tmp),1), np.nan)])
+                         sm_new5_all, sp_new5_all, _, _ = classify_units(
+                             all_nc5_tmp, al_fin5, am_fin5, inc5, dec5)
+                         sm_n = int(sm_new5_all[i]); sp_n = int(sp_new5_all[i])
+                         changed_flag = (sm_n != sm_o or sp_n != sp_o)
+                         rows_new5.append({
+                             "Unit": name,
+                             "s⁻ (prev)": _fmt_class(sm_o, file_score_map),
+                             "s⁺ (prev)": _fmt_class(sp_o, file_score_map),
+                             "s⁻ (new)":  _fmt_class(sm_n, file_score_map),
+                             "s⁺ (new)":  _fmt_class(sp_n, file_score_map),
+                             "Assignment": _assign_str(sm_n, sp_n, file_score_map),
+                             "Changed": "⚠️ Yes" if changed_flag else "",
+                             "_changed": changed_flag,
+                         })
+
                     # New units
                     for k, name in enumerate(new_names5):
-                        sm = int(s_minus_new5[k]); sp = int(s_plus_new5[k])
-                        contra = sm > sp
-                        sm_l = _fmt_class(sm, file_score_map)
-                        sp_l = _fmt_class(sp, file_score_map)
-                        rows_new5.append({
-                            "Unit": name,
-                            "s⁻": sm_l, "s⁺": sp_l,
-                            "Assignment": _assign_str(sm, sp, file_score_map),
-                            "New": "🆕",
-                            "_changed": True,
-                        })
+                         sm1 = int(step1_sm5[k]) if step1_sm5 is not None else int(s_minus_new5[k])
+                         sp1 = int(step1_sp5[k]) if step1_sp5 is not None else int(s_plus_new5[k])
+                         sm  = int(s_minus_new5[k]); sp = int(s_plus_new5[k])
+                         contra = sm > sp
+                         rows_new5.append({
+                             "Unit": name,
+                             "s⁻ (prev)": _fmt_class(sm1, file_score_map),
+                             "s⁺ (prev)": _fmt_class(sp1, file_score_map),
+                             "s⁻ (new)":  _fmt_class(sm,  file_score_map),
+                             "s⁺ (new)":  _fmt_class(sp,  file_score_map),
+                             "Assignment": _assign_str(sm, sp, file_score_map),
+                             "Changed": "🆕 New" if not contra else "⚠️ Contradictory",
+                             "_changed": True,
+                         })
 
-                    df_new5_disp = pd.DataFrame(rows_new5)
-                    df_new5_show = df_new5_disp[[c for c in df_new5_disp.columns
-                                                  if not c.startswith('_')]]
+                    df_n5 = pd.DataFrame(rows_new5)
+                    df_n5_show = df_n5[[c for c in df_n5.columns if not c.startswith('_')]]
+                    def _hl5(row):
+                         return (['background-color: #fef9c3']*len(row)
+                                 if rows_new5[row.name]['_changed'] else ['']*len(row))
+                    st.dataframe(df_n5_show.style.apply(_hl5, axis=1),
+                                  use_container_width=True, height=400)
 
-                    def _hl_new5(row):
-                        orig = rows_new5[row.name]
-                        if orig['_changed']:
-                            return ['background-color: #fef9c3'] * len(row)
-                        return [''] * len(row)
+                    # ── Summary ───────────────────────────────────────────────
+                    n_ch5   = sum(1 for r in rows_new5 if r["Changed"]=="⚠️ Yes")
+                    n_ok5n  = sum(1 for r in rows_new5[-len(new_names5):]
+                                   if "Contr" not in r["Assignment"])
+                    n_co5n  = len(new_names5) - n_ok5n
+                    ca5, cb5, cc5 = st.columns(3)
+                    ca5.metric("Changed in A", n_ch5)
+                    cb5.metric("New units assigned", n_ok5n)
+                    cc5.metric("New contradictions", n_co5n)
+                    ch_names5 = [r["Unit"] for r in rows_new5 if r["Changed"]=="⚠️ Yes"]
+                    if ch_names5:
+                         st.markdown(f"**Changed assignment of previous units:** "
+                                     f"{', '.join(ch_names5)}")
 
-                    st.dataframe(df_new5_show.style.apply(_hl_new5, axis=1),
-                                 use_container_width=True, height=400)
+                    # ── Maximal rules expander ────────────────────────────────
+                    al7_5 = new_res5.get('step7_al_rules')
+                    am7_5 = new_res5.get('step7_am_rules')
+                    all_m5v = np.vstack([alt_matrix5, new_matrix5])
+                    all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
+                    if _nlen(al7_5)>0 or _nlen(am7_5)>0:
+                         al_t7_5 = format_atleast_rules(al7_5, inc5, dec5, crit_names5,
+                             score_map=file_score_map) if _nlen(al7_5)>0 else []
+                         am_t7_5 = format_atmost_rules(am7_5, inc5, dec5, crit_names5,
+                             score_map=file_score_map) if _nlen(am7_5)>0 else []
+                         _, _, al_m7_5, am_m7_5 = classify_units(
+                             all_nc5v,
+                             al7_5 if _nlen(al7_5)>0 else np.empty((0,1)),
+                             am7_5 if _nlen(am7_5)>0 else np.empty((0,1)),
+                             inc5, dec5)
+                         al_u7_5 = [[all_names_new5[j] for j in range(len(all_names_new5))
+                                     if al_m7_5[j,i]==1] for i in range(_nlen(al7_5))]
+                         am_u7_5 = [[all_names_new5[j] for j in range(len(all_names_new5))
+                                     if am_m7_5[j,i]==1] for i in range(_nlen(am7_5))]
+                         with st.expander(f"📂 Maximal rules selected ({_nlen(al7_5)} at-least, {_nlen(am7_5)} at-most)", expanded=False):
+                             if al_t7_5:
+                                 st.markdown("**R≥ At-Least:**")
+                                 show_rules(al7_5, al_t7_5, units=al_u7_5, rule_type="atleast")
+                             if am_t7_5:
+                                 st.markdown("**R≤ At-Most:**")
+                                 show_rules(am7_5, am_t7_5, units=am_u7_5, rule_type="atmost")
 
-                    # Unit explanation
+                    # ── Minimal rules expander ────────────────────────────────
+                    al_tf5 = format_atleast_rules(al_fin5, inc5, dec5, crit_names5,
+                         score_map=file_score_map) if _nlen(al_fin5)>0 else []
+                    am_tf5 = format_atmost_rules(am_fin5, inc5, dec5, crit_names5,
+                         score_map=file_score_map) if _nlen(am_fin5)>0 else []
+                    _, _, al_mf5, am_mf5 = classify_units(
+                         all_nc5v, al_fin5, am_fin5, inc5, dec5)
+                    al_uf5 = [[all_names_new5[j] for j in range(len(all_names_new5))
+                                if al_mf5[j,i]==1] for i in range(_nlen(al_fin5))]
+                    am_uf5 = [[all_names_new5[j] for j in range(len(all_names_new5))
+                                if am_mf5[j,i]==1] for i in range(_nlen(am_fin5))]
+                    with st.expander(f"📂 Minimal rules selected ({_nlen(al_fin5)} at-least, {_nlen(am_fin5)} at-most)", expanded=False):
+                         if al_tf5:
+                             st.markdown("**R≥ At-Least:**")
+                             show_rules(al_fin5, al_tf5, units=al_uf5, rule_type="atleast")
+                         if am_tf5:
+                             st.markdown("**R≤ At-Most:**")
+                             show_rules(am_fin5, am_tf5, units=am_uf5, rule_type="atmost")
+
+                    # ── Unit-by-unit explanation ──────────────────────────────
                     st.markdown("#### Unit-by-unit explanation")
-                    al_texts_fin5 = format_atleast_rules(al_fin5, inc5, dec5,
-                        crit_names5, score_map=file_score_map) if _nlen(al_fin5)>0 else []
-                    am_texts_fin5 = format_atmost_rules(am_fin5, inc5, dec5,
-                        crit_names5, score_map=file_score_map) if _nlen(am_fin5)>0 else []
+                    sm_a5, sp_a5, al_m_a5, am_m_a5 = classify_units(
+                         all_nc5v, al_fin5, am_fin5, inc5, dec5)
+                    sel5n = st.selectbox("Select unit", all_names_new5, key="sel_new5")
+                    show_explanation(sel5n, sm_a5, sp_a5, al_m_a5, am_m_a5,
+                                      al_tf5, am_tf5, all_names_new5.index(sel5n))
 
-                    all_matrix_new5 = np.vstack([alt_matrix5, new_matrix5])
-                    all_nc_new5 = np.hstack([all_matrix_new5,
-                                             np.full((len(all_matrix_new5),1), np.nan)])
-                    sm_all5, sp_all5, al_m_all5, am_m_all5 = classify_units(
-                        all_nc_new5, al_fin5, am_fin5, inc5, dec5)
-
-                    sel_new5 = st.selectbox("Select unit", all_names_new5, key="sel_new5")
-                    idx_new5 = all_names_new5.index(sel_new5)
-                    show_explanation(sel_new5, sm_all5, sp_all5,
-                                     al_m_all5, am_m_all5,
-                                     al_texts_fin5, am_texts_fin5, idx_new5)
-
-                    # Download
-                    df_new5_csv = pd.DataFrame({
-                        "Unit":     [r["Unit"] for r in rows_new5],
-                        "s-":       [r["s⁻"] for r in rows_new5],
-                        "s+":       [r["s⁺"] for r in rows_new5],
-                        "Assignment": [r["Assignment"] for r in rows_new5],
-                        "New":      [r["New"] for r in rows_new5],
-                    })
-                    st.download_button("⬇ Download assignment CSV",
-                                       df_new5_csv.to_csv(index=False),
-                                       file_name="drsa_new_assignment.csv",
-                                       mime="text/csv", key="dl_new5",
-                                       use_container_width=True)
+                    # ── Downloads ─────────────────────────────────────────────
+                    st.markdown("### 💾 Export")
+                    dc1, dc2, dc3 = st.columns(3)
+                    with dc1:
+                         csv_max5 = rules_to_csv(al_t7_5 if _nlen(al7_5)>0 else [],
+                             am_t7_5 if _nlen(am7_5)>0 else [],
+                             crit_names5, inc5, dec5,
+                             al_rules=al7_5, am_rules=am7_5,
+                             score_map=file_score_map)
+                         st.download_button("⬇ Maximal rules CSV", csv_max5,
+                             file_name="drsa_new5_maximal.csv", mime="text/csv",
+                             key="dl_new5_max", use_container_width=True)
+                    with dc2:
+                         csv_min5 = rules_to_csv(al_tf5, am_tf5, crit_names5, inc5, dec5,
+                             al_rules=al_fin5, am_rules=am_fin5,
+                             score_map=file_score_map)
+                         st.download_button("⬇ Minimal rules CSV", csv_min5,
+                             file_name="drsa_new5_minimal.csv", mime="text/csv",
+                             key="dl_new5_min", use_container_width=True)
+                    with dc3:
+                         df_n5_csv = pd.DataFrame({
+                             "Unit":       [r["Unit"] for r in rows_new5],
+                             "s- (prev)":  [r["s⁻ (prev)"] for r in rows_new5],
+                             "s+ (prev)":  [r["s⁺ (prev)"] for r in rows_new5],
+                             "s-":         [r["s⁻ (new)"] for r in rows_new5],
+                             "s+":         [r["s⁺ (new)"] for r in rows_new5],
+                             "Assignment": [r["Assignment"] for r in rows_new5],
+                             "Changed":    [r["Changed"] for r in rows_new5],
+                         })
+                         st.download_button("⬇ Assignment CSV", df_n5_csv.to_csv(index=False),
+                             file_name="drsa_new5_assignment.csv", mime="text/csv",
+                             key="dl_new5_cl", use_container_width=True)
 
