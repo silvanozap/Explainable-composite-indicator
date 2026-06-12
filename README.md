@@ -16,11 +16,11 @@ EI-SCORE provides an interactive Streamlit interface for building explainable co
 
 - **Classification problems** — assigning units to ordered classes
 - **Scoring problems** — ranking units by a continuous score
-- **Full pipeline** — from raw data to minimal rule sets (Steps 1–7)
-- **New unit assignment** — via MILP formulations (Problems 6, 7, 8)
+- **Full pipeline** — from raw data to minimal rule sets (Steps 1–7 of papers)
+- **New unit assignment** — via MILP formulations (Milp Problems 6, 7, 8)
 - **Rule reuse** — apply saved rules to new datasets
 
-The methodology implements Algorithms 1, 2 and 4 (for missing values) from the reference paper, along with the full pipeline including greedy rule selection and MILP-based minimisation.
+The methodology recognize and handle the presence of missing values.
 
 ---
 
@@ -86,13 +86,12 @@ Explainable-composite-indicator/
 │   ├── Ex.2_PTF.csv                  # Stock portfolio
 │   ├── Ex.2_PTF_new_units.csv        # New stocks for PTF
 │   ├── Ex.3_ElectreScore.csv         # Scoring problem
-│   ├── Ex.4_MISSING.csv              # Dataset with missing values
-│   ├── Ex.4_MISSING_new_units.csv    # New units with missing values
-│   ├── Ex.5_GCS_original.csv         # Glasgow Coma Scale
+│   ├── Ex.4_MISSING.csv              # Dataset with missing
+│   ├── Ex.4_MISSING_new_units.csv    # New units with missing │   ├── Ex.5_GCS_original.csv         # Glasgow Coma Scale
 │   ├── Ex.5_GCS_new_units.csv        # New patient for GCS
 │   └── Ex.5_maximal_rules.csv        # Pre-computed GCS rules
 ├── requirements.txt
-├── LICENSE.txt
+├── LICENSE
 └── README.md
 ```
 
@@ -112,7 +111,7 @@ A4,6,5,4,
 - **First column** (optional): unit names
 - **Criteria columns**: numeric values
 - **Last column**: class/score label — numeric for reference units, empty for non-reference units
-- **Missing values**: detected automatically; Algorithm 4 applied when present
+- **Missing values**: detected and handled automatically
 
 For **scoring problems**, the last column contains a continuous score. Select "Scoring" in the *Problem type* radio button in Tab Run.
 
@@ -135,14 +134,15 @@ For scoring problems, use `#mode,score` and score values in the `class` column.
 Upload your dataset, select criterion preference directions (increasing/decreasing), select reference units, and configure settings (min confidence, random seed).
 
 ### Tab 2 — Run
+- Select **problem type**
 - **Rule induction only**: induces at-least (R≥) and at-most (R≤) rules from reference units
-- **Full pipeline**: greedy selection → assignment of all units → maximal rule set → MILP minimal rule set
+- **Full pipeline**: greedy selection → assignment of all units → maximal rule set → minimal rule set
 
 ### Tab 3 — Assignment
 Displays assignment of all units with lower (s⁻) and upper (s⁺) bounds. Unit-by-unit explanation available.
 
 ### Tab 4 — New Units
-Classify new units using MILP Problems (6), (7), and (8). Requires Full pipeline to be run first.
+Classify new units using MILP Problems (6), (7), and (8) of paper. Requires Full pipeline to be run first.
 
 ### Tab 5 — Apply Rules
 Load saved rules and assign units. Extends to new unit assignment using loaded rules. Always accessible regardless of whether a data file is loaded.
@@ -194,12 +194,12 @@ Load saved rules and assign units. Extends to new unit assignment using loaded r
 
 ## License
 
-This project is licensed under the MIT License — see [LICENSE.txt](LICENSE.txt) for details.
+This project is licensed under the MIT License — see [LICENSE.txt](LICENSE) for details.
 
 ---
 
-## Citation
-
+## Bibitex Citations
+Please cite:
 ```bibtex
 @article{corrente2026omega,
   author  = {Corrente, Salvatore and Greco, Salvatore and S{\l}owi{\'n}ski, Roman and Zappal{\`a}, Silvano},
@@ -210,4 +210,16 @@ This project is licensed under the MIT License — see [LICENSE.txt](LICENSE.txt
   year    = {2026},
   doi     = {10.1016/j.omega.2026.103513}
 }
+@article{greco2001,
+  title     = {Rough sets theory for multicriteria decision analysis},
+  author    = {Greco, Salvatore and Matarazzo, Benedetto and Slowinski, Roman},
+  journal   = {European journal of operational research},
+  volume    = {129},
+  number    = {1},
+  pages     = {1--47},
+  year      = {2001},
+  publisher = {Elsevier},
+  doi       = {10.1016/S0377-2217(00)00167-3}
+}
+
 ```

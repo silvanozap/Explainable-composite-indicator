@@ -273,7 +273,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### 📄 Cite")
     st.download_button("⬇ BibTeX", bibtex(),
-                       file_name="corrente2026.bib", mime="text/plain",
+                       file_name="eiscore.bib", mime="text/plain",
                        use_container_width=True)
     st.markdown("---")
     st.markdown(
