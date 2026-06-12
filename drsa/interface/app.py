@@ -260,12 +260,15 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### 📄 Cite")
-    st.download_button("⬇ BibTeX — Omega 2026", bibtex_omega(),
+    st.download_button("⬇ BibTeX", bibtex_omega(),
                        file_name="corrente2026.bib", mime="text/plain",
                        use_container_width=True)
     st.markdown("---")
     st.markdown(
         "<div style='font-size:0.75rem;color:#9ca3af'>S. Corrente, S. Greco, R. Słowiński, S. Zappalà<br>Omega 142, 103513, 2026<br><a href='https://doi.org/10.1016/j.omega.2026.103513' target='_blank' style='color:#9ca3af'>DOI:10.1016/j.omega.2026.103513</a></div>",
+        unsafe_allow_html=True)
+    st.markdown(
+        "<div style='font-size:0.75rem;color:#9ca3af'>S. Greco, B. Matarazzo, R. Słowiński<br>European Journal of Operational Research 129(1), 1-47, 2001<br><a href='https://doi.org/10.1016/S0377-2217(00)00167-3' target='_blank' style='color:#9ca3af'>DOI:10.1016/S0377-2217(00)00167-3</a></div>",
         unsafe_allow_html=True)
 
 # ── TABS ───────────────────────────────────────────────────────────────────────
