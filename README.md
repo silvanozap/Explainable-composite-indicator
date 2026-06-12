@@ -199,7 +199,10 @@ This project is licensed under the MIT License — see [LICENSE.txt](LICENSE) fo
 ---
 
 ## Bibitex Citations
-Please cite:
+If you use this software in your research, projects, or publications, please cite the following papers:
+- Corrente, S., Greco, S., S{\l}owi{\'n}ski, R., \& Zappal{\`a}, S. (2026). \textit{An explainable and interpretable composite indicator based on decision rules}. Omega, 142, 103513. \url{https://doi.org/10.1016/j.omega.2026.103513}
+- Greco, S., Matarazzo, B., \& Slowinski, R. (2001). \textit{Rough sets theory for multicriteria decision analysis}. European Journal of Operational Research, 129(1), 1--47. \url{https://doi.org/10.1016/S0377-2217(00)00167-3}
+
 ```bibtex
 @article{corrente2026omega,
   author  = {Corrente, Salvatore and Greco, Salvatore and S{\l}owi{\'n}ski, Roman and Zappal{\`a}, Silvano},
