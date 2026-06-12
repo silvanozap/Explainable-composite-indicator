@@ -1513,6 +1513,18 @@ x2,2.0,4.5,1.5
                     s_plus5_p    = st.session_state['s_plus5_prev']
 
                     st.markdown("#### Assignment results")
+                    al7_5 = new_res5.get('step7_al_rules')
+                    am7_5 = new_res5.get('step7_am_rules')
+                    al_fin5 = new_res5.get('al_rules_final', al_rules5)
+                    am_fin5 = new_res5.get('am_rules_final', am_rules5)
+                    all_m5v = np.vstack([alt_matrix5, new_matrix5])
+                    all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
+                    # s-(new)/s+(new) from MILP(7) maximal rules
+                    _al7_for_new = al7_5 if _nlen(al7_5)>0 else al_fin5
+                    _am7_for_new = am7_5 if _nlen(am7_5)>0 else am_fin5
+                    sm_new5_all, sp_new5_all, _, _ = classify_units(
+                         all_nc5v, _al7_for_new, _am7_for_new, inc5, dec5)
+
                     rows_new5 = []
                     all_names_new5 = list(alt_names5_p) + list(new_names5)
 
@@ -1525,11 +1537,6 @@ x2,2.0,4.5,1.5
 
                     for i, name in enumerate(alt_names5_p):
                          sm_o = int(s_minus5_p[i]); sp_o = int(s_plus5_p[i])
-                         # Recompute with new rules
-                         all_m5_tmp = np.vstack([alt_matrix5, new_matrix5])
-                         all_nc5_tmp = np.hstack([all_m5_tmp, np.full((len(all_m5_tmp),1), np.nan)])
-                         sm_new5_all, sp_new5_all, _, _ = classify_units(
-                             all_nc5_tmp, al_fin5, am_fin5, inc5, dec5)
                          sm_n = int(sm_new5_all[i]); sp_n = int(sp_new5_all[i])
                          changed_flag = (sm_n != sm_o or sp_n != sp_o)
                          rows_new5.append({
@@ -1578,9 +1585,16 @@ x2,2.0,4.5,1.5
                     cb5.metric("New units assigned", n_ok5n)
                     cc5.metric("New contradictions", n_co5n)
                     ch_names5 = [r["Unit"] for r in rows_new5 if r["Changed"]=="⚠️ Yes"]
-                    if ch_names5:
-                         st.markdown(f"**Changed assignment of previous units:** "
-                                     f"{', '.join(ch_names5)}")
+                    with st.expander("📋 Summary result", expanded=False):
+                       st.markdown(f"**Changed assignment of previous units:** "
+                                    f"{chr(44).join(ch_names5) if ch_names5 else 'None'}")
+                       st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ maximal rules selected:** "
+                                    f"{_nlen(new_res5.get('step7_al_rules'))} at-least, "
+                                    f"{_nlen(new_res5.get('step7_am_rules'))} at-most")
+                       al_fin5_tmp = new_res5.get('al_rules_final', al_rules5)
+                       am_fin5_tmp = new_res5.get('am_rules_final', am_rules5)
+                       st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ minimal rules selected:** "
+                                    f"{_nlen(al_fin5_tmp)} at-least, {_nlen(am_fin5_tmp)} at-most")
 
                     # ── Maximal rules expander ────────────────────────────────
                     al7_5 = new_res5.get('step7_al_rules')
