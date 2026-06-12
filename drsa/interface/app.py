@@ -432,6 +432,8 @@ if uploaded is not None:
         ref_names  = [unit_names[i] for i in ref_idx]
         all_crit   = matrix[:, :-1]
         n_units    = st.session_state['n_units']
+        score_map  = st.session_state.get('score_map')
+        score_map  = st.session_state.get('score_map')
 
         mode = st.radio("Mode",
             ["🔬 Rule induction only", "🚀 Full pipeline"],
