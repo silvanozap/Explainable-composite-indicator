@@ -982,7 +982,7 @@ if uploaded is not None:
                 # ── Summary result ─────────────────────────────────────────────
                 with st.expander("🔍 Summary result"):
                     changed_names = [all_unit_names[i] for i in changed if i < len(all_unit_names)]
-                    st.markdown(f"**Changed classification of previous units:** "
+                    st.markdown(f"**Changed assignment of previous units:** "
                                 f"{', '.join(changed_names) if changed_names else 'None'}")
                     def _nr(x): return _nlen(x) if x is not None else 0
                     st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ maximal rules selected:** "
