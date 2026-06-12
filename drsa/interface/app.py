@@ -1466,18 +1466,18 @@ x2,2.0,4.5,1.5
                     n_prev = len(alt_names5)
                     n_new  = len(new_names5)
 
-                    # Matrix for previous units (criteria only)
-                    prev_nc = np.hstack([alt_matrix5,
-                                         np.full((n_prev,1), np.nan)])
-                    # Add s- and s+ as last col for MILP input
-                    mat_sm = np.column_stack([alt_matrix5, s_minus5])
-                    mat_sp = np.column_stack([alt_matrix5, s_plus5])
+                    from drsa.core.classifier import classify_units as _cu5
+                    mat_sm5 = np.column_stack([alt_matrix5, s_minus5])
+                    mat_sp5 = np.column_stack([alt_matrix5, s_plus5])
+                    prev_nc5 = np.hstack([alt_matrix5, np.full((len(alt_matrix5),1), np.nan)])
+                    _, _, match_al5, match_am5 = _cu5(prev_nc5, al_rules5, am_rules5, inc5, dec5)
 
                     try:
                         new_res5 = classify_new_units(
-                            new_matrix5, mat_sm, mat_sp,
-                            al_rules5, am_rules5, inc5, dec5)
-
+                            new_matrix5, mat_sm5, mat_sp5,
+                            al_rules5, match_al5,
+                            am_rules5, match_am5,
+                            inc5, dec5)
                         s_minus_new5 = new_res5.get('s_minus_final',
                                        np.full(n_new, 1))
                         s_plus_new5  = new_res5.get('s_plus_final',
