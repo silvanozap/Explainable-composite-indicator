@@ -22,7 +22,15 @@ from drsa import (
 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="EI-SCORE", page_icon="📊", layout="wide")
-
+## nuove righe in caso rimuovi
+hide_streamlit_style = """
+            <style>
+            [data-testid="stHeader"] {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+##### nuove righe end
 # ── MathJax ───────────────────────────────────────────────────────────────────
 import streamlit.components.v1 as _components
 _components.html("""
