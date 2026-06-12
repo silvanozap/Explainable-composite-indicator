@@ -73,7 +73,7 @@ Explainable-composite-indicator/
 │   │   ├── rules.py            # Rule induction algorithms
 │   │   ├── utils.py            # Supporting functions
 │   │   ├── formatting.py       # Rule text formatting
-│   │   ├── classifier.py       # Unit assignment — eq. (4)
+│   │   ├── classifier.py       # Unit assignment
 │   │   ├── measures.py         # Quality measures
 │   │   ├── step_forward.py     # Greedy selection
 │   │   ├── milp.py             # MILP minimal set of rules
@@ -87,7 +87,8 @@ Explainable-composite-indicator/
 │   ├── Ex.2_PTF_new_units.csv        # New stocks for PTF
 │   ├── Ex.3_ElectreScore.csv         # Scoring problem
 │   ├── Ex.4_MISSING.csv              # Dataset with missing
-│   ├── Ex.4_MISSING_new_units.csv    # New units with missing │   ├── Ex.5_GCS_original.csv         # Glasgow Coma Scale
+│   ├── Ex.4_MISSING_new_units.csv    # New units with missing
+│   ├── Ex.5_GCS_original.csv         # Glasgow Coma Scale
 │   ├── Ex.5_GCS_new_units.csv        # New patient for GCS
 │   └── Ex.5_maximal_rules.csv        # Pre-computed GCS rules
 ├── requirements.txt
