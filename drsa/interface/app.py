@@ -337,6 +337,17 @@ if uploaded is not None:
     # Auto-detect missing values in criteria columns
     handle_miss = bool(np.isnan(matrix_raw[:, :-1]).any())
     ref_mask   = ~np.isnan(matrix_raw[:, -1])
+    # Build score_map early from session_state radio value
+    _col_mode_early = st.session_state.get('col_mode_radio', 'Classification')
+    if _col_mode_early == 'Scoring':
+        _raw_scores_early = sorted(set(
+            float(v) for v in matrix_raw[:, -1] if not np.isnan(v)))
+        score_map     = {i+1: v for i, v in enumerate(_raw_scores_early)}
+        score_map_inv = {v: i+1 for i, v in enumerate(_raw_scores_early)}
+    else:
+        score_map = None; score_map_inv = None
+    st.session_state['score_map']     = score_map
+    st.session_state['score_map_inv'] = score_map_inv
     ref_indices = np.where(ref_mask)[0].tolist()
     # score_map will be set in tab1 after user choice
     matrix = matrix_raw.copy()
@@ -432,7 +443,6 @@ if uploaded is not None:
         ref_names  = [unit_names[i] for i in ref_idx]
         all_crit   = matrix[:, :-1]
         n_units    = st.session_state['n_units']
-        score_map  = st.session_state.get('score_map')
         score_map  = st.session_state.get('score_map')
 
         mode = st.radio("Mode",
