@@ -1034,8 +1034,7 @@ if uploaded is not None:
                                  for i in range(_nlen(al7))]
                     am_units7 = [[all_new_names[j] for j in range(len(all_new_names)) if am_m7_all[j,i]==1]
                                  for i in range(_nlen(am7))]
-                    with st.expander(f"📂 Maximal rules selected ({_nlen(al7)} at-least, {_nlen(am7)} at-most)"
-                                     f"({_nlen(al7)} at-least, {_nlen(am7)} at-most)"):
+                    with st.expander(f"📂 Maximal rules selected ({_nlen(al7)} at-least, {_nlen(am7)} at-most)"):
                         if al_texts7:
                             st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least:**")
                             show_rules(al7, al_texts7, units=al_units7, rule_type="atleast")
@@ -1053,8 +1052,7 @@ if uploaded is not None:
                                     for i in range(_nlen(al_fin))]
                     am_units_fin = [[all_new_names[j] for j in range(len(all_new_names)) if am_m_fin[j,i]==1]
                                     for i in range(_nlen(am_fin))]
-                    with st.expander(f"📂 Minimal rules selected ({_nlen(al_fin)} at-least, {_nlen(am_fin)} at-most)"
-                                     f"({_nlen(al_fin)} at-least, {_nlen(am_fin)} at-most)"):
+                    with st.expander(f"📂 Minimal rules selected ({_nlen(al_fin)} at-least, {_nlen(am_fin)} at-most)"):
                         if al_texts_new:
                             st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least:**")
                             show_rules(al_fin, al_texts_new, units=al_units_fin, rule_type="atleast")
@@ -1427,7 +1425,7 @@ x2,2.0,4.5,1.5
         if alt_matrix5 is not None and s_minus5 is not None:
             st.markdown("---")
             st.markdown("#### 🆕 Assign new units")
-            st.markdown("Upload new units to classify them using the loaded rules (MILP 6).")
+            st.markdown("Upload new units to assign.")
 
             col_nu, col_sep_nu = st.columns([3,1])
             with col_nu:
@@ -1585,7 +1583,7 @@ x2,2.0,4.5,1.5
                     cb5.metric("New units assigned", n_ok5n)
                     cc5.metric("New contradictions", n_co5n)
                     ch_names5 = [r["Unit"] for r in rows_new5 if r["Changed"]=="⚠️ Yes"]
-                    with st.expander("📋 Summary result", expanded=False):
+                    with st.expander("🔍 Summary result", expanded=False):
                        st.markdown(f"**Changed assignment of previous units:** "
                                     f"{chr(44).join(ch_names5) if ch_names5 else 'None'}")
                        st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ maximal rules selected:** "
