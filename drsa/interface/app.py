@@ -22,10 +22,15 @@ from drsa import (
 
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="EI-SCORE", page_icon="📊", layout="wide")
-## nuove righe in caso rimuovi
+## nuove righe modificate
 hide_streamlit_style = """
             <style>
-            [data-testid="stHeader"] {visibility: hidden;}
+            /* Nasconde solo i bottoni a destra nell'header, non tutto l'header */
+            [data-testid="stAppDeployButton"], 
+            [data-testid="stActionButtonIcon"], 
+            #MainMenu {visibility: hidden;}
+            
+            /* Nasconde il footer */
             footer {visibility: hidden;}
             </style>
             """
