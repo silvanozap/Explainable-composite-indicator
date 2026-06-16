@@ -545,7 +545,7 @@ if uploaded is None:
 - Optional first column: unit names
 - Criteria columns (numeric)
 - Last column: class label
-  - Integer → reference unit
+  - Number → reference unit
   - Empty/NaN → non-reference unit
 """)
         with c2:
