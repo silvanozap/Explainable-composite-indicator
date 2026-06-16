@@ -11,7 +11,8 @@ _HERE        = os.path.dirname(os.path.abspath(__file__))
 _PACKAGE_DIR = os.path.dirname(_HERE)
 _ROOT        = os.path.dirname(_PACKAGE_DIR)
 sys.path.insert(0, _ROOT)
-
+color_main = "#1a2d4f"
+color_gold = "#8b6914"
 from drsa import (
     induce_atleast_rules, induce_atmost_rules,
     format_atleast_rules, format_atmost_rules,
@@ -239,14 +240,30 @@ def get_matching_units(rules, match_matrix, all_names, rule_type, inc, dec, crit
 # ── Header ─────────────────────────────────────────────────────────────────────
 # ── Logo + Title ──────────────────────────────────────────────────────────────
 import os as _os
-_logo_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), 'assets', 'logo.png')
-_col_logo, _col_title = st.columns([1, 5])
+_logo_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), 'assets', 'ei-score.svg')
+_col_logo, _col_title = st.columns([1, 8], gap="small")
 with _col_logo:
     if _os.path.exists(_logo_path):
         st.image(_logo_path, width=150)
 with _col_title:
-    st.title("EI-SCORE")
-    st.markdown("**Explainable-Interpretable and Simple Customized Overall Ranking Engine**")
+    st.markdown(f"<h1 style='color: {color_main};'>EI-SCORE</h1>", unsafe_allow_html=True)
+    st.markdown(f"<p style='color: {color_gold}; font-weight: bold; font-size: 1.2rem;'>"
+    "Explainable-Interpretable and Simple Customized Overall Ranking Engine"
+    "</p>", unsafe_allow_html=True)
+#st.markdown(
+#    f"""
+#    <div style="
+#        background-color: white; 
+#        color: {color_main}; 
+#        padding: 15px; 
+#        border-radius: 8px; 
+#        font-weight: 500;
+#        margin-top: 10px;
+#    ">
+#        User-friendly GUI to build your customized composite indicator based on Decision Rules
+#    </div>
+#    """, 
+#    unsafe_allow_html=True)
 st.markdown("""<div class="info-banner">
 User-friendly GUI to build your customized composite indicator based on Decision Rules
 </div>""", unsafe_allow_html=True)
