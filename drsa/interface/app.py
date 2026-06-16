@@ -1920,7 +1920,8 @@ x2,2.0,4.5,1.5
                              "s-":         [r["s⁻ (new)"] for r in rows_new5],
                              "s+":         [r["s⁺ (new)"] for r in rows_new5],
                              "Assignment": [r["Assignment"] for r in rows_new5],
-                             "Changed":    [r["Changed"] for r in rows_new5],
+                             #"Changed":    [r["Changed"] for r in rows_new5],
+                             "Changed":    ["Y" if r["Changed"].startswith("⚠️") else "N" for r in rows_new5],
                          })
                          st.download_button("⬇ Assignment CSV", df_n5_csv.to_csv(index=False),
                              file_name="drsa_new5_assignment.csv", mime="text/csv",
