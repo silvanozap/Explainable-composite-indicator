@@ -13,6 +13,9 @@ _ROOT        = os.path.dirname(_PACKAGE_DIR)
 sys.path.insert(0, _ROOT)
 color_main = "#1a2d4f"
 color_gold = "#8b6914"
+color_gold_lt = "#f5edda"
+color_main_lt = "#26426e"
+color_rule = "#c8bfa8"
 from drsa import (
     induce_atleast_rules, induce_atmost_rules,
     format_atleast_rules, format_atmost_rules,
@@ -267,11 +270,87 @@ with _col_title:
 #    </div>
 #    """, 
 #    unsafe_allow_html=True)
-st.markdown("""<div class="info-banner">
+st.markdown(f"""<div class="info-banner">
 User-friendly GUI to build your customized composite indicator based on Decision Rules
 </div>""", unsafe_allow_html=True)
 
-# ── Sidebar ────────────────────────────────────────────────────────────────────
+# ── Style ────────────────────────────────────────────────────────────────────
+st.markdown(
+    f"""
+    <style>
+        /* 1. Sfondo principale della sidebar */
+        [data-testid="stSidebar"] {{
+            background-color: {color_main};
+        }}
+
+        /* 2. Forza il colore bianco per i testi generici, titoli e liste */
+        [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] p,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] li,
+        [data-testid="stSidebar"] span {{
+            color: white !important;
+        }}
+
+        /* 3. FIX TASTI DOWNLOAD (User Guide e BibTeX) */
+        /* Seleziona i bottoni della sidebar che NON sono dentro l'uploader */
+        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button) {{
+            background-color: white !important;
+            border: 1px solid white !important;
+        }}
+        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button) p, 
+        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button) span {{
+            color: {color_main} !important;
+        }}
+        
+        /* Effetto Hover sui bottoni di download */
+        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button):hover {{
+            background-color: transparent !important;
+        }}
+        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button):hover p,
+        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button):hover span {{
+            color: white !important;
+        }}
+
+        /* 4. FIX FILE UPLOADER (Area di trascinamento e il suo bottone interno) */
+        /* Sfondo del rettangolo dell'uploader (grigio chiarissimo/bianco di default) */
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {{
+            background-color: #f8f9fa !important;
+        }}
+        /* Testi e scritte dentro l'uploader */
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] small,
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] div,
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] p,
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] span {{
+            color: {color_main} !important;
+        }}
+        /* Il bottone specifico di "Browse files" dentro l'uploader */
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button {{
+            background-color: #ededed !important;
+            border: 1px solid #cccccc !important;
+        }}
+        /* Icona della freccia dell'upload */
+        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] svg {{
+            fill: {color_main} !important;
+        }}
+
+        /* 5. Linee di divisione */
+        [data-testid="stSidebar"] hr {{
+            border-color: {color_rule} !important;
+        }}
+        /* Personalizzazione del banner informativo */
+        .info-banner {{
+            background-color: white !important;       /* Colore dello sfondo del banner */
+            color: {color_main_lt} !important;          /* Colore del testo dentro il banner */
+            padding: 12px !important;
+            border-radius: 6px !important;
+            margin-bottom: 15px !important;
+        }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 with st.sidebar:
     st.markdown("### 📂 Data")
     uploaded = st.file_uploader("Upload CSV or TXT", type=["csv","txt"],
@@ -536,7 +615,8 @@ if uploaded is not None:
                 mc1,mc2,mc3 = st.columns(3)
                 for col,val,lbl in zip([mc1,mc2,mc3],[n_al,n_am,n_al+n_am],
                                         ["At-least (R≥)","At-most (R≤)","Total"]):
-                    col.markdown(f'<div class="metric-card"><div class="value">{val}</div>'
+                    col.markdown(f'<div class="metric-card" style = "background-color: {color_main}; color: white; padding: 15px; border-radius: 8px;">'
+                                 f'<div class="value">{val}</div>'
                                  f'<div class="label">{lbl}</div></div>', unsafe_allow_html=True)
                 st.markdown("")
                 if n_al > 0:
