@@ -915,10 +915,10 @@ if uploaded is not None:
                     res = st.session_state.get('pipeline_result', {})
                     if res:
                         df_steps = pd.DataFrame([
-                            ("Step 2", *res['step2'], sum(res['step2'])),
-                            ("Step 3", *res['step3'], sum(res['step3'])),
-                            ("Step 6 – Maximal set of rules", *res['step6'], sum(res['step6'])),
-                            ("Step 7 – Minimal set of rules", *res['step7'], sum(res['step7'])),
+                            ("Rules initially induced", *res['step2'], sum(res['step2'])),
+                            ("Greedy selection of rules", *res['step3'], sum(res['step3'])),
+                            ("Maximal set of rules", *res['step6'], sum(res['step6'])),
+                            ("Minimal set of rules", *res['step7'], sum(res['step7'])),
                         ], columns=["Step","At-least","At-most","Total"])
                         st.dataframe(df_steps, use_container_width=True, hide_index=True)
 
