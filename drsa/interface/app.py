@@ -22,7 +22,10 @@ from drsa import (
 )
 
 # ── Page config ────────────────────────────────────────────────────────────────
-st.set_page_config(page_title="EI-SCORE", page_icon="📊", layout="wide")
+#st.set_page_config(page_title="EI-SCORE", page_icon="📊", layout="wide")
+st.set_page_config(
+    page_title="EI-SCORE", page_icon="assets/ei-score.svg", layout="wide"
+)
 ## nuove righe modificate
 #hide_streamlit_style = """
 #            <style>
