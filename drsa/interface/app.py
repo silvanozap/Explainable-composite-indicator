@@ -11,11 +11,7 @@ _HERE        = os.path.dirname(os.path.abspath(__file__))
 _PACKAGE_DIR = os.path.dirname(_HERE)
 _ROOT        = os.path.dirname(_PACKAGE_DIR)
 sys.path.insert(0, _ROOT)
-color_main = "#1a2d4f"
-color_gold = "#8b6914"
-color_gold_lt = "#f5edda"
-color_main_lt = "#26426e"
-color_rule = "#c8bfa8"
+
 from drsa import (
     induce_atleast_rules, induce_atmost_rules,
     format_atleast_rules, format_atmost_rules,
@@ -57,22 +53,249 @@ window.MathJax = {
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
-html,body,[class*="css"]{font-family:'IBM Plex Sans',sans-serif;}
-h1,h2,h3{font-family:'IBM Plex Mono',monospace;letter-spacing:-0.03em;}
-.rule-box{background:#f8f9fa;border-left:4px solid #1a1a2e;padding:12px 16px;margin:6px 0;border-radius:0 6px 6px 0;font-family:'IBM Plex Mono',monospace;font-size:0.82rem;line-height:1.6;}
-.rule-box.atleast{border-left-color:#2563eb;}
-.rule-box.atmost{border-left-color:#dc2626;}
-.metric-card{background:#1a1a2e;color:white;border-radius:8px;padding:14px 18px;text-align:center;}
-.metric-card .value{font-size:2rem;font-weight:600;font-family:'IBM Plex Mono',monospace;}
-.metric-card .label{font-size:0.75rem;opacity:0.7;margin-top:2px;}
-.info-banner{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;font-size:0.88rem;color:#1e3a5f;margin-bottom:18px;}
-.tag{display:inline-block;background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 7px;font-size:0.73rem;font-family:'IBM Plex Mono',monospace;margin-right:3px;}
-.class-box{border-radius:8px;padding:12px 16px;margin:6px 0;font-family:'IBM Plex Mono',monospace;font-size:0.88rem;}
-.class-ok{background:#f0fdf4;border-left:4px solid #16a34a;}
-.class-range{background:#fffbeb;border-left:4px solid #d97706;}
-.class-err{background:#fef2f2;border-left:4px solid #dc2626;}
-.changed-row{background:#fef9c3;}
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Libre+Franklin:wght@400;500;600&display=swap');
+
+/* ── Global ───────────────────────────────────────────────── */
+html, body, [class*="css"] {
+    font-family: 'Libre Franklin', system-ui, sans-serif;
+    background-color: #faf8f4;
+    color: #1e1e1e;
+}
+h1, h2, h3, h4 {
+    font-family: 'EB Garamond', Georgia, serif;
+    font-weight: 400;
+    color: #1a2d4f;
+    letter-spacing: 0.01em;
+}
+
+/* ── Main content background ──────────────────────────────── */
+.stApp, [data-testid="stAppViewContainer"] {
+    background-color: #faf8f4 !important;
+}
+[data-testid="stAppViewBlockContainer"] {
+    background-color: #faf8f4 !important;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────── */
+[data-testid="stTabs"] [role="tablist"] {
+    background-color: #1a2d4f;
+    border-bottom: 2px solid #8b6914;
+}
+button[role="tab"] {
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.07em !important;
+    text-transform: uppercase !important;
+    color: #b8cce0 !important;
+    border-radius: 0 !important;
+    padding: 0.6rem 1rem !important;
+    border-bottom: 3px solid transparent !important;
+    background-color: #1a2d4f !important;
+}
+button[role="tab"][aria-selected="true"] {
+    color: #ffffff !important;
+    border-bottom: 3px solid #8b6914 !important;
+    background-color: #26426e !important;
+}
+button[role="tab"]:hover {
+    color: #ffffff !important;
+    background-color: rgba(255,255,255,0.04) !important;
+}
+
+/* ── Primary buttons ──────────────────────────────────────── */
+[data-testid="baseButton-primary"] {
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.8rem !important;
+    letter-spacing: 0.05em !important;
+    background: #ffffff !important;
+    color: #1a2d4f !important;
+    border: 2px solid #1a2d4f !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s !important;
+}
+[data-testid="baseButton-primary"]:hover {
+    background: #1a2d4f !important;
+    color: #ffffff !important;
+}
+
+/* ── Secondary buttons ────────────────────────────────────── */
+[data-testid="baseButton-secondary"] {
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.78rem !important;
+    background: transparent !important;
+    color: #1a2d4f !important;
+    border: 1px solid #1a2d4f !important;
+    border-radius: 4px !important;
+}
+[data-testid="baseButton-secondary"]:hover {
+    background: #1a2d4f !important;
+    color: #ffffff !important;
+}
+
+/* ── Rule boxes ───────────────────────────────────────────── */
+.rule-box {
+    background: #ffffff;
+    border: 1px solid #c8bfa8;
+    border-left: 4px solid #1a2d4f;
+    padding: 10px 14px;
+    margin: 5px 0;
+    border-radius: 0;
+    font-family: 'EB Garamond', Georgia, serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: #26426e;
+    line-height: 1.6;
+}
+.rule-box.atleast { border-left-color: #1a2d4f; }
+.rule-box.atmost  { border-left-color: #8b6914; }
+
+/* ── Tags ─────────────────────────────────────────────────── */
+.tag {
+    display: inline-block;
+    background: #ede9e0;
+    color: #26426e;
+    border-radius: 2px;
+    padding: 1px 6px;
+    font-size: 0.7rem;
+    font-family: 'Libre Franklin', sans-serif;
+    font-style: normal;
+    font-weight: 500;
+    margin-right: 3px;
+}
+
+/* ── Class/assignment boxes ───────────────────────────────── */
+.class-box {
+    border-radius: 0;
+    padding: 10px 14px;
+    margin: 5px 0;
+    font-family: 'Libre Franklin', sans-serif;
+    font-size: 0.9rem;
+}
+.class-ok    { background: #e8f3e0; border-left: 4px solid #2d5a14; }
+.class-range { background: #f5edda; border-left: 4px solid #8b6914; }
+.class-err   { background: #fef2f2; border-left: 4px solid #dc2626; }
+
+/* ── Info banner ──────────────────────────────────────────── */
+.info-banner {
+    background: #ffffff;
+    border: 1px solid #c8bfa8;
+    border-left: 4px solid #1a2d4f;
+    border-radius: 0;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+    color: #1a2d4f;
+    margin-bottom: 16px;
+    font-family: 'Libre Franklin', sans-serif;
+}
+
+/* ── Metric cards ─────────────────────────────────────────── */
+.metric-card {
+    background: #1a2d4f;
+    color: white;
+    border-radius: 4px;
+    padding: 14px 18px;
+    text-align: center;
+}
+.metric-card .value {
+    font-size: 2rem;
+    font-weight: 400;
+    font-family: 'EB Garamond', serif;
+}
+.metric-card .label { font-size: 0.72rem; opacity: 0.75; margin-top: 2px; font-family: 'Libre Franklin', sans-serif; }
+
+/* ── Expanders ────────────────────────────────────────────── */
+[data-testid="stExpander"] {
+    border: 1px solid #c8bfa8 !important;
+    border-left: 4px solid #8b6914 !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+}
+[data-testid="stExpander"] summary p {
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.82rem !important;
+    color: #1a2d4f !important;
+    font-weight: 500 !important;
+}
+
+/* ── Dataframe header ─────────────────────────────────────── */
+[data-testid="stDataFrame"] th {
+    background-color: #1a2d4f !important;
+    color: white !important;
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+}
+
+/* ── Changed rows ─────────────────────────────────────────── */
+.changed-row { background: #f5edda; }
+
+/* ── Hide fullscreen on images ────────────────────────────── */
+[data-testid="stImage"] button,
+[data-testid="stImageContainer"] button {
+    display: none !important;
+}
+
+/* ── Hide CSV download from dataframe toolbar ─────────────── */
+[data-testid="stDataFrameResizable"] button[title="Download as CSV"],
+[data-testid="stElementToolbar"] button[title="Download as CSV"],
+button[title="Download as CSV"],
+button[aria-label="Download as CSV"] {
+    display: none !important;
+}
+
+/* ── Radio/checkbox font ──────────────────────────────────── */
+[data-testid="stRadio"] label p,
+[data-testid="stCheckbox"] label p {
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.9rem !important;
+    color: #1e1e1e !important;
+    border-bottom: 3px solid #8b6914 !important;
+    box-shadow: none !important;
+}
+button[role="tab"] {
+    box-shadow: none !important;
+}
+
+/* ── Dataframe tables ─────────────────────────────────────── */
+thead tr th {
+    background-color: #1a2d4f !important;
+    color: #ffffff !important;
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+}
+[data-testid="stDataFrame"] thead th,
+[data-testid="stDataFrameResizable"] thead th {
+    background-color: #1a2d4f !important;
+    color: #ffffff !important;
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+}
+
+/* ── Selectbox ────────────────────────────────────────────── */
+[data-testid="stSelectbox"] > div > div {
+    border-color: #c8bfa8 !important;
+    border-radius: 4px !important;
+}
+
+/* ── Metric values ────────────────────────────────────────── */
+[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    font-family: 'EB Garamond', serif !important;
+    color: #1a2d4f !important;
+    font-size: 2rem !important;
+}
+[data-testid="stMetric"] [data-testid="stMetricLabel"] {
+    font-family: 'Libre Franklin', sans-serif !important;
+    color: #5c5c5c !important;
+    font-size: 0.78rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+}
 </style>
 <style>
 /* Hide fullscreen button from images */
@@ -246,111 +469,19 @@ def get_matching_units(rules, match_matrix, all_names, rule_type, inc, dec, crit
 # ── Header ─────────────────────────────────────────────────────────────────────
 # ── Logo + Title ──────────────────────────────────────────────────────────────
 import os as _os
-_logo_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), 'assets', 'ei-score.svg')
-_col_logo, _col_title = st.columns([1, 8], gap="small")
+_logo_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), 'assets', 'logo.png')
+_col_logo, _col_title = st.columns([1, 5])
 with _col_logo:
     if _os.path.exists(_logo_path):
         st.image(_logo_path, width=150)
 with _col_title:
-    st.markdown(f"<h1 style='color: {color_main};'>EI-SCORE</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color: {color_gold}; font-weight: bold; font-size: 1.2rem;'>"
-    "Explainable-Interpretable and Simple Customized Overall Ranking Engine"
-    "</p>", unsafe_allow_html=True)
-#st.markdown(
-#    f"""
-#    <div style="
-#        background-color: white; 
-#        color: {color_main}; 
-#        padding: 15px; 
-#        border-radius: 8px; 
-#        font-weight: 500;
-#        margin-top: 10px;
-#    ">
-#        User-friendly GUI to build your customized composite indicator based on Decision Rules
-#    </div>
-#    """, 
-#    unsafe_allow_html=True)
-st.markdown(f"""<div class="info-banner">
+    st.title("EI-SCORE")
+    st.markdown("**Explainable-Interpretable and Simple Customized Overall Ranking Engine**")
+st.markdown("""<div class="info-banner">
 User-friendly GUI to build your customized composite indicator based on Decision Rules
 </div>""", unsafe_allow_html=True)
 
-# ── Style ────────────────────────────────────────────────────────────────────
-st.markdown(
-    f"""
-    <style>
-        /* 1. Sfondo principale della sidebar */
-        [data-testid="stSidebar"] {{
-            background-color: {color_main};
-        }}
-
-        /* 2. Forza il colore bianco per i testi generici, titoli e liste */
-        [data-testid="stSidebar"] h3,
-        [data-testid="stSidebar"] p,
-        [data-testid="stSidebar"] label,
-        [data-testid="stSidebar"] li,
-        [data-testid="stSidebar"] span {{
-            color: white !important;
-        }}
-
-        /* 3. FIX TASTI DOWNLOAD (User Guide e BibTeX) */
-        /* Seleziona i bottoni della sidebar che NON sono dentro l'uploader */
-        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button) {{
-            background-color: white !important;
-            border: 1px solid white !important;
-        }}
-        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button) p, 
-        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button) span {{
-            color: {color_main} !important;
-        }}
-        
-        /* Effetto Hover sui bottoni di download */
-        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button):hover {{
-            background-color: transparent !important;
-        }}
-        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button):hover p,
-        [data-testid="stSidebar"] button:not([data-testid="stFileUploaderDropzone"] button):hover span {{
-            color: white !important;
-        }}
-
-        /* 4. FIX FILE UPLOADER (Area di trascinamento e il suo bottone interno) */
-        /* Sfondo del rettangolo dell'uploader (grigio chiarissimo/bianco di default) */
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {{
-            background-color: #f8f9fa !important;
-        }}
-        /* Testi e scritte dentro l'uploader */
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] small,
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] div,
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] p,
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] span {{
-            color: {color_main} !important;
-        }}
-        /* Il bottone specifico di "Browse files" dentro l'uploader */
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] button {{
-            background-color: #ededed !important;
-            border: 1px solid #cccccc !important;
-        }}
-        /* Icona della freccia dell'upload */
-        [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] svg {{
-            fill: {color_main} !important;
-        }}
-
-        /* 5. Linee di divisione */
-        [data-testid="stSidebar"] hr {{
-            border-color: {color_rule} !important;
-        }}
-        /* Personalizzazione del banner informativo */
-        .info-banner {{
-            background-color: white !important;       /* Colore dello sfondo del banner */
-            color: {color_main_lt} !important;          /* Colore del testo dentro il banner */
-            padding: 12px !important;
-            border-radius: 6px !important;
-            margin-bottom: 15px !important;
-        }}
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
+# ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### 📂 Data")
     uploaded = st.file_uploader("Upload CSV or TXT", type=["csv","txt"],
@@ -615,8 +746,7 @@ if uploaded is not None:
                 mc1,mc2,mc3 = st.columns(3)
                 for col,val,lbl in zip([mc1,mc2,mc3],[n_al,n_am,n_al+n_am],
                                         ["At-least (R≥)","At-most (R≤)","Total"]):
-                    col.markdown(f'<div class="metric-card" style = "background-color: {color_main}; color: white; padding: 15px; border-radius: 8px;">'
-                                 f'<div class="value">{val}</div>'
+                    col.markdown(f'<div class="metric-card"><div class="value">{val}</div>'
                                  f'<div class="label">{lbl}</div></div>', unsafe_allow_html=True)
                 st.markdown("")
                 if n_al > 0:
