@@ -382,7 +382,7 @@ def rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
         buf.write('#mode,score\n')
     else:
         buf.write('#mode,class\n')
-    buf.write('type,class,' + ','.join(crit_names) + '\n')
+    buf.write('type,assignment,' + ','.join(crit_names) + '\n')
     def write_rules(rules, rtype):
         if rules is None or len(rules) == 0: return
         for rule in rules:
@@ -552,7 +552,7 @@ if uploaded is None:
             st.markdown("""
 **Example**
 ```
-Name,g1,g2,g3,class
+Name,g1,g2,g3,assignment
 A1,4,3,2,1
 A2,5,4,3,2
 A3,7,6,5,
@@ -566,13 +566,44 @@ A3, A4 are non-reference.
             'g3':[2,3,5,1,4,6,3,2],
             'class':[1,2,3,1,'','',2,'']
         })
-        st.download_button("⬇ Download sample", sample.to_csv(index=False),
-                           file_name="drsa_sample.csv", mime="text/csv", key="dl_sample")
+        import io
+        _buf = io.BytesIO()
+        sample_xlsx = sample.copy()
+        sample_xlsx.to_excel(_buf, index=False)
+        sc_a, sc_b = st.columns(2)
+        with sc_a:
+            st.download_button("⬇ Download sample CSV", sample.to_csv(index=False),
+                               file_name="drsa_sample.csv",
+                               mime="text/csv",
+                               key="dl_sample",
+                               use_container_width=True)
+        with sc_b:
+            st.download_button("⬇ Download sample EXCEL", _buf.getvalue(),
+                               file_name="drsa_sample.xlsx",
+                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                               key="dl_sample_xlsx",
+                               use_container_width=True)
     with tab2: st.info("Upload a file in the sidebar to get started.")
     with tab3: st.info("Upload a file in the sidebar to get started.")
     with tab4: st.info("Upload a file in the sidebar to get started.")
 
 if uploaded is not None:
+    # Reset session_state if file changes
+    if st.session_state.get('_last_uploaded') != uploaded.name:
+        keys_to_reset = [
+            'al_rules', 'am_rules', 'al_texts', 'am_texts',
+            'al_supp', 'am_supp', 'al_units', 'am_units',
+            'al_rules_max', 'am_rules_max', 'al_texts_max', 'am_texts_max',
+            'al_units_max', 'am_units_max', 'al_units_min', 'am_units_min',
+            'al_match2', 'am_match2', 'matrix_s_minus', 'matrix_s_plus',
+            'classification_final', 'pipeline_result', 'mode',
+            'new_s_minus', 'new_s_plus', 'new_names', 'new_matrix',
+            'new_al_rules', 'new_am_rules', 'new_al_texts', 'new_am_texts',
+            'new_res', 'new_changed', 'score_map', 'score_map_inv',
+        ]
+        for k in keys_to_reset:
+            st.session_state.pop(k, None)
+        st.session_state['_last_uploaded'] = uploaded.name
     # ── Load data ──────────────────────────────────────────────────────────────────
     try:
         if uploaded.name.endswith(".xlsx"):
@@ -651,11 +682,11 @@ if uploaded is not None:
         st.markdown("#### ⚙️ Settings")
         sc1, sc2, sc3 = st.columns(3)
         with sc1:
-            min_conf = st.slider("Min confidence (c)", 0.0, 1.0, 1.0, 0.05)
+            min_conf = st.slider("Confidence level", 0.0, 1.0, 1.0, 0.05)
         with sc2:
             pass  # missing value detection is automatic
         with sc3:
-            random_seed = st.number_input("Random seed", value=1, min_value=0, step=1)
+            random_seed = st.number_input("Random seed (for full pipeline)", value=1, min_value=0, step=1)
 
         st.session_state.update({
             'inc': inc, 'dec': dec,
@@ -1096,7 +1127,7 @@ if uploaded is not None:
 
                 if st.button("▶ Assign new units", type="primary", use_container_width=True):
                     prog2 = st.progress(0); stat2 = st.empty()
-                    stat2.info("⏳ Running MILP (6), (7), (8)…"); prog2.progress(20)
+                    stat2.info("⏳ Running…"); prog2.progress(20)
 
                     new_res = classify_new_units(
                         new_matrix,
@@ -1242,7 +1273,7 @@ if uploaded is not None:
                 n_new_ok  = sum(1 for k in range(len(new_names))
                                if int(s_minus_f[k]) <= int(s_plus_f[k]))
                 ca, cb, cc = st.columns(3)
-                ca.metric("Changed in A", n_changed)
+                ca.metric("Changed previous units", n_changed)
                 cb.metric("New units assigned", n_new_ok)
                 cc.metric("New contradictions", len(new_names) - n_new_ok)
 
@@ -1395,10 +1426,11 @@ with tab5:
         with c1t5:
             st.markdown("""
 **Workflow**
-1. Load a rules CSV file
-2. Load an units file (optional)
+1. Load a rules stored file (CSV)
+2. (optional) Load units file
 3. Visualize rules with matching units
-4. Inspect assignment
+4. (optional) Load new units file
+5. Assign new units
 """)
         with c2t5:
             st.markdown("""
@@ -1414,7 +1446,7 @@ with tab5:
 ```
 #directions,increasing,increasing,decreasing
 #mode,class
-type,class,g1,g2,g3
+type,assignment,g1,g2,g3
 at-least,2,4.5,,
 at-most,1,,,2.5
 ```
@@ -1428,7 +1460,7 @@ x2,2.0,4.5,1.5
         sample_rules_class = (
             "#directions,increasing,increasing,decreasing\n"
             "#mode,class\n"
-            "type,class,g1,g2,g3\n"
+            "type,assignment,g1,g2,g3\n"
             "at-least,2,4.5,,\n"
             "at-least,3,,5.0,\n"
             "at-most,1,,,2.5\n"
@@ -1437,7 +1469,7 @@ x2,2.0,4.5,1.5
         sample_rules_score = (
             "#directions,increasing,increasing,decreasing\n"
             "#mode,score\n"
-            "type,class,g1,g2,g3\n"
+            "type,assignment,g1,g2,g3\n"
             "at-least,16.67,4.5,,\n"
             "at-least,41.67,,5.0,\n"
             "at-most,0,,,2.5\n"
@@ -1450,7 +1482,10 @@ x2,2.0,4.5,1.5
             "x3,6.0,6.0,5.5\n"
             "x4,3.5,2.0,3.0\n"
         )
-        sc1, sc2, sc3 = st.columns(3)
+        import io
+        _buf_alts = io.BytesIO()
+        pd.read_csv(io.StringIO(sample_alts)).to_excel(_buf_alts, index=False)
+        sc1, sc2, sc3, sc4 = st.columns(4)
         with sc1:
             st.download_button("⬇ Sample rules (Class)", sample_rules_class,
                                file_name="sample_rules_class.csv", mime="text/csv",
@@ -1460,10 +1495,15 @@ x2,2.0,4.5,1.5
                                file_name="sample_rules_score.csv", mime="text/csv",
                                key="dl_sample_rules_score", use_container_width=True)
         with sc3:
-            st.download_button("⬇ Sample units", sample_alts,
+            st.download_button("⬇ Sample units (CSV)", sample_alts,
                                file_name="sample_units.csv", mime="text/csv",
                                key="dl_sample_alts", use_container_width=True)
-
+        with sc4:
+            st.download_button("⬇ Sample units (EXCEL)", _buf_alts.getvalue(),
+                               file_name="sample_units.xlsx",
+                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                               key="dl_sample_alts_xlsx",
+                               use_container_width=True)
 
     if rules_file is not None:
         try:
@@ -1499,7 +1539,7 @@ x2,2.0,4.5,1.5
         # Build score map from class column values if mode=score (after parsing)
         import io
         df_rules_raw = pd.read_csv(io.StringIO("\n".join(data_lines)), sep=sep_r_act)
-        crit_names5 = [c for c in df_rules_raw.columns if c not in ['type','class']]
+        crit_names5 = [c for c in df_rules_raw.columns if c not in ['type','assignment']]
         # Build score_map from unique class values if mode=score
         if file_mode == 'score':
             raw_vals = sorted(set(float(v) for v in df_rules_raw['class'].dropna()))
@@ -1520,7 +1560,7 @@ x2,2.0,4.5,1.5
 
         for _, row in df_rules_raw.iterrows():
             rtype = str(row.get('type','')).strip()
-            rclass_raw = float(row.get('class', 0))
+            rclass_raw = float(row.get('assignment', 0))
             # Convert score back to class index if needed
             if file_score_map_inv and rclass_raw in file_score_map_inv:
                 rclass = int(file_score_map_inv[rclass_raw])
@@ -1836,7 +1876,7 @@ x2,2.0,4.5,1.5
                                    if "Contr" not in r["Assignment"])
                     n_co5n  = len(new_names5) - n_ok5n
                     ca5, cb5, cc5 = st.columns(3)
-                    ca5.metric("Changed in A", n_ch5)
+                    ca5.metric("Changed previous units", n_ch5)
                     cb5.metric("New units assigned", n_ok5n)
                     cc5.metric("New contradictions", n_co5n)
                     ch_names5 = [r["Unit"] for r in rows_new5 if r["Changed"]=="⚠️ Yes"]
