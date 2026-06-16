@@ -486,7 +486,7 @@ User-friendly GUI to build your customized composite indicator based on Decision
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### 📂 Data")
-    uploaded = st.file_uploader("Upload CSV or TXT", type=["csv","txt"],
+    uploaded = st.file_uploader("Upload units", type=["xlsx","csv","txt"],
         help="Last column = class label. Optional first column = unit names. NaN = non-reference unit.")
     sep = st.selectbox("Separator", [",",";","\\t"," "], index=0)
     sep_actual = "\t" if sep=="\\t" else sep
@@ -541,7 +541,7 @@ if uploaded is None:
         with c1:
             st.markdown("""
 **File format**
-- CSV or TXT
+- EXCEL, CSV or TXT
 - Optional first column: unit names
 - Criteria columns (numeric)
 - Last column: class label
@@ -566,7 +566,7 @@ A3, A4 are non-reference.
             'g3':[2,3,5,1,4,6,3,2],
             'class':[1,2,3,1,'','',2,'']
         })
-        st.download_button("⬇ Download sample CSV", sample.to_csv(index=False),
+        st.download_button("⬇ Download sample", sample.to_csv(index=False),
                            file_name="drsa_sample.csv", mime="text/csv", key="dl_sample")
     with tab2: st.info("Upload a file in the sidebar to get started.")
     with tab3: st.info("Upload a file in the sidebar to get started.")
@@ -575,7 +575,10 @@ A3, A4 are non-reference.
 if uploaded is not None:
     # ── Load data ──────────────────────────────────────────────────────────────────
     try:
-        df_raw = pd.read_csv(uploaded, sep=sep_actual, engine="python")
+        if uploaded.name.endswith(".xlsx"):
+            df_raw = pd.read_excel(uploaded)
+        else:
+            df_raw = pd.read_csv(uploaded, sep=sep_actual, engine="python")
     except Exception as e:
         st.error(f"Could not read file: {e}"); st.stop()
 
@@ -763,7 +766,7 @@ if uploaded is not None:
                                              al_rules=al_r if n_al>0 else None,
                                              am_rules=am_r if n_am>0 else None,
                                        score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Download rules CSV", csv_rules,
+                    st.download_button("⬇ Download rules", csv_rules,
                                        file_name="drsa_rules.csv", mime="text/csv",
                                        key="dl_rules_ind", use_container_width=True)
 
@@ -889,14 +892,14 @@ if uploaded is not None:
                     csv_min = rules_to_csv(al_texts_min, am_texts_min, crit_names, inc, dec,
                                            al_rules=al_final, am_rules=am_final,
                                        score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Minimal rules CSV", csv_min,
+                    st.download_button("⬇ Minimal rules", csv_min,
                                        file_name="drsa_rules_minimal.csv", mime="text/csv",
                                        key="dl_min_run", use_container_width=True)
                 with c2:
                     csv_max = rules_to_csv(al_texts_max, am_texts_max, crit_names, inc, dec,
                                            al_rules=al_r2, am_rules=am_r2,
                                        score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Maximal rules CSV", csv_max,
+                    st.download_button("⬇ Maximal rules", csv_max,
                                        file_name="drsa_rules_maximal.csv", mime="text/csv",
                                        key="dl_max_run", use_container_width=True)
 
@@ -955,14 +958,14 @@ if uploaded is not None:
                         csv_min_p = rules_to_csv(al_texts, am_texts, _crit, _inc, _dec,
                                                  al_rules=al_final, am_rules=am_final,
                                        score_map=st.session_state.get('score_map'))
-                        st.download_button("⬇ Minimal rules CSV", csv_min_p,
+                        st.download_button("⬇ Minimal rules", csv_min_p,
                                            file_name="drsa_rules_minimal.csv", mime="text/csv",
                                            key="dl_min_prev", use_container_width=True)
                     with c2:
                         csv_max_p = rules_to_csv(al_texts_max, am_texts_max, _crit, _inc, _dec,
                                                  al_rules=al_r2, am_rules=am_r2,
                                        score_map=st.session_state.get('score_map'))
-                        st.download_button("⬇ Maximal rules CSV", csv_max_p,
+                        st.download_button("⬇ Maximal rules", csv_max_p,
                                            file_name="drsa_rules_maximal.csv", mime="text/csv",
                                            key="dl_max_prev", use_container_width=True)
                 else:
@@ -985,7 +988,7 @@ if uploaded is not None:
                         csv_ind = rules_to_csv(al_texts, am_texts, _crit2, _inc2, _dec2,
                                                al_rules=al_r, am_rules=am_r,
                                        score_map=st.session_state.get('score_map'))
-                        st.download_button("⬇ Download rules CSV", csv_ind,
+                        st.download_button("⬇ Download rules", csv_ind,
                                            file_name="drsa_rules.csv", mime="text/csv",
                                            key="dl_ind_prev", use_container_width=True)
 
@@ -1051,7 +1054,7 @@ if uploaded is not None:
             show_explanation(sel, s_minus, s_plus, al_m, am_m,
                              al_texts, am_texts, unit_names.index(sel))
 
-            st.download_button("⬇ Download assignment CSV", df_class_csv.to_csv(index=False),
+            st.download_button("⬇ Download assignment", df_class_csv.to_csv(index=False),
                                file_name="drsa_assignment.csv", mime="text/csv",
                                key="dl_classif", use_container_width=True)
 
@@ -1065,13 +1068,16 @@ if uploaded is not None:
             st.markdown("#### 🆕 Assign new units")
             st.markdown("Upload new units **without** the class column. The tool tries to handle contradictions.")
 
-            new_file = st.file_uploader("Upload new units", type=["csv","txt"], key="new_file")
+            new_file = st.file_uploader("Upload new units", type=["xlsx","csv","txt"], key="new_file")
             sep2 = st.selectbox("Separator", [",",";","\\t"," "], key="sep2")
             sep2_act = "\t" if sep2=="\\t" else sep2
 
             if new_file is not None:
                 try:
-                    df_new_raw = pd.read_csv(new_file, sep=sep2_act, engine="python")
+                    if new_file.name.endswith(".xlsx"):
+                        df_new_raw = pd.read_excel(new_file)
+                    else:
+                        df_new_raw = pd.read_csv(new_file, sep=sep_actual, engine="python")
                 except Exception as e:
                     st.error(f"Could not read file: {e}"); st.stop()
 
@@ -1378,7 +1384,7 @@ with tab5:
     # ── File uploader (always visible) ─────────────────────────────────────────
     col_r, col_s = st.columns([3, 1])
     with col_r:
-        rules_file = st.file_uploader("Upload rules CSV", type=["csv","txt"], key="rules_file")
+        rules_file = st.file_uploader("Upload rules", type=["xlsx","csv","txt"], key="rules_file")
     with col_s:
         sep_r = st.selectbox("Separator", [",",";","\\t"," "], key="sep_rules")
         sep_r_act = "\t" if sep_r=="\\t" else sep_r
@@ -1562,7 +1568,7 @@ x2,2.0,4.5,1.5
         col_a, col_sa = st.columns([3, 1])
         with col_a:
             alt_file5 = st.file_uploader("Upload units (optional, without class column). Note: column names must correspond to criteria names of rules",
-                                          type=["csv","txt"], key="alt_file5")
+                                          type=["xlsx","csv","txt"], key="alt_file5")
         with col_sa:
             sep_a5 = st.selectbox("Separator", [",",";","\t"," "], key="sep_alt5")
             sep_a5_act = "\t" if sep_a5=="\t" else sep_a5
@@ -1570,7 +1576,10 @@ x2,2.0,4.5,1.5
         alt_names5 = None; alt_matrix5 = None
         if alt_file5 is not None:
             try:
-                df_alt5_raw = pd.read_csv(alt_file5, sep=sep_a5_act, engine="python")
+                if alt_file5.name.endswith(".xlsx"):
+                    df_alt5_raw = pd.read_excel(alt_file5)
+                else:
+                    df_alt5_raw = pd.read_csv(alt_file5, sep=sep_actual, engine="python")
             except Exception as e:
                 st.error(f"Could not read units file: {e}"); st.stop()
 
@@ -1675,14 +1684,17 @@ x2,2.0,4.5,1.5
             col_nu, col_sep_nu = st.columns([3,1])
             with col_nu:
                 new_file5 = st.file_uploader("Upload new units (without class column)",
-                                              type=["csv","txt"], key="new_file5")
+                                              type=["xlsx","csv","txt"], key="new_file5")
             with col_sep_nu:
                 sep_nu5 = st.selectbox("Separator", [",",";","\t"," "], key="sep_nu5")
                 sep_nu5_act = "\t" if sep_nu5=="\t" else sep_nu5
 
             if new_file5 is not None:
                 try:
-                    df_new5_raw = pd.read_csv(new_file5, sep=sep_nu5_act, engine="python")
+                    if new_file5.name.endswith(".xlsx"):
+                        df_new5_raw = pd.read_excel(new_file5)
+                    else:
+                        df_new5_raw = pd.read_csv(new_file5, sep=sep_actual, engine="python")
                 except Exception as e:
                     st.error(f"Could not read file: {e}"); st.stop()
 
