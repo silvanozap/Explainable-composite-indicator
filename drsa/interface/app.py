@@ -21,11 +21,9 @@ from drsa import (
 )
 
 # ── Page config ────────────────────────────────────────────────────────────────
-#st.set_page_config(page_title="EI-SCORE", page_icon="📊", layout="wide")
 st.set_page_config(
     page_title="EI-SCORE", page_icon="assets/ei-score.svg", layout="wide"
-)
-## nuove righe modificate
+)## nuove righe modificate
 #hide_streamlit_style = """
 #            <style>
 #            /* Nasconde solo i bottoni a destra nell'header, non tutto l'header */
@@ -251,6 +249,10 @@ button[aria-label="Download as CSV"] {
     font-family: 'Libre Franklin', sans-serif !important;
     font-size: 0.9rem !important;
     color: #1e1e1e !important;
+}
+
+/* ── Tab active underline — remove Streamlit default red ──── */
+button[role="tab"][aria-selected="true"] {
     border-bottom: 3px solid #8b6914 !important;
     box-shadow: none !important;
 }
@@ -469,7 +471,7 @@ def get_matching_units(rules, match_matrix, all_names, rule_type, inc, dec, crit
 # ── Header ─────────────────────────────────────────────────────────────────────
 # ── Logo + Title ──────────────────────────────────────────────────────────────
 import os as _os
-_logo_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), 'assets', 'logo.png')
+_logo_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), 'assets', 'ei-score.svg')
 _col_logo, _col_title = st.columns([1, 5])
 with _col_logo:
     if _os.path.exists(_logo_path):
@@ -671,7 +673,7 @@ if uploaded is not None:
 
         # ── Problem type ───────────────────────────────────────────────────────
         col_mode_val = st.radio(
-            "**Problem type:**",
+            "**Problem type**",
             ["Classification", "Scoring"], horizontal=True, key="col_mode_radio"
         )
         # Build score mapping
@@ -704,7 +706,7 @@ if uploaded is not None:
         n_units    = st.session_state['n_units']
         score_map  = st.session_state.get('score_map')
 
-        mode = st.radio("Mode",
+        mode = st.radio("**Mode**",
             ["🔬 Rule induction only", "🚀 Full pipeline"],
             horizontal=True)
 
