@@ -23,18 +23,18 @@ from drsa import (
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(page_title="EI-SCORE", page_icon="📊", layout="wide")
 ## nuove righe modificate
-hide_streamlit_style = """
-            <style>
-            /* Nasconde solo i bottoni a destra nell'header, non tutto l'header */
-            [data-testid="stAppDeployButton"], 
-            [data-testid="stActionButtonIcon"], 
-            #MainMenu {visibility: hidden;}
+#hide_streamlit_style = """
+#            <style>
+#            /* Nasconde solo i bottoni a destra nell'header, non tutto l'header */
+#            [data-testid="stAppDeployButton"], 
+#            [data-testid="stActionButtonIcon"], 
+#            #MainMenu {visibility: hidden;}
             
-            /* Nasconde il footer */
-            footer {visibility: hidden;}
-            </style>
-            """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+#            /* Nasconde il footer */
+#            footer {visibility: hidden;}
+#            </style>
+#            """
+#st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 ##### nuove righe end
 # ── MathJax ───────────────────────────────────────────────────────────────────
 import streamlit.components.v1 as _components
