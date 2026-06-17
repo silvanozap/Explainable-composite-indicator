@@ -667,7 +667,20 @@ if uploaded is not None:
         if len(selected_ref) == 0:
             st.error("Please select at least one reference unit."); st.stop()
 
+
+
         ref_indices_sel = [unit_names.index(n) for n in selected_ref]
+
+        # Check at least 2 distinct classes among reference units
+        _ref_classes = set()
+        for _ri in ref_indices_sel:
+            _v = matrix_raw[_ri, -1]
+            if not np.isnan(_v):
+                _ref_classes.add(_v)
+        if len(_ref_classes) < 2:
+            st.error("⚠️ Reference units must cover at least 2 distinct classes to induce rules. "
+                     "Please select reference units from at least 2 different classes.")
+            st.stop()
         c1,c2,c3 = st.columns(3)
         c1.metric("Total units", n_units)
         c2.metric("Reference units", len(ref_indices_sel))
@@ -758,6 +771,10 @@ if uploaded is not None:
                     al_r, al_m, al_d, _ = induce_atleast_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                     am_r, am_m, am_d, _ = induce_atmost_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                 n_al = _nlen(al_r); n_am = _nlen(am_r)
+                if n_al + n_am == 0:
+                    st.warning("⚠️ No rules could be induced. Check that reference units cover "
+                               "at least 2 classes and the confidence level is not too high.")
+                    st.stop()
                 al_texts = format_atleast_rules(al_r, inc, dec, crit_names, score_map=score_map) if n_al>0 else []
                 am_texts = format_atmost_rules(am_r, inc, dec, crit_names, score_map=score_map) if n_am>0 else []
                 al_supp  = compute_relative_support(al_r, al_m, al_d) if n_al>0 else []
@@ -819,7 +836,8 @@ if uploaded is not None:
                 if milp_ok:
                     status.success(f"✅ Step 5/5: {_nlen(al_final)} at-least, {_nlen(am_final)} minimal rules")
                 else:
-                    status.error(f"⚠️ Step 5/5: {milp_msg}")
+                    status.warning(f"⚠️ MILP minimisation failed ({milp_msg}). "
+                                   f"Using maximal rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most) instead.")
                 prog.progress(88)
                 status.info("⏳ Final assignment…")
                 sm7, sp7, _, _ = _cu(mat_nc, al_final, am_final, inc, dec)
@@ -1109,25 +1127,56 @@ if uploaded is not None:
                 df_new = df_new.apply(pd.to_numeric, errors='coerce')
                 if new_names is None:
                     new_names = [f'x{i+1}' for i in range(len(df_new))]
-                new_matrix = df_new.values.astype(float)
 
+                # Check criteria columns match
+                _orig_crit = st.session_state.get('crit_names', [])
+                _common = [c for c in _orig_crit if c in df_new.columns]
+                _missing = [c for c in _orig_crit if c not in df_new.columns]
+                if len(_common) == 0:
+                    st.error("⚠️ The uploaded file has no criteria columns matching the original dataset. "
+                             f"Expected: {', '.join(_orig_crit)}. Please upload a file with the same criteria names.")
+                    st.stop()
+                if _missing:
+                    st.warning(f"⚠️ Missing criteria columns: {', '.join(_missing)}. "
+                               "These will be treated as NaN.")
+                # Keep only relevant criteria in correct order
+                df_new = df_new.reindex(columns=_orig_crit)
+
+                # Check all NaN
+                if df_new.isna().all().all():
+                    st.error("⚠️ The uploaded file contains no valid numeric values.")
+                    st.stop()
+
+                # Check 0 rows
+                if len(df_new) == 0:
+                    st.error("⚠️ The uploaded file is empty.")
+                    st.stop()
+
+                new_matrix = df_new.values.astype(float)
                 st.dataframe(df_new_raw, use_container_width=True, height=180)
 
                 if st.button("▶ Assign new units", type="primary", use_container_width=True):
                     prog2 = st.progress(0); stat2 = st.empty()
                     stat2.info("⏳ Running…"); prog2.progress(20)
-
-                    new_res = classify_new_units(
-                        new_matrix,
-                        st.session_state['matrix_s_minus'],
-                        st.session_state['matrix_s_plus'],
-                        st.session_state['al_rules_max'],
-                        st.session_state['al_match2'],
-                        st.session_state['am_rules_max'],
-                        st.session_state['am_match2'],
-                        st.session_state['inc'],
-                        st.session_state['dec'],
-                    )
+                    try:
+                        new_res = classify_new_units(
+                            new_matrix,
+                            st.session_state['matrix_s_minus'],
+                            st.session_state['matrix_s_plus'],
+                            st.session_state['al_rules_max'],
+                            st.session_state['al_match2'],
+                            st.session_state['am_rules_max'],
+                            st.session_state['am_match2'],
+                            st.session_state['inc'],
+                            st.session_state['dec'],
+                        )
+                    except ValueError as e:
+                        st.error(f"⚠️ Could not assign new units: {e}. "
+                                 "Make sure the new units file has the same criteria as the original dataset.")
+                        st.stop()
+                    except Exception as e:
+                        st.error(f"⚠️ Unexpected error: {e}")
+                        st.stop()
                     prog2.progress(90)
 
                     if 'error' in new_res:
@@ -1510,7 +1559,14 @@ x2,2.0,4.5,1.5
                 data_lines.append(line)
 
         if directions_line is None:
-            st.error("Missing #directions line in rules file."); st.stop()
+            st.error("⚠️ Missing #directions line in rules file. "
+                     "The rules file must start with a line like: #directions,increasing,decreasing,...")
+            st.stop()
+
+        if mode_line is None:
+            st.error("⚠️ Missing #mode line in rules file. "
+                     "The rules file must contain a line like: #mode,class or #mode,score")
+            st.stop()
 
         dir_parts = directions_line.split(sep_r_act)[1:]
 
@@ -1520,7 +1576,11 @@ x2,2.0,4.5,1.5
         file_score_map = None
         file_score_map_inv = None
         if mode_line:
-            file_mode = mode_line.split(sep_r_act)[1].strip()
+            try:
+                file_mode = mode_line.split(sep_r_act)[1].strip()
+            except IndexError:
+                st.error("⚠️ Could not parse #mode line. Expected format: #mode,class or #mode,score")
+                st.stop()
 
         # Filter out metadata lines for parsing
         data_lines = [l for l in raw_lines if not l.startswith('#')]
@@ -1578,6 +1638,10 @@ x2,2.0,4.5,1.5
         al_rules5 = np.array(al_rules5) if al_rules5 else np.empty((0, rule_width+1))
         am_rules5 = np.array(am_rules5) if am_rules5 else np.empty((0, rule_width+1))
 
+        if len(df_rules_raw) == 0:
+            st.error("⚠️ The rules file contains no rules.")
+            st.stop()
+
         n_al5 = len(al_rules5); n_am5 = len(am_rules5)
         al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map) if n_al5>0 else []
         am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map) if n_am5>0 else []
@@ -1617,12 +1681,29 @@ x2,2.0,4.5,1.5
                 alt_names5 = df_alt5[fc5].astype(str).tolist()
                 df_alt5 = df_alt5.drop(columns=[fc5])
             df_alt5 = df_alt5.apply(pd.to_numeric, errors='coerce')
-            # Drop last column if it looks like a class column (all integers 1..p)
-            # Keep only criteria columns that match the rules (by name)
-            common_cols = [c for c in crit_names5 if c in df_alt5.columns]
-            if len(common_cols) < n_crit5:
-                st.warning(f"Units file has {len(common_cols)}/{n_crit5} matching criteria columns.")
-            df_alt5 = df_alt5[[c for c in crit_names5 if c in df_alt5.columns]]
+
+            # Check criteria columns match
+            _common5 = [c for c in crit_names5 if c in df_alt5.columns]
+            _missing5 = [c for c in crit_names5 if c not in df_alt5.columns]
+            if len(_common5) == 0:
+                st.error("⚠️ The uploaded units file has no criteria columns matching the rules. "
+                         f"Expected: {', '.join(crit_names5)}. Please upload a file with the same criteria names.")
+                st.stop()
+            if _missing5:
+                st.warning(f"⚠️ Missing criteria: {', '.join(_missing5)}. These will be treated as NaN.")
+
+            # Check 0 rows
+            if len(df_alt5) == 0:
+                st.error("⚠️ The uploaded units file is empty.")
+                st.stop()
+
+            # Check all NaN
+            df_alt5_check = df_alt5[_common5]
+            if df_alt5_check.isna().all().all():
+                st.error("⚠️ The uploaded units file contains no valid numeric values.")
+                st.stop()
+
+            df_alt5 = df_alt5.reindex(columns=crit_names5)
             if alt_names5 is None:
                 alt_names5 = [f'a{i+1}' for i in range(len(df_alt5))]
             alt_matrix5 = df_alt5.values.astype(float)
@@ -1735,9 +1816,25 @@ x2,2.0,4.5,1.5
                 else:
                     new_names5 = [f'x{i+1}' for i in range(len(df_new5))]
                 df_new5 = df_new5.apply(pd.to_numeric, errors='coerce')
-                df_new5 = df_new5[[c for c in crit_names5 if c in df_new5.columns]]
-                new_matrix5 = df_new5.values.astype(float)
 
+                # Check criteria columns match
+                _common_n5 = [c for c in crit_names5 if c in df_new5.columns]
+                _missing_n5 = [c for c in crit_names5 if c not in df_new5.columns]
+                if len(_common_n5) == 0:
+                    st.error("⚠️ The uploaded new units file has no criteria columns matching the rules. "
+                             f"Expected: {', '.join(crit_names5)}. Please upload a file with the same criteria names.")
+                    st.stop()
+                if _missing_n5:
+                    st.warning(f"⚠️ Missing criteria: {', '.join(_missing_n5)}. These will be treated as NaN.")
+                if len(df_new5) == 0:
+                    st.error("⚠️ The uploaded new units file is empty.")
+                    st.stop()
+                if df_new5[_common_n5].isna().all().all():
+                    st.error("⚠️ The uploaded new units file contains no valid numeric values.")
+                    st.stop()
+
+                df_new5 = df_new5.reindex(columns=crit_names5)
+                new_matrix5 = df_new5.values.astype(float)
                 st.dataframe(df_new5_raw, use_container_width=True, height=150)
 
                 if st.button("▶ Assign new units", type="primary",
