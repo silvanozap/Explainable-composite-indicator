@@ -1095,8 +1095,8 @@ if uploaded is not None:
             show_explanation(sel, s_minus, s_plus, al_m, am_m,
                              al_texts, am_texts, unit_names.index(sel))
 
-            st.download_button("⬇ Download assignment", df_class_csv.to_csv(index=False),
-                               file_name="drsa_assignment.csv", mime="text/csv",
+            st.download_button("⬇ Assignment", df_class_csv.to_csv(index=False),
+                               file_name="units_assignment.csv", mime="text/csv",
                                key="dl_classif", use_container_width=True)
 
     # ══════════════════════════════════════════════════════════════════════════════
