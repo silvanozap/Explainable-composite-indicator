@@ -803,7 +803,51 @@ if uploaded is not None:
                     st.download_button("⬇ Download rules", csv_rules,
                                        file_name="drsa_rules.csv", mime="text/csv",
                                        key="dl_rules_ind", use_container_width=True)
+                if len(ref_idx) == n_units and n_al + n_am > 0:
+                    st.markdown("---")
+                    if st.button("🔍 Find minimal set", use_container_width=True, key="btn_minimal_ind"):
+                        # ... calcoli ...
+                        st.session_state.update({
+                            'al_rules': al_final,
+                            'am_rules': am_final,
+                            'al_texts': al_texts_min,
+                            'am_texts': am_texts_min,
+                            'al_units_min': al_units_min,
+                            'am_units_min': am_units_min,
+                            'classification_final': np.column_stack([sm_min, sp_min]),
+                            'al_rules_max': al_r,
+                            'am_rules_max': am_r,
+                            'al_match2': al_m,
+                            'am_match2': am_m,
+                            'matrix_s_minus': np.hstack([all_crit, sm_min.reshape(-1,1)]),
+                            'matrix_s_plus':  np.hstack([all_crit, sp_min.reshape(-1,1)]),
+                            'mode': 'induction',
+                            'minimal_done': True,
+                        })
 
+                    # Fuori dal bottone — mostra sempre se disponibile
+                    if st.session_state.get('minimal_done'):
+                        al_final = st.session_state['al_rules']
+                        am_final = st.session_state['am_rules']
+                        al_texts_min = st.session_state['al_texts']
+                        am_texts_min = st.session_state['am_texts']
+                        al_units_min = st.session_state.get('al_units_min', [])
+                        am_units_min = st.session_state.get('am_units_min', [])
+
+                        st.success(f"✅ Minimal set: {_nlen(al_final)} at-least, {_nlen(am_final)} at-most")
+                        if al_texts_min:
+                            with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · Minimal At-Least ({_nlen(al_final)})", expanded=False):
+                                show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
+                        if am_texts_min:
+                            with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · Minimal At-Most ({_nlen(am_final)})", expanded=False):
+                                show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
+
+                        csv_min_ind = rules_to_csv(al_texts_min, am_texts_min, crit_names, inc, dec,
+                                                al_rules=al_final, am_rules=am_final,
+                                                score_map=st.session_state.get('score_map'))
+                        st.download_button("⬇ Minimal rules", csv_min_ind,
+                                        file_name="drsa_rules_minimal.csv", mime="text/csv",
+                                        key="dl_min_ind", use_container_width=True)
             else:
                 # ── Full pipeline ──────────────────────────────────────────────
                 prog = st.progress(0); status = st.empty()
