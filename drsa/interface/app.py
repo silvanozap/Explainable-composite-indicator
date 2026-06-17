@@ -343,13 +343,13 @@ def show_explanation(name, s_minus, s_plus, al_m, am_m, al_texts, am_texts, idx)
         for r in exp['matched_atleast']:
             st.markdown(f'<div class="rule-box atleast">{r}</div>', unsafe_allow_html=True)
     else:
-        st.markdown("*No at-least rule satisfied → s⁻ = 1*")
+        st.markdown("*No at-least rule satisfied → Minimal assignment = 1*")
     if exp['matched_atmost']:
         st.markdown("**Satisfied at-most rules:**")
         for r in exp['matched_atmost']:
             st.markdown(f'<div class="rule-box atmost">{r}</div>', unsafe_allow_html=True)
     else:
-        st.markdown("*No at-most rule satisfied → s⁺ = p*")
+        st.markdown("*No at-most rule satisfied → Maximal assignment = p*")
 
 def rules_to_df(al_texts, am_texts, label_al="at-least", label_am="at-most",
                 al_supp=None, am_supp=None):
@@ -908,8 +908,8 @@ if uploaded is not None:
                 csv_rules = rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
                                          al_rules=al_r, am_rules=am_r,
                                          score_map=st.session_state.get('score_map'))
-                st.download_button("⬇ Download rules", csv_rules,
-                                   file_name="drsa_rules.csv", mime="text/csv",
+                st.download_button("⬇ Maximal rules", csv_rules,
+                                   file_name="drsa_rules_maximal.csv", mime="text/csv",
                                    key="dl_rules_ind", use_container_width=True)
 
                 # ── Find minimal set (solo se tutte reference) ─────────────────
@@ -1020,14 +1020,14 @@ if uploaded is not None:
                                          al_rules=al_final, am_rules=am_final,
                                          score_map=st.session_state.get('score_map'))
                 st.download_button("⬇ Minimal rules", csv_min_p,
-                                   file_name="drsa_rules_minimal.csv", mime="text/csv",
+                                   file_name="pipeline_rules_minimal.csv", mime="text/csv",
                                    key="dl_min_prev", use_container_width=True)
             with c2:
                 csv_max_p = rules_to_csv(al_texts_max, am_texts_max, _crit, _inc, _dec,
                                          al_rules=al_r2, am_rules=am_r2,
                                          score_map=st.session_state.get('score_map'))
                 st.download_button("⬇ Maximal rules", csv_max_p,
-                                   file_name="drsa_rules_maximal.csv", mime="text/csv",
+                                   file_name="pipeline_rules_maximal.csv", mime="text/csv",
                                    key="dl_max_prev", use_container_width=True)
 
         else:
@@ -1067,15 +1067,15 @@ if uploaded is not None:
                 sm_lbl3 = _fmt_class(sm, _smap3)
                 sp_lbl3 = _fmt_class(sp, _smap3)
                 assign  = _assign_str(sm, sp, _smap3)
-                rows.append({"Unit":name,"s⁻":sm_lbl3,"s⁺":sp_lbl3,"Assignment":assign,
+                rows.append({"Unit":name,"Minimal assignment":sm_lbl3,"Maximal assignment":sp_lbl3,"Assignment":assign,
                              "Status":"⚠️ Contradictory" if contra else "✅ OK"})
 
             df_class = pd.DataFrame(rows)
             df_class_csv = pd.DataFrame({
                 "Unit":          [r["Unit"] for r in rows],
-                "s-":            [r["s⁻"] for r in rows],
-                "s+":            [r["s⁺"] for r in rows],  # already score labels
-                "Assignment":    [f"{r['s⁻']}-{r['s⁺']}" if r['s⁻']!=r['s⁺'] else str(r['s⁻']) for r in rows],
+                "minimal_assignment": [r["Minimal assignment"] for r in rows],
+                "maximal_assignment": [r["Maximal assignment"] for r in rows],
+                "Assignment":    [f"{r['Minimal assignment']}-{r['Maximal assignment']}" if r['Minimal assignment']!=r['Maximal assignment'] else str(r['Minimal assignment']) for r in rows],
                 "Contradiction": ["Y" if r["Status"].startswith("⚠️") else "N" for r in rows],
             })
             st.dataframe(df_class, use_container_width=True, height=380)
@@ -1094,8 +1094,8 @@ if uploaded is not None:
             show_explanation(sel, s_minus, s_plus, al_m, am_m,
                              al_texts, am_texts, unit_names.index(sel))
 
-            st.download_button("⬇ Download assignment", df_class_csv.to_csv(index=False),
-                               file_name="drsa_assignment.csv", mime="text/csv",
+            st.download_button("⬇ Assignment", df_class_csv.to_csv(index=False),
+                               file_name="units_assignment.csv", mime="text/csv",
                                key="dl_classif", use_container_width=True)
 
     # ══════════════════════════════════════════════════════════════════════════════
@@ -1260,8 +1260,8 @@ if uploaded is not None:
                     assign_new = _assign_str(sm_new, sp_new, _smap4a)
                     rows_all.append({
                         "Unit": name,
-                        "s⁻ (prev)": sm_o, "s⁺ (prev)": sp_o,
-                        "s⁻ (new)": sm_n,  "s⁺ (new)": sp_n,
+                        "Minimal assignment (previous)": sm_o, "Maximal assignment (previous)": sp_o,
+                        "Minimal assignment (new)": sm_n,  "Maximal assignment (new)": sp_n,
                         "Assignment": assign_new,
                         "Changed": "⚠️ Yes" if changed_flag else "",
                         "_changed": changed_flag,
@@ -1284,8 +1284,8 @@ if uploaded is not None:
                     assign_new4 = _assign_str(sm, sp, smap4n)
                     rows_all.append({
                         "Unit": name,
-                        "s⁻ (prev)": smp_lbl4, "s⁺ (prev)": spp_lbl4,
-                        "s⁻ (new)": sm_lbl4,  "s⁺ (new)": sp_lbl4,
+                        "Minimal assignment (previous)": smp_lbl4, "Maximal assignment (previous)": spp_lbl4,
+                        "Minimal assignment (new)": sm_lbl4,  "Maximal assignment (new)": sp_lbl4,
                         "Assignment": assign_new4,
                         "Changed": "🆕 New" if not contra else "⚠️ Contradictory",
                         "_changed": True,
@@ -1425,25 +1425,25 @@ if uploaded is not None:
                 # Build clean CSV for download
                 df_new_csv = pd.DataFrame({
                     "Unit":          df_all["Unit"],
-                    "s- (prev)":     df_all["s⁻ (prev)"].apply(lambda x: "-" if x == "—" else x),
-                    "s+ (prev)":     df_all["s⁺ (prev)"].apply(lambda x: "-" if x == "—" else x),
-                    "s-":            df_all["s⁻ (new)"],
-                    "s+":            df_all["s⁺ (new)"],
+                    "minimal_assignment_previous": df_all["Minimal assignment (previous)"].apply(lambda x: "-" if x == "—" else x),
+                    "maximal_assignment_previous": df_all["Maximal assignment (previous)"].apply(lambda x: "-" if x == "—" else x),
+                    "minimal_assignment":          df_all["Minimal assignment (new)"],
+                    "maximal_assignment":          df_all["Maximal assignment (new)"],
                     "Assignment":    df_all.apply(lambda r:
-                                         f"{r['s⁻ (new)']}-{r['s⁺ (new)']}"
-                                         if r['s⁻ (new)'] != r['s⁺ (new)']
-                                         else str(r['s⁻ (new)']), axis=1),
+                                         f"{r['Minimal assignment (new)']}-{r['Maximal assignment (new)']}"
+                                         if r['Minimal assignment (new)'] != r['Maximal assignment (new)']
+                                         else str(r['Minimal assignment (new)']), axis=1),
                     "Contradiction": df_all.apply(lambda r:
-                                         "Y" if isinstance(r['s⁻ (new)'], (int,float))
-                                         and isinstance(r['s⁺ (new)'], (int,float))
-                                         and int(r['s⁻ (new)']) > int(r['s⁺ (new)'])
+                                         "Y" if isinstance(r['Minimal assignment (new)'], (int,float))
+                                         and isinstance(r['Maximal assignment (new)'], (int,float))
+                                         and int(r['Minimal assignment (new)']) > int(r['Maximal assignment (new)'])
                                          else "N", axis=1),
                     "Changed":       df_all["Changed"].apply(lambda x:
                                          "Y" if x in ["⚠️ Yes","🆕 New","⚠️ Contradictory"] else "N"),
                 })
-                st.download_button("⬇ Download assignment CSV",
+                st.download_button("⬇ Assignment",
                                    df_new_csv.to_csv(index=False),
-                                   file_name="drsa_new_units.csv",
+                                   file_name="new_units_assignment.csv",
                                    mime="text/csv", key="dl_new_cl", use_container_width=True)
 
     # ══════════════════════════════════════════════════════════════════════════════
@@ -1755,16 +1755,16 @@ x2,2.0,4.5,1.5
                 assign_disp5 = _assign_str(sm, sp, file_score_map)
                 assign_csv5  = f"{sm_lbl5}-{sp_lbl5}" if sm!=sp else str(sm_lbl5)
                 rows5.append({"Unit":name,
-                               "s⁻":sm_lbl5,"s⁺":sp_lbl5,
+                               "Minimal assignment":sm_lbl5,"Maximal assignment":sp_lbl5,
                                "Assignment":assign_disp5,
                                "Status":"⚠️ Contradictory" if contra else "✅ OK",
                                "_sm":sm_lbl5,"_sp":sp_lbl5,"_assign_csv":assign_csv5,"_contra":contra})
             df_class5 = pd.DataFrame(rows5)
-            df_class5_disp = df_class5[["Unit","s⁻","s⁺","Assignment","Status"]]
+            df_class5_disp = df_class5[["Unit","Minimal assignment","Maximal assignment","Assignment","Status"]]
             df_class5_csv  = pd.DataFrame({
                 "Unit":         df_class5["Unit"],
-                "s-":           df_class5["_sm"],
-                "s+":           df_class5["_sp"],
+                "minimal_assignment": df_class5["_sm"],
+                "maximal_assignment": df_class5["_sp"],
                 "Assignment":   df_class5["_assign_csv"],
                 "Contradiction":df_class5["_contra"].map({True:"Y", False:"N"}),
             })
@@ -1781,7 +1781,7 @@ x2,2.0,4.5,1.5
             show_explanation(sel5, s_minus5, s_plus5, al_m5, am_m5,
                              al_texts5, am_texts5, alt_names5.index(sel5))
 
-            st.download_button("⬇ Download assignment CSV",
+            st.download_button("⬇ Assignment",
                                df_class5_csv.to_csv(index=False),
                                file_name="drsa_applied_assignment.csv",
                                mime="text/csv", key="dl_apply_class",
@@ -1924,10 +1924,10 @@ x2,2.0,4.5,1.5
                          changed_flag = (sm_n != sm_o or sp_n != sp_o)
                          rows_new5.append({
                              "Unit": name,
-                             "s⁻ (prev)": _fmt_class(sm_o, file_score_map),
-                             "s⁺ (prev)": _fmt_class(sp_o, file_score_map),
-                             "s⁻ (new)":  _fmt_class(sm_n, file_score_map),
-                             "s⁺ (new)":  _fmt_class(sp_n, file_score_map),
+                             "Minimal (previous)": _fmt_class(sm_o, file_score_map),
+                             "Maximal (previous)": _fmt_class(sp_o, file_score_map),
+                             "Minimal (new)":  _fmt_class(sm_n, file_score_map),
+                             "Maximal (new)":  _fmt_class(sp_n, file_score_map),
                              "Assignment": _assign_str(sm_n, sp_n, file_score_map),
                              "Changed": "⚠️ Yes" if changed_flag else "",
                              "_changed": changed_flag,
@@ -1941,10 +1941,10 @@ x2,2.0,4.5,1.5
                          contra = sm > sp
                          rows_new5.append({
                              "Unit": name,
-                             "s⁻ (prev)": _fmt_class(sm1, file_score_map),
-                             "s⁺ (prev)": _fmt_class(sp1, file_score_map),
-                             "s⁻ (new)":  _fmt_class(sm,  file_score_map),
-                             "s⁺ (new)":  _fmt_class(sp,  file_score_map),
+                             "Minimal (previous)": _fmt_class(sm1, file_score_map),
+                             "Maximal (previous)": _fmt_class(sp1, file_score_map),
+                             "Minimal (new)":  _fmt_class(sm,  file_score_map),
+                             "Maximal (new)":  _fmt_class(sp,  file_score_map),
                              "Assignment": _assign_str(sm, sp, file_score_map),
                              "Changed": "🆕 New" if not contra else "⚠️ Contradictory",
                              "_changed": True,
@@ -2042,27 +2042,27 @@ x2,2.0,4.5,1.5
                              crit_names5, inc5, dec5,
                              al_rules=al7_5, am_rules=am7_5,
                              score_map=file_score_map)
-                         st.download_button("⬇ Maximal rules CSV", csv_max5,
-                             file_name="drsa_new5_maximal.csv", mime="text/csv",
+                         st.download_button("⬇ New units maximal rules CSV", csv_max5,
+                             file_name="drsa_applied_new_units_maximal_rules.csv", mime="text/csv",
                              key="dl_new5_max", use_container_width=True)
                     with dc2:
                          csv_min5 = rules_to_csv(al_tf5, am_tf5, crit_names5, inc5, dec5,
                              al_rules=al_fin5, am_rules=am_fin5,
                              score_map=file_score_map)
-                         st.download_button("⬇ Minimal rules CSV", csv_min5,
-                             file_name="drsa_new5_minimal.csv", mime="text/csv",
+                         st.download_button("⬇ New units minimal rules", csv_min5,
+                             file_name="drsa_applied_new_units_minimal_rules.csv", mime="text/csv",
                              key="dl_new5_min", use_container_width=True)
                     with dc3:
                          df_n5_csv = pd.DataFrame({
                              "Unit":       [r["Unit"] for r in rows_new5],
-                             "s- (prev)":  [r["s⁻ (prev)"] for r in rows_new5],
-                             "s+ (prev)":  [r["s⁺ (prev)"] for r in rows_new5],
-                             "s-":         [r["s⁻ (new)"] for r in rows_new5],
-                             "s+":         [r["s⁺ (new)"] for r in rows_new5],
+                             "minimal_previous":   [r["Minimal (previous)"] for r in rows_new5],
+                             "maximal_previous":   [r["Maximal (previous)"] for r in rows_new5],
+                             "minimal_assignment": [r["Minimal (new)"] for r in rows_new5],
+                             "maximal_assignment": [r["Maximal (new)"] for r in rows_new5],
                              "Assignment": [r["Assignment"] for r in rows_new5],
                              #"Changed":    [r["Changed"] for r in rows_new5],
                              "Changed":    ["Y" if r["Changed"].startswith("⚠️") else "N" for r in rows_new5],
                          })
-                         st.download_button("⬇ Assignment CSV", df_n5_csv.to_csv(index=False),
-                             file_name="drsa_new5_assignment.csv", mime="text/csv",
+                         st.download_button("⬇ New units assignment", df_n5_csv.to_csv(index=False),
+                             file_name="drsa_applied_new_assignment.csv", mime="text/csv",
                              key="dl_new5_cl", use_container_width=True)
