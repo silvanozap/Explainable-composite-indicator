@@ -343,13 +343,13 @@ def show_explanation(name, s_minus, s_plus, al_m, am_m, al_texts, am_texts, idx)
         for r in exp['matched_atleast']:
             st.markdown(f'<div class="rule-box atleast">{r}</div>', unsafe_allow_html=True)
     else:
-        st.markdown("*No at-least rule satisfied → Minimal assignment = 1*")
+        st.markdown("*No at-least rule satisfied → s⁻ = 1*")
     if exp['matched_atmost']:
         st.markdown("**Satisfied at-most rules:**")
         for r in exp['matched_atmost']:
             st.markdown(f'<div class="rule-box atmost">{r}</div>', unsafe_allow_html=True)
     else:
-        st.markdown("*No at-most rule satisfied → Maximal assignment = p*")
+        st.markdown("*No at-most rule satisfied → s⁺ = p*")
 
 def rules_to_df(al_texts, am_texts, label_al="at-least", label_am="at-most",
                 al_supp=None, am_supp=None):
@@ -667,7 +667,20 @@ if uploaded is not None:
         if len(selected_ref) == 0:
             st.error("Please select at least one reference unit."); st.stop()
 
+
+
         ref_indices_sel = [unit_names.index(n) for n in selected_ref]
+
+        # Check at least 2 distinct classes among reference units
+        _ref_classes = set()
+        for _ri in ref_indices_sel:
+            _v = matrix_raw[_ri, -1]
+            if not np.isnan(_v):
+                _ref_classes.add(_v)
+        if len(_ref_classes) < 2:
+            st.error("⚠️ Reference units must cover at least 2 distinct classes to induce rules. "
+                     "Please select reference units from at least 2 different classes.")
+            st.stop()
         c1,c2,c3 = st.columns(3)
         c1.metric("Total units", n_units)
         c2.metric("Reference units", len(ref_indices_sel))
@@ -758,6 +771,10 @@ if uploaded is not None:
                     al_r, al_m, al_d, _ = induce_atleast_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                     am_r, am_m, am_d, _ = induce_atmost_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                 n_al = _nlen(al_r); n_am = _nlen(am_r)
+                if n_al + n_am == 0:
+                    st.warning("⚠️ No rules could be induced. Check that reference units cover "
+                               "at least 2 classes and the confidence level is not too high.")
+                    st.stop()
                 al_texts = format_atleast_rules(al_r, inc, dec, crit_names, score_map=score_map) if n_al>0 else []
                 am_texts = format_atmost_rules(am_r, inc, dec, crit_names, score_map=score_map) if n_am>0 else []
                 al_supp  = compute_relative_support(al_r, al_m, al_d) if n_al>0 else []
@@ -771,6 +788,10 @@ if uploaded is not None:
                     'al_units': al_units, 'am_units': am_units,
                     'al_m_ref': al_m, 'am_m_ref': am_m,
                     'pipeline_result': None, 'mode': 'induction',
+                    'classification_final': None,
+                    'matrix_s_minus': None, 'matrix_s_plus': None,
+                    'al_rules_max': None, 'am_rules_max': None,
+                    'al_match2': None, 'am_match2': None,
                     'minimal_done': False,
                     'al_rules_min_ind': None, 'am_rules_min_ind': None,
                     'al_texts_min_ind': [], 'am_texts_min_ind': [],
@@ -819,7 +840,8 @@ if uploaded is not None:
                 if milp_ok:
                     status.success(f"✅ Step 5/5: {_nlen(al_final)} at-least, {_nlen(am_final)} minimal rules")
                 else:
-                    status.error(f"⚠️ Step 5/5: {milp_msg}")
+                    status.warning(f"⚠️ MILP minimisation failed ({milp_msg}). "
+                                   f"Using maximal rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most) instead.")
                 prog.progress(88)
                 status.info("⏳ Final assignment…")
                 sm7, sp7, _, _ = _cu(mat_nc, al_final, am_final, inc, dec)
@@ -1029,13 +1051,12 @@ if uploaded is not None:
 
             st.markdown("#### Assignment of all units")
 
-            if 'classification_final' in st.session_state:
-                cl = st.session_state['classification_final']
+            cl = st.session_state.get('classification_final')
+            mat_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
+            if cl is not None:
                 s_minus = cl[:, 0]; s_plus = cl[:, 1]
-                mat_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
                 _, _, al_m, am_m = classify_units(mat_nc, al_rules, am_rules, inc, dec)
             else:
-                mat_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
                 s_minus, s_plus, al_m, am_m = classify_units(mat_nc, al_rules, am_rules, inc, dec)
 
             rows = []
@@ -1046,16 +1067,16 @@ if uploaded is not None:
                 sm_lbl3 = _fmt_class(sm, _smap3)
                 sp_lbl3 = _fmt_class(sp, _smap3)
                 assign  = _assign_str(sm, sp, _smap3)
-                rows.append({"Unit":name,"Minimal assignment":sm_lbl3,"Maximal assignment":sp_lbl3,"Assignment":assign,
+                rows.append({"Unit":name,"s⁻":sm_lbl3,"s⁺":sp_lbl3,"Assignment":assign,
                              "Status":"⚠️ Contradictory" if contra else "✅ OK"})
 
             df_class = pd.DataFrame(rows)
             df_class_csv = pd.DataFrame({
-                "Unit":               [r["Unit"] for r in rows],
-                "minimal_assignment": [r["Minimal assignment"] for r in rows],
-                "maximal_assignment": [r["Maximal assignment"] for r in rows],
-                "Assignment":         [f"{r['Minimal assignment']}-{r['Maximal assignment']}" if r['Minimal assignment']!=r['Maximal assignment'] else str(r['Minimal assignment']) for r in rows],
-                "Contradiction":      ["Y" if r["Status"].startswith("⚠️") else "N" for r in rows],
+                "Unit":          [r["Unit"] for r in rows],
+                "s-":            [r["s⁻"] for r in rows],
+                "s+":            [r["s⁺"] for r in rows],  # already score labels
+                "Assignment":    [f"{r['s⁻']}-{r['s⁺']}" if r['s⁻']!=r['s⁺'] else str(r['s⁻']) for r in rows],
+                "Contradiction": ["Y" if r["Status"].startswith("⚠️") else "N" for r in rows],
             })
             st.dataframe(df_class, use_container_width=True, height=380)
             n_ok = df_class['Status'].str.contains('OK').sum()
@@ -1109,25 +1130,56 @@ if uploaded is not None:
                 df_new = df_new.apply(pd.to_numeric, errors='coerce')
                 if new_names is None:
                     new_names = [f'x{i+1}' for i in range(len(df_new))]
-                new_matrix = df_new.values.astype(float)
 
+                # Check criteria columns match
+                _orig_crit = st.session_state.get('crit_names', [])
+                _common = [c for c in _orig_crit if c in df_new.columns]
+                _missing = [c for c in _orig_crit if c not in df_new.columns]
+                if len(_common) == 0:
+                    st.error("⚠️ The uploaded file has no criteria columns matching the original dataset. "
+                             f"Expected: {', '.join(_orig_crit)}. Please upload a file with the same criteria names.")
+                    st.stop()
+                if _missing:
+                    st.warning(f"⚠️ Missing criteria columns: {', '.join(_missing)}. "
+                               "These will be treated as NaN.")
+                # Keep only relevant criteria in correct order
+                df_new = df_new.reindex(columns=_orig_crit)
+
+                # Check all NaN
+                if df_new.isna().all().all():
+                    st.error("⚠️ The uploaded file contains no valid numeric values.")
+                    st.stop()
+
+                # Check 0 rows
+                if len(df_new) == 0:
+                    st.error("⚠️ The uploaded file is empty.")
+                    st.stop()
+
+                new_matrix = df_new.values.astype(float)
                 st.dataframe(df_new_raw, use_container_width=True, height=180)
 
                 if st.button("▶ Assign new units", type="primary", use_container_width=True):
                     prog2 = st.progress(0); stat2 = st.empty()
                     stat2.info("⏳ Running…"); prog2.progress(20)
-
-                    new_res = classify_new_units(
-                        new_matrix,
-                        st.session_state['matrix_s_minus'],
-                        st.session_state['matrix_s_plus'],
-                        st.session_state['al_rules_max'],
-                        st.session_state['al_match2'],
-                        st.session_state['am_rules_max'],
-                        st.session_state['am_match2'],
-                        st.session_state['inc'],
-                        st.session_state['dec'],
-                    )
+                    try:
+                        new_res = classify_new_units(
+                            new_matrix,
+                            st.session_state['matrix_s_minus'],
+                            st.session_state['matrix_s_plus'],
+                            st.session_state['al_rules_max'],
+                            st.session_state['al_match2'],
+                            st.session_state['am_rules_max'],
+                            st.session_state['am_match2'],
+                            st.session_state['inc'],
+                            st.session_state['dec'],
+                        )
+                    except ValueError as e:
+                        st.error(f"⚠️ Could not assign new units: {e}. "
+                                 "Make sure the new units file has the same criteria as the original dataset.")
+                        st.stop()
+                    except Exception as e:
+                        st.error(f"⚠️ Unexpected error: {e}")
+                        st.stop()
                     prog2.progress(90)
 
                     if 'error' in new_res:
@@ -1208,8 +1260,8 @@ if uploaded is not None:
                     assign_new = _assign_str(sm_new, sp_new, _smap4a)
                     rows_all.append({
                         "Unit": name,
-                        "Minimal assignment (previous)": sm_o, "Maximal assignment (previous)": sp_o,
-                        "Minimal assignment (new)": sm_n,  "Maximal assignment (new)": sp_n,
+                        "s⁻ (prev)": sm_o, "s⁺ (prev)": sp_o,
+                        "s⁻ (new)": sm_n,  "s⁺ (new)": sp_n,
                         "Assignment": assign_new,
                         "Changed": "⚠️ Yes" if changed_flag else "",
                         "_changed": changed_flag,
@@ -1232,8 +1284,8 @@ if uploaded is not None:
                     assign_new4 = _assign_str(sm, sp, smap4n)
                     rows_all.append({
                         "Unit": name,
-                        "Minimal assignment (previous)": smp_lbl4, "Maximal assignment (previous)": spp_lbl4,
-                        "Minimal assignment (new)": sm_lbl4,  "Maximal assignment (new)": sp_lbl4,
+                        "s⁻ (prev)": smp_lbl4, "s⁺ (prev)": spp_lbl4,
+                        "s⁻ (new)": sm_lbl4,  "s⁺ (new)": sp_lbl4,
                         "Assignment": assign_new4,
                         "Changed": "🆕 New" if not contra else "⚠️ Contradictory",
                         "_changed": True,
@@ -1354,8 +1406,8 @@ if uploaded is not None:
                     csv_new_min = rules_to_csv(al_texts_new, am_texts_new, _crit_n, _inc_n, _dec_n,
                                                al_rules=al_fin, am_rules=am_fin,
                                        score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Minimal rules", csv_new_min,
-                                       file_name="pipeline_newunits_rules_minimal.csv",
+                    st.download_button("⬇ Minimal rules CSV", csv_new_min,
+                                       file_name="drsa_newunits_rules_minimal.csv",
                                        mime="text/csv", key="dl_new_min", use_container_width=True)
                 with c2:
                     _al7n = new_res.get('step7_al_rules'); _am7n = new_res.get('step7_am_rules')
@@ -1366,25 +1418,25 @@ if uploaded is not None:
                     csv_new_max = rules_to_csv(_al7_txtn, _am7_txtn, _crit_n, _inc_n, _dec_n,
                                                al_rules=_al7n, am_rules=_am7n,
                                        score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Maximal rules", csv_new_max,
-                                       file_name="pipeline_newunits_rules_maximal.csv",
+                    st.download_button("⬇ Maximal rules CSV", csv_new_max,
+                                       file_name="drsa_newunits_rules_maximal.csv",
                                        mime="text/csv", key="dl_new_max", use_container_width=True)
 
                 # Build clean CSV for download
                 df_new_csv = pd.DataFrame({
-                    "Unit":                        df_all["Unit"],
-                    "minimal_assignment_previous": df_all["Minimal assignment (previous)"].apply(lambda x: "-" if x == "—" else x),
-                    "maximal_assignment_previous": df_all["Maximal assignment (previous)"].apply(lambda x: "-" if x == "—" else x),
-                    "minimal_assignment":          df_all["Minimal assignment (new)"],
-                    "maximal_assignment":          df_all["Maximal assignment (new)"],
+                    "Unit":          df_all["Unit"],
+                    "s- (prev)":     df_all["s⁻ (prev)"].apply(lambda x: "-" if x == "—" else x),
+                    "s+ (prev)":     df_all["s⁺ (prev)"].apply(lambda x: "-" if x == "—" else x),
+                    "s-":            df_all["s⁻ (new)"],
+                    "s+":            df_all["s⁺ (new)"],
                     "Assignment":    df_all.apply(lambda r:
-                                         f"{r['Minimal assignment (new)']}-{r['Maximal assignment (new)']}"
-                                         if r['Minimal assignment (new)'] != r['Maximal assignment (new)']
-                                         else str(r['Minimal assignment (new)']), axis=1),
+                                         f"{r['s⁻ (new)']}-{r['s⁺ (new)']}"
+                                         if r['s⁻ (new)'] != r['s⁺ (new)']
+                                         else str(r['s⁻ (new)']), axis=1),
                     "Contradiction": df_all.apply(lambda r:
-                                         "Y" if isinstance(r['Minimal assignment (new)'], (int,float))
-                                         and isinstance(r['Maximal assignment (new)'], (int,float))
-                                         and int(r['Minimal assignment (new)']) > int(r['Maximal assignment (new)'])
+                                         "Y" if isinstance(r['s⁻ (new)'], (int,float))
+                                         and isinstance(r['s⁺ (new)'], (int,float))
+                                         and int(r['s⁻ (new)']) > int(r['s⁺ (new)'])
                                          else "N", axis=1),
                     "Changed":       df_all["Changed"].apply(lambda x:
                                          "Y" if x in ["⚠️ Yes","🆕 New","⚠️ Contradictory"] else "N"),
@@ -1510,7 +1562,9 @@ x2,2.0,4.5,1.5
                 data_lines.append(line)
 
         if directions_line is None:
-            st.error("Missing #directions line in rules file."); st.stop()
+            st.error("⚠️ Missing #directions line in rules file. "
+                     "The rules file must start with a line like: #directions,increasing,decreasing,...")
+            st.stop()
 
         dir_parts = directions_line.split(sep_r_act)[1:]
 
@@ -1519,8 +1573,17 @@ x2,2.0,4.5,1.5
         file_mode = 'class'
         file_score_map = None
         file_score_map_inv = None
-        if mode_line:
+
+        if mode_line is None:
+            st.error("⚠️ Missing #mode line in rules file. "
+                     "The rules file must contain a line like: #mode,class or #mode,score")
+            st.stop()
+
+        try:
             file_mode = mode_line.split(sep_r_act)[1].strip()
+        except IndexError:
+            st.error("⚠️ Could not parse #mode line. Expected format: #mode,class or #mode,score")
+            st.stop()
 
         # Filter out metadata lines for parsing
         data_lines = [l for l in raw_lines if not l.startswith('#')]
@@ -1578,6 +1641,10 @@ x2,2.0,4.5,1.5
         al_rules5 = np.array(al_rules5) if al_rules5 else np.empty((0, rule_width+1))
         am_rules5 = np.array(am_rules5) if am_rules5 else np.empty((0, rule_width+1))
 
+        if len(df_rules_raw) == 0:
+            st.error("⚠️ The rules file contains no rules.")
+            st.stop()
+
         n_al5 = len(al_rules5); n_am5 = len(am_rules5)
         al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map) if n_al5>0 else []
         am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map) if n_am5>0 else []
@@ -1617,12 +1684,29 @@ x2,2.0,4.5,1.5
                 alt_names5 = df_alt5[fc5].astype(str).tolist()
                 df_alt5 = df_alt5.drop(columns=[fc5])
             df_alt5 = df_alt5.apply(pd.to_numeric, errors='coerce')
-            # Drop last column if it looks like a class column (all integers 1..p)
-            # Keep only criteria columns that match the rules (by name)
-            common_cols = [c for c in crit_names5 if c in df_alt5.columns]
-            if len(common_cols) < n_crit5:
-                st.warning(f"Units file has {len(common_cols)}/{n_crit5} matching criteria columns.")
-            df_alt5 = df_alt5[[c for c in crit_names5 if c in df_alt5.columns]]
+
+            # Check criteria columns match
+            _common5 = [c for c in crit_names5 if c in df_alt5.columns]
+            _missing5 = [c for c in crit_names5 if c not in df_alt5.columns]
+            if len(_common5) == 0:
+                st.error("⚠️ The uploaded units file has no criteria columns matching the rules. "
+                         f"Expected: {', '.join(crit_names5)}. Please upload a file with the same criteria names.")
+                st.stop()
+            if _missing5:
+                st.warning(f"⚠️ Missing criteria: {', '.join(_missing5)}. These will be treated as NaN.")
+
+            # Check 0 rows
+            if len(df_alt5) == 0:
+                st.error("⚠️ The uploaded units file is empty.")
+                st.stop()
+
+            # Check all NaN
+            df_alt5_check = df_alt5[_common5]
+            if df_alt5_check.isna().all().all():
+                st.error("⚠️ The uploaded units file contains no valid numeric values.")
+                st.stop()
+
+            df_alt5 = df_alt5.reindex(columns=crit_names5)
             if alt_names5 is None:
                 alt_names5 = [f'a{i+1}' for i in range(len(df_alt5))]
             alt_matrix5 = df_alt5.values.astype(float)
@@ -1671,18 +1755,18 @@ x2,2.0,4.5,1.5
                 assign_disp5 = _assign_str(sm, sp, file_score_map)
                 assign_csv5  = f"{sm_lbl5}-{sp_lbl5}" if sm!=sp else str(sm_lbl5)
                 rows5.append({"Unit":name,
-                               "Minimal assignment":sm_lbl5,"Maximal assignment":sp_lbl5,
+                               "s⁻":sm_lbl5,"s⁺":sp_lbl5,
                                "Assignment":assign_disp5,
                                "Status":"⚠️ Contradictory" if contra else "✅ OK",
                                "_sm":sm_lbl5,"_sp":sp_lbl5,"_assign_csv":assign_csv5,"_contra":contra})
             df_class5 = pd.DataFrame(rows5)
-            df_class5_disp = df_class5[["Unit","Minimal assignment","Maximal assignment","Assignment","Status"]]
+            df_class5_disp = df_class5[["Unit","s⁻","s⁺","Assignment","Status"]]
             df_class5_csv  = pd.DataFrame({
-                "Unit":               df_class5["Unit"],
-                "minimal_assignment": df_class5["_sm"],
-                "maximal_assignment": df_class5["_sp"],
-                "Assignment":         df_class5["_assign_csv"],
-                "Contradiction":      df_class5["_contra"].map({True:"Y", False:"N"}),
+                "Unit":         df_class5["Unit"],
+                "s-":           df_class5["_sm"],
+                "s+":           df_class5["_sp"],
+                "Assignment":   df_class5["_assign_csv"],
+                "Contradiction":df_class5["_contra"].map({True:"Y", False:"N"}),
             })
             st.dataframe(df_class5_disp, use_container_width=True, height=350)
 
@@ -1735,9 +1819,25 @@ x2,2.0,4.5,1.5
                 else:
                     new_names5 = [f'x{i+1}' for i in range(len(df_new5))]
                 df_new5 = df_new5.apply(pd.to_numeric, errors='coerce')
-                df_new5 = df_new5[[c for c in crit_names5 if c in df_new5.columns]]
-                new_matrix5 = df_new5.values.astype(float)
 
+                # Check criteria columns match
+                _common_n5 = [c for c in crit_names5 if c in df_new5.columns]
+                _missing_n5 = [c for c in crit_names5 if c not in df_new5.columns]
+                if len(_common_n5) == 0:
+                    st.error("⚠️ The uploaded new units file has no criteria columns matching the rules. "
+                             f"Expected: {', '.join(crit_names5)}. Please upload a file with the same criteria names.")
+                    st.stop()
+                if _missing_n5:
+                    st.warning(f"⚠️ Missing criteria: {', '.join(_missing_n5)}. These will be treated as NaN.")
+                if len(df_new5) == 0:
+                    st.error("⚠️ The uploaded new units file is empty.")
+                    st.stop()
+                if df_new5[_common_n5].isna().all().all():
+                    st.error("⚠️ The uploaded new units file contains no valid numeric values.")
+                    st.stop()
+
+                df_new5 = df_new5.reindex(columns=crit_names5)
+                new_matrix5 = df_new5.values.astype(float)
                 st.dataframe(df_new5_raw, use_container_width=True, height=150)
 
                 if st.button("▶ Assign new units", type="primary",
@@ -1824,10 +1924,10 @@ x2,2.0,4.5,1.5
                          changed_flag = (sm_n != sm_o or sp_n != sp_o)
                          rows_new5.append({
                              "Unit": name,
-                             "Minimal (previous)": _fmt_class(sm_o, file_score_map),
-                             "Maximal (previous)": _fmt_class(sp_o, file_score_map),
-                             "Minimal (new)":  _fmt_class(sm_n, file_score_map),
-                             "Maximal (new)":  _fmt_class(sp_n, file_score_map),
+                             "s⁻ (prev)": _fmt_class(sm_o, file_score_map),
+                             "s⁺ (prev)": _fmt_class(sp_o, file_score_map),
+                             "s⁻ (new)":  _fmt_class(sm_n, file_score_map),
+                             "s⁺ (new)":  _fmt_class(sp_n, file_score_map),
                              "Assignment": _assign_str(sm_n, sp_n, file_score_map),
                              "Changed": "⚠️ Yes" if changed_flag else "",
                              "_changed": changed_flag,
@@ -1841,10 +1941,10 @@ x2,2.0,4.5,1.5
                          contra = sm > sp
                          rows_new5.append({
                              "Unit": name,
-                             "Minimal (previous)": _fmt_class(sm1, file_score_map),
-                             "Maximal (previous)": _fmt_class(sp1, file_score_map),
-                             "Minimal (new)":  _fmt_class(sm,  file_score_map),
-                             "Maximal (new)":  _fmt_class(sp,  file_score_map),
+                             "s⁻ (prev)": _fmt_class(sm1, file_score_map),
+                             "s⁺ (prev)": _fmt_class(sp1, file_score_map),
+                             "s⁻ (new)":  _fmt_class(sm,  file_score_map),
+                             "s⁺ (new)":  _fmt_class(sp,  file_score_map),
                              "Assignment": _assign_str(sm, sp, file_score_map),
                              "Changed": "🆕 New" if not contra else "⚠️ Contradictory",
                              "_changed": True,
@@ -1954,11 +2054,11 @@ x2,2.0,4.5,1.5
                              key="dl_new5_min", use_container_width=True)
                     with dc3:
                          df_n5_csv = pd.DataFrame({
-                             "Unit":               [r["Unit"] for r in rows_new5],
-                             "minimal_previous":   [r["Minimal (previous)"] for r in rows_new5],
-                             "maximal_previous":   [r["Maximal (previous)"] for r in rows_new5],
-                             "minimal_assignment": [r["Minimal (new)"] for r in rows_new5],
-                             "maximal_assignment": [r["Maximal (new)"] for r in rows_new5],
+                             "Unit":       [r["Unit"] for r in rows_new5],
+                             "s- (prev)":  [r["s⁻ (prev)"] for r in rows_new5],
+                             "s+ (prev)":  [r["s⁺ (prev)"] for r in rows_new5],
+                             "s-":         [r["s⁻ (new)"] for r in rows_new5],
+                             "s+":         [r["s⁺ (new)"] for r in rows_new5],
                              "Assignment": [r["Assignment"] for r in rows_new5],
                              #"Changed":    [r["Changed"] for r in rows_new5],
                              "Changed":    ["Y" if r["Changed"].startswith("⚠️") else "N" for r in rows_new5],
