@@ -788,6 +788,10 @@ if uploaded is not None:
                     'al_units': al_units, 'am_units': am_units,
                     'al_m_ref': al_m, 'am_m_ref': am_m,
                     'pipeline_result': None, 'mode': 'induction',
+                    'classification_final': None,
+                    'matrix_s_minus': None, 'matrix_s_plus': None,
+                    'al_rules_max': None, 'am_rules_max': None,
+                    'al_match2': None, 'am_match2': None,
                     'minimal_done': False,
                     'al_rules_min_ind': None, 'am_rules_min_ind': None,
                     'al_texts_min_ind': [], 'am_texts_min_ind': [],
@@ -1047,13 +1051,12 @@ if uploaded is not None:
 
             st.markdown("#### Assignment of all units")
 
-            if 'classification_final' in st.session_state:
-                cl = st.session_state['classification_final']
+            cl = st.session_state.get('classification_final')
+            mat_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
+            if cl is not None:
                 s_minus = cl[:, 0]; s_plus = cl[:, 1]
-                mat_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
                 _, _, al_m, am_m = classify_units(mat_nc, al_rules, am_rules, inc, dec)
             else:
-                mat_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
                 s_minus, s_plus, al_m, am_m = classify_units(mat_nc, al_rules, am_rules, inc, dec)
 
             rows = []
