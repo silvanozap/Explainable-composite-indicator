@@ -1563,11 +1563,6 @@ x2,2.0,4.5,1.5
                      "The rules file must start with a line like: #directions,increasing,decreasing,...")
             st.stop()
 
-        if mode_line is None:
-            st.error("⚠️ Missing #mode line in rules file. "
-                     "The rules file must contain a line like: #mode,class or #mode,score")
-            st.stop()
-
         dir_parts = directions_line.split(sep_r_act)[1:]
 
         # Parse #mode
@@ -1575,12 +1570,17 @@ x2,2.0,4.5,1.5
         file_mode = 'class'
         file_score_map = None
         file_score_map_inv = None
-        if mode_line:
-            try:
-                file_mode = mode_line.split(sep_r_act)[1].strip()
-            except IndexError:
-                st.error("⚠️ Could not parse #mode line. Expected format: #mode,class or #mode,score")
-                st.stop()
+
+        if mode_line is None:
+            st.error("⚠️ Missing #mode line in rules file. "
+                     "The rules file must contain a line like: #mode,class or #mode,score")
+            st.stop()
+
+        try:
+            file_mode = mode_line.split(sep_r_act)[1].strip()
+        except IndexError:
+            st.error("⚠️ Could not parse #mode line. Expected format: #mode,class or #mode,score")
+            st.stop()
 
         # Filter out metadata lines for parsing
         data_lines = [l for l in raw_lines if not l.startswith('#')]
