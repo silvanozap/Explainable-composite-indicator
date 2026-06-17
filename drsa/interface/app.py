@@ -1459,12 +1459,13 @@ with tab5:
     st.markdown("#### 📂 Apply saved rules")
 
     # ── File uploader (always visible) ─────────────────────────────────────────
-    col_r, col_s = st.columns([3, 1])
+    col_r, col_s = st.columns([3, 5])
     with col_r:
-        rules_file = st.file_uploader("Upload rules", type=["xlsx","csv","txt"], key="rules_file")
-    with col_s:
-        sep_r = st.selectbox("Separator", [",",";","\\t"," "], key="sep_rules")
-        sep_r_act = "\t" if sep_r=="\\t" else sep_r
+        rules_file = st.file_uploader("Upload rules", type=["csv"], key="rules_file")
+        sep_r_act = ","
+    #with col_s:
+    #    sep_r = st.selectbox("Separator", [",",";","\\t"," "], key="sep_rules")
+    #    sep_r_act = "\t" if sep_r=="\\t" else sep_r
 
     # ── Welcome (only when no file loaded) ─────────────────────────────────────
     if rules_file is None:
