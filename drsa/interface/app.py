@@ -1406,8 +1406,8 @@ if uploaded is not None:
                     csv_new_min = rules_to_csv(al_texts_new, am_texts_new, _crit_n, _inc_n, _dec_n,
                                                al_rules=al_fin, am_rules=am_fin,
                                        score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Minimal rules CSV", csv_new_min,
-                                       file_name="drsa_newunits_rules_minimal.csv",
+                    st.download_button("⬇ Minimal rules", csv_new_min,
+                                       file_name="pipeline_newunits_rules_minimal.csv",
                                        mime="text/csv", key="dl_new_min", use_container_width=True)
                 with c2:
                     _al7n = new_res.get('step7_al_rules'); _am7n = new_res.get('step7_am_rules')
@@ -1418,8 +1418,8 @@ if uploaded is not None:
                     csv_new_max = rules_to_csv(_al7_txtn, _am7_txtn, _crit_n, _inc_n, _dec_n,
                                                al_rules=_al7n, am_rules=_am7n,
                                        score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Maximal rules CSV", csv_new_max,
-                                       file_name="drsa_newunits_rules_maximal.csv",
+                    st.download_button("⬇ Maximal rules", csv_new_max,
+                                       file_name="pipeline_newunits_rules_maximal.csv",
                                        mime="text/csv", key="dl_new_max", use_container_width=True)
 
                 # Build clean CSV for download
