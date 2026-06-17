@@ -558,7 +558,7 @@ A2,5,4,3,2
 A3,7,6,5,
 A4,6,5,4,
 ```
-A3, A4 are non-reference.
+A1, A2 are reference. A3, A4 are non-reference.
 """)
         sample = pd.DataFrame({
             'Name':['A1','A2','A3','A4','A5','A6','A7','A8'],
@@ -744,11 +744,12 @@ if uploaded is not None:
             ["🔬 Rule induction only", "🚀 Full pipeline"],
             horizontal=True)
 
-        if "induction only" in mode.lower():
-            run_al = st.checkbox("At-least rules (R≥)", value=True, key="run_al")
-            run_am = st.checkbox("At-most rules (R≤)",  value=True, key="run_am")
-        else:
-            run_al = run_am = True
+        run_al = run_am = True
+        #if "induction only" in mode.lower():
+        #    run_al = st.checkbox("At-least rules (R≥)", value=True, key="run_al")
+        #    run_am = st.checkbox("At-most rules (R≤)",  value=True, key="run_am")
+        #else:
+        #    run_al = run_am = True
 
         if st.button("▶ Run", type="primary", use_container_width=True):
 
@@ -756,12 +757,14 @@ if uploaded is not None:
                 # ── Rule induction only ────────────────────────────────────────
                 with st.spinner("Inducing rules…"):
                     al_r = am_r = al_m = al_d = am_m = am_d = None
-                    if run_al:
-                        al_r, al_m, al_d, _ = induce_atleast_rules(
-                            ref_matrix, inc, dec, min_conf, handle_miss)
-                    if run_am:
-                        am_r, am_m, am_d, _ = induce_atmost_rules(
-                            ref_matrix, inc, dec, min_conf, handle_miss)
+                    al_r, al_m, al_d, _ = induce_atleast_rules(ref_matrix, inc, dec, min_conf, handle_miss)
+                    am_r, am_m, am_d, _ = induce_atmost_rules(ref_matrix, inc, dec, min_conf, handle_miss)
+                    #if run_al:
+                    #    al_r, al_m, al_d, _ = induce_atleast_rules(
+                    #        ref_matrix, inc, dec, min_conf, handle_miss)
+                    #if run_am:
+                    #    am_r, am_m, am_d, _ = induce_atmost_rules(
+                    #        ref_matrix, inc, dec, min_conf, handle_miss)
 
                 n_al = _nlen(al_r); n_am = _nlen(am_r)
                 al_texts = format_atleast_rules(al_r, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if n_al>0 else []
