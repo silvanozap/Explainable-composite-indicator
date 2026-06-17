@@ -628,6 +628,12 @@ if uploaded is not None:
     if unit_names is None:
         unit_names = [f'a{i+1}' for i in range(len(df))]
 
+    # Check sufficient columns
+    if df.shape[1] < 2:
+        st.error("⚠️ Could not parse the file correctly. "
+                 "The dataset must have at least one criterion and one class column. "
+                 "Check the separator setting.")
+        st.stop()
     n_units    = len(df)
     n_crit     = df.shape[1] - 1
     crit_names = list(df.columns)[:-1]
@@ -1117,7 +1123,7 @@ if uploaded is not None:
                     if new_file.name.endswith(".xlsx"):
                         df_new_raw = pd.read_excel(new_file)
                     else:
-                        df_new_raw = pd.read_csv(new_file, sep=sep_actual, engine="python")
+                        df_new_raw = pd.read_csv(new_file, sep=sep2_act, engine="python")
                 except Exception as e:
                     st.error(f"Could not read file: {e}"); st.stop()
 
@@ -1665,8 +1671,8 @@ x2,2.0,4.5,1.5
             alt_file5 = st.file_uploader("Upload units (optional, without class column). Note: column names must correspond to criteria names of rules",
                                           type=["xlsx","csv","txt"], key="alt_file5")
         with col_sa:
-            sep_a5 = st.selectbox("Separator", [",",";","\t"," "], key="sep_alt5")
-            sep_a5_act = "\t" if sep_a5=="\t" else sep_a5
+            sep_a5 = st.selectbox("Separator", [",",";","\\t"," "], key="sep_alt5")
+            sep_a5_act = "\t" if sep_a5=="\\t" else sep_a5
 
         alt_names5 = None; alt_matrix5 = None
         if alt_file5 is not None:
@@ -1674,7 +1680,7 @@ x2,2.0,4.5,1.5
                 if alt_file5.name.endswith(".xlsx"):
                     df_alt5_raw = pd.read_excel(alt_file5)
                 else:
-                    df_alt5_raw = pd.read_csv(alt_file5, sep=sep_actual, engine="python")
+                    df_alt5_raw = pd.read_csv(alt_file5, sep=sep_a5_act, engine="python")
             except Exception as e:
                 st.error(f"Could not read units file: {e}"); st.stop()
 
@@ -1798,15 +1804,15 @@ x2,2.0,4.5,1.5
                 new_file5 = st.file_uploader("Upload new units (without class column)",
                                               type=["xlsx","csv","txt"], key="new_file5")
             with col_sep_nu:
-                sep_nu5 = st.selectbox("Separator", [",",";","\t"," "], key="sep_nu5")
-                sep_nu5_act = "\t" if sep_nu5=="\t" else sep_nu5
-
+                sep_nu5 = st.selectbox("Separator", [",",";","\\t"," "], key="sep_nu5")
+                sep_nu5_act = "\t" if sep_nu5=="\\t" else sep_nu5
+            
             if new_file5 is not None:
                 try:
                     if new_file5.name.endswith(".xlsx"):
                         df_new5_raw = pd.read_excel(new_file5)
                     else:
-                        df_new5_raw = pd.read_csv(new_file5, sep=sep_actual, engine="python")
+                        df_new5_raw = pd.read_csv(new_file5, sep=sep_nu5_act, engine="python")
                 except Exception as e:
                     st.error(f"Could not read file: {e}"); st.stop()
 
