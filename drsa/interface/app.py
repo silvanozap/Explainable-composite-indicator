@@ -600,6 +600,10 @@ if uploaded is not None:
             'new_s_minus', 'new_s_plus', 'new_names', 'new_matrix',
             'new_al_rules', 'new_am_rules', 'new_al_texts', 'new_am_texts',
             'new_res', 'new_changed', 'score_map', 'score_map_inv',
+            'minimal_done', 'al_rules_min_ind', 'am_rules_min_ind',
+            'al_texts_min_ind', 'am_texts_min_ind',
+            'al_units_min_ind', 'am_units_min_ind',
+            'al_m_ref', 'am_m_ref',
         ]
         for k in keys_to_reset:
             st.session_state.pop(k, None)
@@ -710,7 +714,6 @@ if uploaded is not None:
             "**Problem type**",
             ["Classification", "Scoring"], horizontal=True, key="col_mode_radio"
         )
-        # Build score mapping
         _raw_sc = sorted(matrix_raw[:, -1][~np.isnan(matrix_raw[:, -1])].tolist())
         _uniq_sc = sorted(set(_raw_sc))
         if col_mode_val == "Scoring":
@@ -728,144 +731,68 @@ if uploaded is not None:
         st.session_state["matrix"]        = matrix
         st.markdown("---")
 
-        inc        = st.session_state['inc']
-        dec        = st.session_state['dec']
-        matrix     = st.session_state['matrix']
-        unit_names = st.session_state['unit_names']
-        crit_names = st.session_state['crit_names']
-        ref_idx    = st.session_state['ref_indices']
-        ref_matrix = matrix[ref_idx, :]
-        ref_names  = [unit_names[i] for i in ref_idx]
-        all_crit   = matrix[:, :-1]
-        n_units    = st.session_state['n_units']
-        score_map  = st.session_state.get('score_map')
+        inc         = st.session_state['inc']
+        dec         = st.session_state['dec']
+        matrix      = st.session_state['matrix']
+        unit_names  = st.session_state['unit_names']
+        crit_names  = st.session_state['crit_names']
+        ref_idx     = st.session_state['ref_indices']
+        ref_matrix  = matrix[ref_idx, :]
+        ref_names   = [unit_names[i] for i in ref_idx]
+        all_crit    = matrix[:, :-1]
+        n_units     = st.session_state['n_units']
+        score_map   = st.session_state.get('score_map')
+        min_conf    = st.session_state.get('min_conf', 1.0)
+        handle_miss = st.session_state.get('handle_miss', False)
+        random_seed = st.session_state.get('random_seed', 1)
 
         mode = st.radio("**Mode**",
             ["🔬 Rule induction only", "🚀 Full pipeline"],
             horizontal=True)
 
         run_al = run_am = True
-        #if "induction only" in mode.lower():
-        #    run_al = st.checkbox("At-least rules (R≥)", value=True, key="run_al")
-        #    run_am = st.checkbox("At-most rules (R≤)",  value=True, key="run_am")
-        #else:
-        #    run_al = run_am = True
 
         if st.button("▶ Run", type="primary", use_container_width=True):
-
             if "induction only" in mode.lower():
-                # ── Rule induction only ────────────────────────────────────────
                 with st.spinner("Inducing rules…"):
-                    al_r = am_r = al_m = al_d = am_m = am_d = None
                     al_r, al_m, al_d, _ = induce_atleast_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                     am_r, am_m, am_d, _ = induce_atmost_rules(ref_matrix, inc, dec, min_conf, handle_miss)
-                    #if run_al:
-                    #    al_r, al_m, al_d, _ = induce_atleast_rules(
-                    #        ref_matrix, inc, dec, min_conf, handle_miss)
-                    #if run_am:
-                    #    am_r, am_m, am_d, _ = induce_atmost_rules(
-                    #        ref_matrix, inc, dec, min_conf, handle_miss)
-
                 n_al = _nlen(al_r); n_am = _nlen(am_r)
-                al_texts = format_atleast_rules(al_r, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if n_al>0 else []
-                am_texts = format_atmost_rules(am_r, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if n_am>0 else []
+                al_texts = format_atleast_rules(al_r, inc, dec, crit_names, score_map=score_map) if n_al>0 else []
+                am_texts = format_atmost_rules(am_r, inc, dec, crit_names, score_map=score_map) if n_am>0 else []
                 al_supp  = compute_relative_support(al_r, al_m, al_d) if n_al>0 else []
                 am_supp  = compute_relative_support(am_r, am_m, am_d) if n_am>0 else []
                 al_units = get_supporting_units(al_m, al_d, ref_names) if n_al>0 else []
                 am_units = get_supporting_units(am_m, am_d, ref_names) if n_am>0 else []
-
                 st.session_state.update({
                     'al_rules': al_r, 'am_rules': am_r,
                     'al_texts': al_texts, 'am_texts': am_texts,
                     'al_supp': al_supp, 'am_supp': am_supp,
                     'al_units': al_units, 'am_units': am_units,
+                    'al_m_ref': al_m, 'am_m_ref': am_m,
                     'pipeline_result': None, 'mode': 'induction',
+                    'minimal_done': False,
+                    'al_rules_min_ind': None, 'am_rules_min_ind': None,
+                    'al_texts_min_ind': [], 'am_texts_min_ind': [],
+                    'al_units_min_ind': [], 'am_units_min_ind': [],
                 })
-
-                mc1,mc2,mc3 = st.columns(3)
-                for col,val,lbl in zip([mc1,mc2,mc3],[n_al,n_am,n_al+n_am],
-                                        ["At-least (R≥)","At-most (R≤)","Total"]):
-                    col.markdown(f'<div class="metric-card"><div class="value">{val}</div>'
-                                 f'<div class="label">{lbl}</div></div>', unsafe_allow_html=True)
-                st.markdown("")
-                if n_al > 0:
-                    with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · At-Least Rules ({n_al})", expanded=False):
-                        show_rules(al_r, al_texts, al_supp, al_units, "atleast")
-                if n_am > 0:
-                    with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · At-Most Rules ({n_am})", expanded=False):
-                        show_rules(am_r, am_texts, am_supp, am_units, "atmost")
-                if n_al + n_am > 0:
-                    st.markdown("### 💾 Export")
-                    csv_rules = rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
-                                             al_rules=al_r if n_al>0 else None,
-                                             am_rules=am_r if n_am>0 else None,
-                                       score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Download rules", csv_rules,
-                                       file_name="drsa_rules.csv", mime="text/csv",
-                                       key="dl_rules_ind", use_container_width=True)
-                if len(ref_idx) == n_units and n_al + n_am > 0:
-                    st.markdown("---")
-                    if st.button("🔍 Find minimal set", use_container_width=True, key="btn_minimal_ind"):
-                        # ... calcoli ...
-                        st.session_state.update({
-                            'al_rules': al_final,
-                            'am_rules': am_final,
-                            'al_texts': al_texts_min,
-                            'am_texts': am_texts_min,
-                            'al_units_min': al_units_min,
-                            'am_units_min': am_units_min,
-                            'classification_final': np.column_stack([sm_min, sp_min]),
-                            'al_rules_max': al_r,
-                            'am_rules_max': am_r,
-                            'al_match2': al_m,
-                            'am_match2': am_m,
-                            'matrix_s_minus': np.hstack([all_crit, sm_min.reshape(-1,1)]),
-                            'matrix_s_plus':  np.hstack([all_crit, sp_min.reshape(-1,1)]),
-                            'mode': 'induction',
-                            'minimal_done': True,
-                        })
-
-                    # Fuori dal bottone — mostra sempre se disponibile
-                    if st.session_state.get('minimal_done'):
-                        al_final = st.session_state['al_rules']
-                        am_final = st.session_state['am_rules']
-                        al_texts_min = st.session_state['al_texts']
-                        am_texts_min = st.session_state['am_texts']
-                        al_units_min = st.session_state.get('al_units_min', [])
-                        am_units_min = st.session_state.get('am_units_min', [])
-
-                        st.success(f"✅ Minimal set: {_nlen(al_final)} at-least, {_nlen(am_final)} at-most")
-                        if al_texts_min:
-                            with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · Minimal At-Least ({_nlen(al_final)})", expanded=False):
-                                show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
-                        if am_texts_min:
-                            with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · Minimal At-Most ({_nlen(am_final)})", expanded=False):
-                                show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
-
-                        csv_min_ind = rules_to_csv(al_texts_min, am_texts_min, crit_names, inc, dec,
-                                                al_rules=al_final, am_rules=am_final,
-                                                score_map=st.session_state.get('score_map'))
-                        st.download_button("⬇ Minimal rules", csv_min_ind,
-                                        file_name="drsa_rules_minimal.csv", mime="text/csv",
-                                        key="dl_min_ind", use_container_width=True)
             else:
                 # ── Full pipeline ──────────────────────────────────────────────
                 prog = st.progress(0); status = st.empty()
-
-                status.info("⏳ Step 1/4: Inducing rules from reference units…"); prog.progress(10)
+                status.info("⏳ Step 1/5: Inducing rules from reference units…"); prog.progress(10)
                 al_r, al_m, al_d, _ = induce_atleast_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                 am_r, am_m, am_d, _ = induce_atmost_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                 n_al2 = _nlen(al_r); n_am2 = _nlen(am_r)
-                status.success(f"✅ Step 1/4: {n_al2} at-least, {n_am2} at-most"); prog.progress(20)
+                status.success(f"✅ Step 1/5: {n_al2} at-least, {n_am2} at-most"); prog.progress(20)
 
-                status.info("⏳ Step 2/4: Greedy selection…"); prog.progress(30)
+                status.info("⏳ Step 2/5: Greedy selection…"); prog.progress(30)
                 from drsa.core.step_forward import step_forward as _sf
                 sel_al, sel_am, _, _ = _sf(al_r, am_r, al_m, am_m, al_d, am_d,
                                             ref_matrix, all_crit, inc, dec,
                                             random_seed=int(random_seed))
-                status.success(f"✅ Step 2/4: {_nlen(sel_al)} at-least, {_nlen(sel_am)} selected"); prog.progress(45)
+                status.success(f"✅ Step 2/5: {_nlen(sel_al)} at-least, {_nlen(sel_am)} selected"); prog.progress(45)
 
-                status.info("⏳ Step 3/4: Fixing assignments…"); prog.progress(50)
+                status.info("⏳ Step 3/5: Fixing assignments…"); prog.progress(50)
                 from drsa.core.classifier import classify_units as _cu
                 mat_nc = np.hstack([all_crit, np.full((n_units,1), np.nan)])
                 s_minus, s_plus, _, _ = _cu(mat_nc, sel_al, sel_am, inc, dec)
@@ -876,7 +803,7 @@ if uploaded is not None:
                         s_minus_f[idx] = dm_c; s_plus_f[idx] = dm_c
                 mat_sm = np.hstack([all_crit, s_minus_f.reshape(-1,1)])
                 mat_sp = np.hstack([all_crit, s_plus_f.reshape(-1,1)])
-                status.success("✅ Step 3/4: done"); prog.progress(55)
+                status.success("✅ Step 3/5: done"); prog.progress(55)
 
                 status.info("⏳ Step 4/5: Inducing rules from all units…"); prog.progress(60)
                 al_r2, al_m2, al_d2, _ = induce_atleast_rules(mat_sm, inc, dec, min_conf, handle_miss)
@@ -894,30 +821,21 @@ if uploaded is not None:
                 else:
                     status.error(f"⚠️ Step 5/5: {milp_msg}")
                 prog.progress(88)
-
                 status.info("⏳ Final assignment…")
                 sm7, sp7, _, _ = _cu(mat_nc, al_final, am_final, inc, dec)
                 prog.progress(100); status.success("🎉 Pipeline complete!")
 
-                # Format texts
-                al_texts_max = format_atleast_rules(al_r2, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if n_al6>0 else []
-                am_texts_max = format_atmost_rules(am_r2, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if n_am6>0 else []
-                al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if _nlen(al_final)>0 else []
-                am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if _nlen(am_final)>0 else []
-
-                # Compute match matrices for ALL units against maximal and minimal rules
+                al_texts_max = format_atleast_rules(al_r2, inc, dec, crit_names, score_map=score_map) if n_al6>0 else []
+                am_texts_max = format_atmost_rules(am_r2, inc, dec, crit_names, score_map=score_map) if n_am6>0 else []
+                al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names, score_map=score_map) if _nlen(al_final)>0 else []
+                am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names, score_map=score_map) if _nlen(am_final)>0 else []
                 all_nc = np.hstack([all_crit, np.full((n_units,1), np.nan)])
-                _, _, al_m_all_max, am_m_all_max = _cu(all_nc, al_r2,    am_r2,    inc, dec)
+                _, _, al_m_all_max, am_m_all_max = _cu(all_nc, al_r2, am_r2, inc, dec)
                 _, _, al_m_all_min, am_m_all_min = _cu(all_nc, al_final, am_final, inc, dec)
-                al_units_max = [[unit_names[j] for j in range(n_units) if al_m_all_max[j,i]==1]
-                                for i in range(_nlen(al_r2))]
-                am_units_max = [[unit_names[j] for j in range(n_units) if am_m_all_max[j,i]==1]
-                                for i in range(_nlen(am_r2))]
-                al_units_min = [[unit_names[j] for j in range(n_units) if al_m_all_min[j,i]==1]
-                                for i in range(_nlen(al_final))]
-                am_units_min = [[unit_names[j] for j in range(n_units) if am_m_all_min[j,i]==1]
-                                for i in range(_nlen(am_final))]
-
+                al_units_max = [[unit_names[j] for j in range(n_units) if al_m_all_max[j,i]==1] for i in range(_nlen(al_r2))]
+                am_units_max = [[unit_names[j] for j in range(n_units) if am_m_all_max[j,i]==1] for i in range(_nlen(am_r2))]
+                al_units_min = [[unit_names[j] for j in range(n_units) if al_m_all_min[j,i]==1] for i in range(_nlen(al_final))]
+                am_units_min = [[unit_names[j] for j in range(n_units) if am_m_all_min[j,i]==1] for i in range(_nlen(am_final))]
                 st.session_state.update({
                     'al_rules': al_final, 'am_rules': am_final,
                     'al_rules_max': al_r2, 'am_rules_max': am_r2,
@@ -936,139 +854,162 @@ if uploaded is not None:
                     },
                 })
 
-                # Summary
-                st.markdown("#### Pipeline summary")
+        # ══ VISUALIZZAZIONE — sempre da session_state ══════════════════════════
+        mode_saved = st.session_state.get('mode', '')
+
+        if mode_saved == 'induction':
+            al_texts = st.session_state.get('al_texts', [])
+            am_texts = st.session_state.get('am_texts', [])
+            al_r     = st.session_state.get('al_rules')
+            am_r     = st.session_state.get('am_rules')
+            al_supp  = st.session_state.get('al_supp', [])
+            am_supp  = st.session_state.get('am_supp', [])
+            al_units = st.session_state.get('al_units', [])
+            am_units = st.session_state.get('am_units', [])
+
+            if al_texts or am_texts:
+                n_al = _nlen(al_r); n_am = _nlen(am_r)
+                mc1,mc2,mc3 = st.columns(3)
+                for col,val,lbl in zip([mc1,mc2,mc3],[n_al,n_am,n_al+n_am],
+                                        ["At-least (R≥)","At-most (R≤)","Total"]):
+                    col.markdown(f'<div class="metric-card"><div class="value">{val}</div>'
+                                 f'<div class="label">{lbl}</div></div>', unsafe_allow_html=True)
+                st.markdown("")
+                if al_texts:
+                    with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · At-Least Rules ({n_al})", expanded=False):
+                        show_rules(al_r, al_texts, al_supp, al_units, "atleast")
+                if am_texts:
+                    with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · At-Most Rules ({n_am})", expanded=False):
+                        show_rules(am_r, am_texts, am_supp, am_units, "atmost")
+
+                st.markdown("### 💾 Export")
+                csv_rules = rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
+                                         al_rules=al_r, am_rules=am_r,
+                                         score_map=st.session_state.get('score_map'))
+                st.download_button("⬇ Download rules", csv_rules,
+                                   file_name="drsa_rules.csv", mime="text/csv",
+                                   key="dl_rules_ind", use_container_width=True)
+
+                # ── Find minimal set (solo se tutte reference) ─────────────────
+                if len(st.session_state.get('ref_indices', [])) == st.session_state.get('n_units', 0):
+                    st.markdown("---")
+                    if st.button("🔍 Find minimal set", use_container_width=True, key="btn_minimal_ind"):
+                        from drsa.core.milp import solve_minimal_rules as _smr
+                        from drsa.core.classifier import classify_units as _cu
+                        al_m_ref = st.session_state.get('al_m_ref')
+                        am_m_ref = st.session_state.get('am_m_ref')
+                        al_min, am_min, _, _, milp_ok, milp_msg = _smr(
+                            ref_matrix, al_m_ref, ref_matrix, am_m_ref, al_r, am_r)
+                        al_final = al_min if (milp_ok and _nlen(al_min)>0) else al_r
+                        am_final = am_min if (milp_ok and _nlen(am_min)>0) else am_r
+                        al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names,
+                            score_map=st.session_state.get('score_map')) if _nlen(al_final)>0 else []
+                        am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names,
+                            score_map=st.session_state.get('score_map')) if _nlen(am_final)>0 else []
+                        mat_nc_min = np.hstack([all_crit, np.full((n_units,1), np.nan)])
+                        sm_min, sp_min, al_m_min, am_m_min = _cu(mat_nc_min, al_final, am_final, inc, dec)
+                        al_units_min = [[unit_names[j] for j in range(n_units) if al_m_min[j,i]==1]
+                                        for i in range(_nlen(al_final))]
+                        am_units_min = [[unit_names[j] for j in range(n_units) if am_m_min[j,i]==1]
+                                        for i in range(_nlen(am_final))]
+                        st.session_state.update({
+                            'al_rules_min_ind': al_final, 'am_rules_min_ind': am_final,
+                            'al_texts_min_ind': al_texts_min, 'am_texts_min_ind': am_texts_min,
+                            'al_units_min_ind': al_units_min, 'am_units_min_ind': am_units_min,
+                            'classification_final': np.column_stack([sm_min, sp_min]),
+                            'al_rules': al_final, 'am_rules': am_final,
+                            'al_texts': al_texts_min, 'am_texts': am_texts_min,
+                            'al_rules_max': al_r, 'am_rules_max': am_r,
+                            'al_match2': al_m_ref, 'am_match2': am_m_ref,
+                            'matrix_s_minus': np.hstack([all_crit, sm_min.reshape(-1,1)]),
+                            'matrix_s_plus':  np.hstack([all_crit, sp_min.reshape(-1,1)]),
+                            'minimal_done': True,
+                        })
+
+                    if st.session_state.get('minimal_done'):
+                        al_final     = st.session_state.get('al_rules_min_ind')
+                        am_final     = st.session_state.get('am_rules_min_ind')
+                        al_texts_min = st.session_state.get('al_texts_min_ind', [])
+                        am_texts_min = st.session_state.get('am_texts_min_ind', [])
+                        al_units_min = st.session_state.get('al_units_min_ind', [])
+                        am_units_min = st.session_state.get('am_units_min_ind', [])
+                        if al_texts_min or am_texts_min:
+                            st.markdown("#### Minimal set")
+                            if al_texts_min:
+                                with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · Minimal At-Least ({_nlen(al_final)})", expanded=False):
+                                    show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
+                            if am_texts_min:
+                                with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · Minimal At-Most ({_nlen(am_final)})", expanded=False):
+                                    show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
+                            csv_min_ind = rules_to_csv(al_texts_min, am_texts_min, crit_names, inc, dec,
+                                                       al_rules=al_final, am_rules=am_final,
+                                                       score_map=st.session_state.get('score_map'))
+                            st.download_button("⬇ Minimal rules", csv_min_ind,
+                                               file_name="drsa_rules_minimal.csv", mime="text/csv",
+                                               key="dl_min_ind", use_container_width=True)
+            else:
+                st.info("Press **▶ Run** to start.")
+
+        elif mode_saved == 'pipeline':
+            res = st.session_state.get('pipeline_result', {})
+            if res:
                 df_steps = pd.DataFrame([
-                    ("Rules initially induced", n_al2, n_am2, n_al2+n_am2),
-                    ("Greedy selection of rules", _nlen(sel_al), _nlen(sel_am), _nlen(sel_al)+_nlen(sel_am)),
-                    ("Maximal set of rules", n_al6, n_am6, n_al6+n_am6),
-                    ("Minimal set of rules", _nlen(al_final), _nlen(am_final), _nlen(al_final)+_nlen(am_final)),
+                    ("Rules initially induced", *res['step2'], sum(res['step2'])),
+                    ("Greedy selection of rules", *res['step3'], sum(res['step3'])),
+                    ("Maximal set of rules", *res['step6'], sum(res['step6'])),
+                    ("Minimal set of rules", *res['step7'], sum(res['step7'])),
                 ], columns=["Step","At-least","At-most","Total"])
                 st.dataframe(df_steps, use_container_width=True, hide_index=True)
 
-                # Maximal rules expander
-                with st.expander(f"📂 Maximal rules ({n_al6} at-least, {n_am6} at-most)"):
+            al_r2        = st.session_state.get('al_rules_max')
+            am_r2        = st.session_state.get('am_rules_max')
+            al_final     = st.session_state.get('al_rules')
+            am_final     = st.session_state.get('am_rules')
+            al_texts_max = st.session_state.get('al_texts_max', [])
+            am_texts_max = st.session_state.get('am_texts_max', [])
+            al_units_max = st.session_state.get('al_units_max', [])
+            am_units_max = st.session_state.get('am_units_max', [])
+            al_texts_min = st.session_state.get('al_texts', [])
+            am_texts_min = st.session_state.get('am_texts', [])
+            al_units_min = st.session_state.get('al_units_min', [])
+            am_units_min = st.session_state.get('am_units_min', [])
+
+            if al_texts_max or am_texts_max:
+                with st.expander(f"📂 Maximal rules ({_nlen(al_r2)} at-least, {_nlen(am_r2)} at-most)"):
                     if al_texts_max:
                         st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least (maximal)**")
                         show_rules(al_r2, al_texts_max, units=al_units_max, rule_type="atleast")
                     if am_texts_max:
                         st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most (maximal)**")
                         show_rules(am_r2, am_texts_max, units=am_units_max, rule_type="atmost")
+            if al_texts_min:
+                st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
+                show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
+            if am_texts_min:
+                st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
+                show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
 
-                # Minimal rules
-                if al_texts_min:
-                    st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
-                    show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
-                if am_texts_min:
-                    st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
-                    show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
-
-                # Download — two persistent buttons
-                st.markdown("### 💾 Export rules")
-                c1, c2 = st.columns(2)
-                with c1:
-                    csv_min = rules_to_csv(al_texts_min, am_texts_min, crit_names, inc, dec,
-                                           al_rules=al_final, am_rules=am_final,
-                                       score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Minimal rules", csv_min,
-                                       file_name="drsa_rules_minimal.csv", mime="text/csv",
-                                       key="dl_min_run", use_container_width=True)
-                with c2:
-                    csv_max = rules_to_csv(al_texts_max, am_texts_max, crit_names, inc, dec,
-                                           al_rules=al_r2, am_rules=am_r2,
-                                       score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Maximal rules", csv_max,
-                                       file_name="drsa_rules_maximal.csv", mime="text/csv",
-                                       key="dl_max_run", use_container_width=True)
+            st.markdown("### 💾 Export rules")
+            _inc = st.session_state.get('inc', []); _dec = st.session_state.get('dec', [])
+            _crit = st.session_state.get('crit_names', [])
+            c1, c2 = st.columns(2)
+            with c1:
+                csv_min_p = rules_to_csv(al_texts_min, am_texts_min, _crit, _inc, _dec,
+                                         al_rules=al_final, am_rules=am_final,
+                                         score_map=st.session_state.get('score_map'))
+                st.download_button("⬇ Minimal rules", csv_min_p,
+                                   file_name="drsa_rules_minimal.csv", mime="text/csv",
+                                   key="dl_min_prev", use_container_width=True)
+            with c2:
+                csv_max_p = rules_to_csv(al_texts_max, am_texts_max, _crit, _inc, _dec,
+                                         al_rules=al_r2, am_rules=am_r2,
+                                         score_map=st.session_state.get('score_map'))
+                st.download_button("⬇ Maximal rules", csv_max_p,
+                                   file_name="drsa_rules_maximal.csv", mime="text/csv",
+                                   key="dl_max_prev", use_container_width=True)
 
         else:
-            # ── Show previously computed results ───────────────────────────────
-            al_texts = st.session_state.get('al_texts', [])
-            am_texts = st.session_state.get('am_texts', [])
-            if not al_texts and not am_texts:
-                st.info("Press **▶ Run** to start.")
-            else:
-                mode_saved = st.session_state.get('mode', '')
-                if mode_saved == 'pipeline':
-                    res = st.session_state.get('pipeline_result', {})
-                    if res:
-                        df_steps = pd.DataFrame([
-                            ("Rules initially induced", *res['step2'], sum(res['step2'])),
-                            ("Greedy selection of rules", *res['step3'], sum(res['step3'])),
-                            ("Maximal set of rules", *res['step6'], sum(res['step6'])),
-                            ("Minimal set of rules", *res['step7'], sum(res['step7'])),
-                        ], columns=["Step","At-least","At-most","Total"])
-                        st.dataframe(df_steps, use_container_width=True, hide_index=True)
-
-                    al_r2     = st.session_state.get('al_rules_max')
-                    am_r2     = st.session_state.get('am_rules_max')
-                    al_final  = st.session_state.get('al_rules')
-                    am_final  = st.session_state.get('am_rules')
-                    al_texts_max  = st.session_state.get('al_texts_max', [])
-                    am_texts_max  = st.session_state.get('am_texts_max', [])
-                    al_units_max  = st.session_state.get('al_units_max', [])
-                    am_units_max  = st.session_state.get('am_units_max', [])
-                    al_units_min  = st.session_state.get('al_units_min', [])
-                    am_units_min  = st.session_state.get('am_units_min', [])
-
-                    if al_texts_max or am_texts_max:
-                        with st.expander("📂 Maximal rules"):
-                            if al_texts_max:
-                                st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least (maximal)**")
-                                show_rules(al_r2, al_texts_max, units=al_units_max, rule_type="atleast")
-                            if am_texts_max:
-                                st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most (maximal)**")
-                                show_rules(am_r2, am_texts_max, units=am_units_max, rule_type="atmost")
-
-                    if al_texts:
-                        st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
-                        show_rules(al_final, al_texts, units=al_units_min, rule_type="atleast")
-                    if am_texts:
-                        st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
-                        show_rules(am_final, am_texts, units=am_units_min, rule_type="atmost")
-
-                    # Persistent download buttons
-                    st.markdown("### 💾 Export rules")
-                    _inc = st.session_state.get('inc', []); _dec = st.session_state.get('dec', [])
-                    _crit = st.session_state.get('crit_names', [])
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        csv_min_p = rules_to_csv(al_texts, am_texts, _crit, _inc, _dec,
-                                                 al_rules=al_final, am_rules=am_final,
-                                       score_map=st.session_state.get('score_map'))
-                        st.download_button("⬇ Minimal rules", csv_min_p,
-                                           file_name="drsa_rules_minimal.csv", mime="text/csv",
-                                           key="dl_min_prev", use_container_width=True)
-                    with c2:
-                        csv_max_p = rules_to_csv(al_texts_max, am_texts_max, _crit, _inc, _dec,
-                                                 al_rules=al_r2, am_rules=am_r2,
-                                       score_map=st.session_state.get('score_map'))
-                        st.download_button("⬇ Maximal rules", csv_max_p,
-                                           file_name="drsa_rules_maximal.csv", mime="text/csv",
-                                           key="dl_max_prev", use_container_width=True)
-                else:
-                    al_supp  = st.session_state.get('al_supp', [])
-                    am_supp  = st.session_state.get('am_supp', [])
-                    al_units = st.session_state.get('al_units', [])
-                    am_units = st.session_state.get('am_units', [])
-                    al_r     = st.session_state.get('al_rules')
-                    am_r     = st.session_state.get('am_rules')
-                    if al_texts:
-                        with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · At-Least Rules ({_nlen(al_r)})", expanded=False):
-                            show_rules(al_r, al_texts, al_supp, al_units, "atleast")
-                    if am_texts:
-                        with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · At-Most Rules ({_nlen(am_r)})", expanded=False):
-                            show_rules(am_r, am_texts, am_supp, am_units, "atmost")
-                    if al_texts or am_texts:
-                        st.markdown("### 💾 Export")
-                        _inc2 = st.session_state.get('inc',[]); _dec2 = st.session_state.get('dec',[])
-                        _crit2 = st.session_state.get('crit_names',[])
-                        csv_ind = rules_to_csv(al_texts, am_texts, _crit2, _inc2, _dec2,
-                                               al_rules=al_r, am_rules=am_r,
-                                       score_map=st.session_state.get('score_map'))
-                        st.download_button("⬇ Download rules", csv_ind,
-                                           file_name="drsa_rules.csv", mime="text/csv",
-                                           key="dl_ind_prev", use_container_width=True)
+            st.info("Press **▶ Run** to start.")
 
     # ══════════════════════════════════════════════════════════════════════════════
     # TAB 3
@@ -2025,4 +1966,3 @@ x2,2.0,4.5,1.5
                          st.download_button("⬇ Assignment CSV", df_n5_csv.to_csv(index=False),
                              file_name="drsa_new5_assignment.csv", mime="text/csv",
                              key="dl_new5_cl", use_container_width=True)
-
