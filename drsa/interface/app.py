@@ -572,13 +572,13 @@ A1, A2 are reference. A3, A4 are non-reference.
         sample_xlsx.to_excel(_buf, index=False)
         sc_a, sc_b = st.columns(2)
         with sc_a:
-            st.download_button("⬇ Download sample CSV", sample.to_csv(index=False),
+            st.download_button("⬇ Download sample units (CSV)", sample.to_csv(index=False),
                                file_name="drsa_sample.csv",
                                mime="text/csv",
                                key="dl_sample",
                                use_container_width=True)
         with sc_b:
-            st.download_button("⬇ Download sample EXCEL", _buf.getvalue(),
+            st.download_button("⬇ Download sample units (EXCEL)", _buf.getvalue(),
                                file_name="drsa_sample.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                key="dl_sample_xlsx",
@@ -908,8 +908,8 @@ if uploaded is not None:
                 csv_rules = rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
                                          al_rules=al_r, am_rules=am_r,
                                          score_map=st.session_state.get('score_map'))
-                st.download_button("⬇ Download rules", csv_rules,
-                                   file_name="drsa_rules.csv", mime="text/csv",
+                st.download_button("⬇ Induced rules", csv_rules,
+                                   file_name="drsa_rules_maximal.csv", mime="text/csv",
                                    key="dl_rules_ind", use_container_width=True)
 
                 # ── Find minimal set (solo se tutte reference) ─────────────────
@@ -1004,12 +1004,13 @@ if uploaded is not None:
                     if am_texts_max:
                         st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most (maximal)**")
                         show_rules(am_r2, am_texts_max, units=am_units_max, rule_type="atmost")
-            if al_texts_min:
-                st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
-                show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
-            if am_texts_min:
-                st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
-                show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
+            with st.expander(f"📂 Minimal rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most)"):
+                if al_texts_min:
+                    st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
+                    show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
+                if am_texts_min:
+                    st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
+                    show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
 
             st.markdown("### 💾 Export rules")
             _inc = st.session_state.get('inc', []); _dec = st.session_state.get('dec', [])
@@ -1020,14 +1021,14 @@ if uploaded is not None:
                                          al_rules=al_final, am_rules=am_final,
                                          score_map=st.session_state.get('score_map'))
                 st.download_button("⬇ Minimal rules", csv_min_p,
-                                   file_name="drsa_rules_minimal.csv", mime="text/csv",
+                                   file_name="pipeline_rules_minimal.csv", mime="text/csv",
                                    key="dl_min_prev", use_container_width=True)
             with c2:
                 csv_max_p = rules_to_csv(al_texts_max, am_texts_max, _crit, _inc, _dec,
                                          al_rules=al_r2, am_rules=am_r2,
                                          score_map=st.session_state.get('score_map'))
                 st.download_button("⬇ Maximal rules", csv_max_p,
-                                   file_name="drsa_rules_maximal.csv", mime="text/csv",
+                                   file_name="pipeline_rules_maximal.csv", mime="text/csv",
                                    key="dl_max_prev", use_container_width=True)
 
         else:
