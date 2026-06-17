@@ -472,13 +472,16 @@ def get_matching_units(rules, match_matrix, all_names, rule_type, inc, dec, crit
 # ── Logo + Title ──────────────────────────────────────────────────────────────
 import os as _os
 _logo_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), 'assets', 'ei-score.svg')
-_col_logo, _col_title = st.columns([1, 5])
+_col_logo, _col_title = st.columns([1, 5], vertical_alignment="center")
 with _col_logo:
     if _os.path.exists(_logo_path):
         st.image(_logo_path, width=150)
 with _col_title:
     st.title("EI-SCORE")
-    st.markdown("**Explainable-Interpretable and Simple Customized Overall Ranking Engine**")
+    st.markdown('<span style="font-size: 20px;">'
+                "**E**xplainable-**I**nterpretable and **S**imple **C**ustomized **O**verall **R**anking **E**ngine"
+                "</span>",
+                unsafe_allow_html=True)
 st.markdown("""<div class="info-banner">
 User-friendly GUI to build your customized composite indicator based on Decision Rules
 </div>""", unsafe_allow_html=True)
