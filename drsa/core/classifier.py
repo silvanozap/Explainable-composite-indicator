@@ -156,7 +156,7 @@ def explain_unit(unit_idx: int,
     elif not contradictory:
         assignment = f"Class {sm} to {sp}"
     else:
-        assignment = f"CONTRADICTORY (s⁻={sm} > s⁺={sp})"
+        assignment = f"CONTRADICTORY (Minimal={sm} > Maximal={sp})"
 
     return {
         "name": name,
