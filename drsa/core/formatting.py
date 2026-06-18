@@ -6,6 +6,16 @@ Based on from_atleast_to_rules.m and from_atmost_to_rules.m
 import numpy as np
 
 
+def _fmt_threshold(name, value, qual_mapping, n_decimals):
+    """Return display string for a threshold value, using qual_mapping if available."""
+    if qual_mapping and name in qual_mapping:
+        _inv = {v: k for k, v in qual_mapping[name].items()}
+        _rounded = round(float(value))
+        if _rounded in _inv:
+            return _inv[_rounded]
+    return str(round(value, n_decimals))
+
+
 def format_atleast_rules(rules: np.ndarray,
                           increasing: list,
                           decreasing: list,
