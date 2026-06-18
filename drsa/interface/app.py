@@ -702,41 +702,37 @@ if uploaded is not None:
         if _qual_cols:
             st.markdown("#### 🔤 Qualitative criteria mapping")
             st.markdown("The following columns contain non-numeric values. "
-                        "Assign a numeric rank to each value (higher = better for ↑ criteria).")
+                        "For each value, select its rank (**1 = worst, p = best**). "
+                        "Ranks must be unique within each criterion.")
             _new_qual_mapping = {}
             for _col, _vals in _qual_cols.items():
                 st.markdown(f"**{_col}**")
-                # Build default mapping: alphabetical order → 1, 2, 3...
                 _prev_map = st.session_state.get('qual_mapping', {}).get(_col, {})
-                _default_map = {v.strip(): _prev_map.get(v.strip(), i+1) for i, v in enumerate(_vals)}
-                _df_map = pd.DataFrame({
-                    'Value': list(_default_map.keys()),
-                    'Rank':  list(_default_map.values()),
-                })
-                _edited = st.data_editor(
-                    _df_map,
-                    key=f"qual_map_{_col}",
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        'Value': st.column_config.TextColumn('Value', disabled=True),
-                        'Rank':  st.column_config.NumberColumn('Rank', min_value=1, step=1),
-                    }
-                )
-                _new_qual_mapping[_col] = dict(zip(_edited['Value'], _edited['Rank'].astype(int)))
-            # Save mapping and reapply
+                _n_vals = len(_vals)
+                _col_layout = st.columns(min(_n_vals, 4))
+                _col_map = {}
+                _used_ranks = []
+                for _vi, _v in enumerate(_vals):
+                    _default_rank = _prev_map.get(_v.strip(), _vi + 1)
+                    with _col_layout[_vi % min(_n_vals, 4)]:
+                        _rank = st.selectbox(
+                            _v.strip(),
+                            options=list(range(1, _n_vals + 1)),
+                            index=min(_default_rank - 1, _n_vals - 1),
+                            key=f"qual_{_col}_{_vi}"
+                        )
+                        _col_map[_v.strip()] = _rank
+                        _used_ranks.append(_rank)
+                if len(set(_used_ranks)) < len(_used_ranks):
+                    st.warning(f"⚠️ Ranks for **{_col}** are not unique. Each value must have a different rank.")
+                _new_qual_mapping[_col] = _col_map
             if _new_qual_mapping != st.session_state.get('qual_mapping', {}):
                 st.session_state['qual_mapping'] = _new_qual_mapping
-                # Re-apply mapping to matrix
-                for _col, _map in _new_qual_mapping.items():
-                    if _col in df_qual_orig.columns:
-                        df[_col] = df_qual_orig[_col].map(_map).astype(float)
-                matrix_raw_qual = df.values.astype(float)
-            else:
-                matrix_raw_qual = matrix_raw
+            for _col, _map in _new_qual_mapping.items():
+                if _col in df_qual_orig.columns:
+                    df[_col] = df_qual_orig[_col].astype(str).str.strip().map(_map).astype(float)
         else:
             _new_qual_mapping = {}
-            matrix_raw_qual = matrix_raw
 
         st.markdown("#### 🎯 Reference units")
         selected_ref = st.multiselect(
