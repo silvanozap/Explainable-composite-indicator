@@ -843,6 +843,7 @@ if uploaded is not None:
         run_al = run_am = True
 
         if st.button("▶ Run", type="primary", use_container_width=True):
+            st.write("qual_mapping:", st.session_state.get('qual_mapping', {}))
             if "induction only" in mode.lower():
                 with st.spinner("Inducing rules…"):
                     al_r, al_m, al_d, _ = induce_atleast_rules(ref_matrix, inc, dec, min_conf, handle_miss)
@@ -984,8 +985,7 @@ if uploaded is not None:
                 st.markdown("### 💾 Export")
                 csv_rules = rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
                                          al_rules=al_r, am_rules=am_r,
-                                         score_map=st.session_state.get('score_map',
-                                       qual_mapping=st.session_state.get('qual_mapping', {})))
+                                         score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                 st.download_button("⬇ Maximal rules", csv_rules,
                                    file_name="drsa_rules_maximal.csv", mime="text/csv",
                                    key="dl_rules_ind", use_container_width=True)
@@ -1003,9 +1003,9 @@ if uploaded is not None:
                         al_final = al_min if (milp_ok and _nlen(al_min)>0) else al_r
                         am_final = am_min if (milp_ok and _nlen(am_min)>0) else am_r
                         al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names,
-                            score_map=st.session_state.get('score_map', qual_mapping=st.session_state.get('qual_mapping', {}))) if _nlen(al_final)>0 else []
+                            score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(al_final)>0 else []
                         am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names,
-                            score_map=st.session_state.get('score_map', qual_mapping=st.session_state.get('qual_mapping', {}))) if _nlen(am_final)>0 else []
+                            score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(am_final)>0 else []
                         mat_nc_min = np.hstack([all_crit, np.full((n_units,1), np.nan)])
                         sm_min, sp_min, al_m_min, am_m_min = _cu(mat_nc_min, al_final, am_final, inc, dec)
                         al_units_min = [[unit_names[j] for j in range(n_units) if al_m_min[j,i]==1]
@@ -1043,8 +1043,7 @@ if uploaded is not None:
                                     show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
                             csv_min_ind = rules_to_csv(al_texts_min, am_texts_min, crit_names, inc, dec,
                                                        al_rules=al_final, am_rules=am_final,
-                                                       score_map=st.session_state.get('score_map',
-                                       qual_mapping=st.session_state.get('qual_mapping', {})))
+                                                       score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                             st.download_button("⬇ Minimal rules", csv_min_ind,
                                                file_name="drsa_rules_minimal.csv", mime="text/csv",
                                                key="dl_min_ind", use_container_width=True)
@@ -1099,16 +1098,14 @@ if uploaded is not None:
             with c1:
                 csv_min_p = rules_to_csv(al_texts_min, am_texts_min, _crit, _inc, _dec,
                                          al_rules=al_final, am_rules=am_final,
-                                         score_map=st.session_state.get('score_map',
-                                       qual_mapping=st.session_state.get('qual_mapping', {})))
+                                         score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                 st.download_button("⬇ Minimal rules", csv_min_p,
                                    file_name="pipeline_rules_minimal.csv", mime="text/csv",
                                    key="dl_min_prev", use_container_width=True)
             with c2:
                 csv_max_p = rules_to_csv(al_texts_max, am_texts_max, _crit, _inc, _dec,
                                          al_rules=al_r2, am_rules=am_r2,
-                                         score_map=st.session_state.get('score_map',
-                                       qual_mapping=st.session_state.get('qual_mapping', {})))
+                                         score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                 st.download_button("⬇ Maximal rules", csv_max_p,
                                    file_name="pipeline_rules_maximal.csv", mime="text/csv",
                                    key="dl_max_prev", use_container_width=True)
@@ -1287,10 +1284,10 @@ if uploaded is not None:
 
                     al_texts_new = format_atleast_rules(al_fin, st.session_state['inc'],
                         st.session_state['dec'], st.session_state['crit_names'],
-                        score_map=st.session_state.get('score_map', qual_mapping=st.session_state.get('qual_mapping', {}))) if _nlen(al_fin)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(al_fin)>0 else []
                     am_texts_new = format_atmost_rules(am_fin, st.session_state['inc'],
                         st.session_state['dec'], st.session_state['crit_names'],
-                        score_map=st.session_state.get('score_map', qual_mapping=st.session_state.get('qual_mapping', {}))) if _nlen(am_fin)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(am_fin)>0 else []
                     st.session_state.update({
                         'new_s_minus':   new_res['final_s_minus'],
                         'new_s_plus':    new_res['final_s_plus'],
@@ -1427,10 +1424,10 @@ if uploaded is not None:
                 if _nlen(al7) > 0 or _nlen(am7) > 0:
                     al_texts7 = format_atleast_rules(al7, st.session_state['inc'],
                         st.session_state['dec'], st.session_state['crit_names'],
-                        score_map=st.session_state.get('score_map', qual_mapping=st.session_state.get('qual_mapping', {}))) if _nlen(al7)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(al7)>0 else []
                     am_texts7 = format_atmost_rules(am7, st.session_state['inc'],
                         st.session_state['dec'], st.session_state['crit_names'],
-                        score_map=st.session_state.get('score_map', qual_mapping=st.session_state.get('qual_mapping', {}))) if _nlen(am7)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(am7)>0 else []
                     _, _, al_m7_all, am_m7_all = classify_units(
                         all_nc_combined, al7 if _nlen(al7)>0 else np.empty((0,1)),
                         am7 if _nlen(am7)>0 else np.empty((0,1)),
@@ -1488,21 +1485,19 @@ if uploaded is not None:
                 with c1:
                     csv_new_min = rules_to_csv(al_texts_new, am_texts_new, _crit_n, _inc_n, _dec_n,
                                                al_rules=al_fin, am_rules=am_fin,
-                                       score_map=st.session_state.get('score_map',
-                                       qual_mapping=st.session_state.get('qual_mapping', {})))
+                                       score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                     st.download_button("⬇ Minimal rules", csv_new_min,
                                        file_name="pipeline_newunits_rules_minimal.csv",
                                        mime="text/csv", key="dl_new_min", use_container_width=True)
                 with c2:
                     _al7n = new_res.get('step7_al_rules'); _am7n = new_res.get('step7_am_rules')
                     _al7_txtn = format_atleast_rules(_al7n, _inc_n, _dec_n, _crit_n,
-                        score_map=st.session_state.get('score_map', qual_mapping=st.session_state.get('qual_mapping', {}))) if _nlen(_al7n)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(_al7n)>0 else []
                     _am7_txtn = format_atmost_rules(_am7n, _inc_n, _dec_n, _crit_n,
-                        score_map=st.session_state.get('score_map', qual_mapping=st.session_state.get('qual_mapping', {}))) if _nlen(_am7n)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(_am7n)>0 else []
                     csv_new_max = rules_to_csv(_al7_txtn, _am7_txtn, _crit_n, _inc_n, _dec_n,
                                                al_rules=_al7n, am_rules=_am7n,
-                                       score_map=st.session_state.get('score_map',
-                                       qual_mapping=st.session_state.get('qual_mapping', {})))
+                                       score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                     st.download_button("⬇ Maximal rules", csv_new_max,
                                        file_name="pipeline_newunits_rules_maximal.csv",
                                        mime="text/csv", key="dl_new_max", use_container_width=True)

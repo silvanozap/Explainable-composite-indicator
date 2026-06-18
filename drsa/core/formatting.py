@@ -61,12 +61,12 @@ def format_atleast_rules(rules: np.ndarray,
             name = criterion_names[crit_0based] if crit_0based < len(criterion_names) else f'g{crit_1based}'
 
             if crit_0based in increasing:
-                parts.append(f'{name} ≥ {round(threshold, n_decimals)}')
+                parts.append(f'{name} ≥ {_fmt_threshold(name, threshold, qual_mapping, n_decimals)}')
             elif crit_0based in decreasing:
                 # threshold was negated internally; display original value
-                parts.append(f'{name} ≤ {round(-threshold, n_decimals)}')
+                parts.append(f'{name} ≤ {_fmt_threshold(name, -threshold, qual_mapping, n_decimals)}')
             else:
-                parts.append(f'{name} ≥ {round(threshold, n_decimals)}')
+                parts.append(f'{name} ≥ {_fmt_threshold(name, threshold, qual_mapping, n_decimals)}')
 
         rule_class = int(rule[-1])
         class_label = score_map[rule_class] if score_map and rule_class in score_map else rule_class
@@ -110,11 +110,11 @@ def format_atmost_rules(rules: np.ndarray,
             # At-most rules: increasing criteria use <=, decreasing use >=
             # The internal negation means we display -threshold for increasing
             if crit_0based in increasing:
-                parts.append(f'{name} ≤ {round(-threshold, n_decimals)}')
+                parts.append(f'{name} ≤ {_fmt_threshold(name, -threshold, qual_mapping, n_decimals)}')
             elif crit_0based in decreasing:
-                parts.append(f'{name} ≥ {round(threshold, n_decimals)}')
+                parts.append(f'{name} ≥ {_fmt_threshold(name, threshold, qual_mapping, n_decimals)}')
             else:
-                parts.append(f'{name} ≤ {round(-threshold, n_decimals)}')
+                parts.append(f'{name} ≤ {_fmt_threshold(name, -threshold, qual_mapping, n_decimals)}')
 
         rule_class = int(rule[-1])
         class_label = score_map[rule_class] if score_map and rule_class in score_map else rule_class
