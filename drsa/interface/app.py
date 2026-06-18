@@ -1013,12 +1013,14 @@ if uploaded is not None:
                     if am_texts_max:
                         st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most (maximal)**")
                         show_rules(am_r2, am_texts_max, units=am_units_max, rule_type="atmost")
-            if al_texts_min:
-                st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
-                show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
-            if am_texts_min:
-                st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
-                show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
+            if al_texts_max or am_texts_max:
+                with st.expander(f"📂 Minimal rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most)"):
+                    if al_texts_min:
+                        st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
+                        show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
+                    if am_texts_min:
+                        st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
+                        show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
 
             st.markdown("### 💾 Export rules")
             _inc = st.session_state.get('inc', []); _dec = st.session_state.get('dec', [])
