@@ -438,7 +438,7 @@ def bibtex():
 }
 @article{greco2001,
   title     = {Rough sets theory for multicriteria decision analysis},
-  author    = {Greco, Salvatore and Matarazzo, Benedetto and Slowinski, Roman},
+  author    = {Greco, Salvatore and Matarazzo, Benedetto and S{\l}owi{\'n}ski, Roman},
   journal   = {European journal of operational research},
   volume    = {129},
   number    = {1},
@@ -479,7 +479,7 @@ with _col_logo:
 with _col_title:
     st.title("EI-SCORE")
     st.markdown('<span style="font-size: 20px;">'
-                "**E**xplainable-**I**nterpretable and **S**imple **C**ustomized **O**verall **R**anking **E**ngine"
+                "**E**xplainable-**I**nterpretable **S**imple **C**ustomized **O**verall **R**anking **E**ngine"
                 "</span>",
                 unsafe_allow_html=True)
 st.markdown("""<div class="info-banner">
@@ -1485,10 +1485,8 @@ with tab5:
         with c2t5:
             st.markdown("""
 **File format**
-- CSV or TXT
-- Two files:
-  - **Rules**: `#directions`, `#mode` rows + type/class/criteria
-  - **Units** (optional): name column + criteria (no class)
+- **Rules**: `#directions`, `#mode` rows + type/class/criteria - CSV
+- **Units** (optional): name column + criteria (no class) - EXCEL, CSV, TXT
 """)
         with c3t5:
             st.markdown("""
