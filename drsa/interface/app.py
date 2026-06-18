@@ -616,11 +616,7 @@ if uploaded is not None:
         if uploaded.name.endswith(".xlsx"):
             df_raw = pd.read_excel(uploaded)
         else:
-            try:
-                df_raw = pd.read_csv(uploaded, sep=sep_actual, engine="python", encoding="utf-8")
-            except UnicodeDecodeError:
-                uploaded.seek(0)
-                df_raw = pd.read_csv(uploaded, sep=sep_actual, engine="python", encoding="latin-1")
+            df_raw = pd.read_csv(uploaded, sep=sep_actual, engine="python")
     except Exception as e:
         st.error(f"Could not read file: {e}"); st.stop()
 
