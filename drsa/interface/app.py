@@ -417,15 +417,20 @@ def _fmt_class(val, score_map):
         return score_map[int(val)]
     return int(val)
 
-def _assign_str(sm, sp, score_map):
+def _assign_str(sm, sp, score_map, qual_inv=None):
     """Build assignment string using score or class labels."""
-    lm = _fmt_class(sm, score_map)
-    lp = _fmt_class(sp, score_map)
-    mode = "Score" if score_map else "Class"
+    if qual_inv:
+        lm = qual_inv.get(int(sm), _fmt_class(sm, score_map))
+        lp = qual_inv.get(int(sp), _fmt_class(sp, score_map))
+        mode = ""
+    else:
+        lm = _fmt_class(sm, score_map)
+        lp = _fmt_class(sp, score_map)
+        mode = "Score " if score_map else "Class "
     if sm == sp:
-        return f"{mode} {lm}"
+        return f"{mode}{lm}"
     elif sm <= sp:
-        return f"{mode} {lm} to {lp}"
+        return f"{mode}{lm} to {lp}"
     else:
         return f"CONTRADICTORY ({lm} > {lp})"
 
@@ -442,7 +447,7 @@ def bibtex():
 }
 @article{greco2001,
   title     = {Rough sets theory for multicriteria decision analysis},
-  author    = {Greco, Salvatore and Matarazzo, Benedetto and S{\\l}owi{\\'n}ski, Roman},
+  author    = {Greco, Salvatore and Matarazzo, Benedetto and S{\l}owi{\'n}ski, Roman},
   journal   = {European journal of operational research},
   volume    = {129},
   number    = {1},
@@ -639,7 +644,7 @@ if uploaded is not None:
         _numeric_mask = pd.to_numeric(df[_col], errors='coerce').notna()
         _non_numeric  = df[_col][~_numeric_mask].dropna()
         if len(_non_numeric) > 0:
-            _distinct = sorted(df[_col].dropna().astype(str).unique().tolist())
+            _distinct = sorted(df[_col].dropna().astype(str).str.strip().unique().tolist())
             _qual_cols[_col] = _distinct
 
     # Save original string values for qualitative columns
@@ -664,7 +669,7 @@ if uploaded is not None:
     if _qual_cols:
         for _col, _vals in _qual_cols.items():
             _map = qual_mapping.get(_col, {v: i+1 for i, v in enumerate(_vals)})
-            df[_col] = df_qual_orig[_col].map(_map).astype(float)
+            df[_col] = df_qual_orig[_col].astype(str).str.strip().map(_map).astype(float)
 
     matrix_raw = df.values.astype(float)
     # Auto-detect missing values in criteria columns
@@ -703,7 +708,7 @@ if uploaded is not None:
                 st.markdown(f"**{_col}**")
                 # Build default mapping: alphabetical order → 1, 2, 3...
                 _prev_map = st.session_state.get('qual_mapping', {}).get(_col, {})
-                _default_map = {v: _prev_map.get(v, i+1) for i, v in enumerate(_vals)}
+                _default_map = {v.strip(): _prev_map.get(v.strip(), i+1) for i, v in enumerate(_vals)}
                 _df_map = pd.DataFrame({
                     'Value': list(_default_map.keys()),
                     'Rank':  list(_default_map.values()),
@@ -843,7 +848,6 @@ if uploaded is not None:
         run_al = run_am = True
 
         if st.button("▶ Run", type="primary", use_container_width=True):
-            st.write("qual_mapping:", st.session_state.get('qual_mapping', {}))
             if "induction only" in mode.lower():
                 with st.spinner("Inducing rules…"):
                     al_r, al_m, al_d, _ = induce_atleast_rules(ref_matrix, inc, dec, min_conf, handle_miss)
@@ -1139,14 +1143,20 @@ if uploaded is not None:
             else:
                 s_minus, s_plus, al_m, am_m = classify_units(mat_nc, al_rules, am_rules, inc, dec)
 
+            # Build inverse qual mapping for class column
+            _qmap3 = st.session_state.get('qual_mapping', {})
+            _qcols3 = st.session_state.get('qual_cols', [])
+            _class_col3 = _qcols3[-1] if _qcols3 else None
+            _qual_inv3 = {v: k for k, v in _qmap3[_class_col3].items()} if _class_col3 and _class_col3 in _qmap3 else {}
+
             rows = []
             for i, name in enumerate(unit_names):
                 sm, sp = int(s_minus[i]), int(s_plus[i])
                 contra  = sm > sp
                 _smap3  = st.session_state.get('score_map')
-                sm_lbl3 = _fmt_class(sm, _smap3)
-                sp_lbl3 = _fmt_class(sp, _smap3)
-                assign  = _assign_str(sm, sp, _smap3)
+                sm_lbl3 = _qual_inv3.get(sm, _fmt_class(sm, _smap3))
+                sp_lbl3 = _qual_inv3.get(sp, _fmt_class(sp, _smap3))
+                assign  = _assign_str(sm, sp, _smap3, qual_inv=_qual_inv3 if _qual_inv3 else None)
                 rows.append({"Unit":name,"Minimal assignment":sm_lbl3,"Maximal assignment":sp_lbl3,"Assignment":assign,
                              "Status":"⚠️ Contradictory" if contra else "✅ OK"})
 
