@@ -21,7 +21,8 @@ def format_atleast_rules(rules: np.ndarray,
                           decreasing: list,
                           criterion_names: list = None,
                           n_decimals: int = 4,
-                          score_map: dict = None) -> list:
+                          score_map: dict = None,
+                          qual_mapping: dict = None) -> list:
     """
     Convert at-least rule matrix to natural language strings.
 
@@ -83,7 +84,8 @@ def format_atmost_rules(rules: np.ndarray,
                          decreasing: list,
                          criterion_names: list = None,
                          n_decimals: int = 4,
-                         score_map: dict = None) -> list:
+                         score_map: dict = None,
+                         qual_mapping: dict = None) -> list:
     """
     Convert at-most rule matrix to natural language strings.
 
