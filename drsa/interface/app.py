@@ -11,8 +11,7 @@ _HERE        = os.path.dirname(os.path.abspath(__file__))
 _PACKAGE_DIR = os.path.dirname(_HERE)
 _ROOT        = os.path.dirname(_PACKAGE_DIR)
 sys.path.insert(0, _ROOT)
-color_main = "#1a2d4f"
-color_gold = "#8b6914"
+
 from drsa import (
     induce_atleast_rules, induce_atmost_rules,
     format_atleast_rules, format_atmost_rules,
@@ -22,11 +21,9 @@ from drsa import (
 )
 
 # ── Page config ────────────────────────────────────────────────────────────────
-#st.set_page_config(page_title="EI-SCORE", page_icon="📊", layout="wide")
 st.set_page_config(
     page_title="EI-SCORE", page_icon="assets/ei-score.svg", layout="wide"
-)
-## nuove righe modificate
+)## nuove righe modificate
 #hide_streamlit_style = """
 #            <style>
 #            /* Nasconde solo i bottoni a destra nell'header, non tutto l'header */
@@ -54,22 +51,253 @@ window.MathJax = {
 
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
-html,body,[class*="css"]{font-family:'IBM Plex Sans',sans-serif;}
-h1,h2,h3{font-family:'IBM Plex Mono',monospace;letter-spacing:-0.03em;}
-.rule-box{background:#f8f9fa;border-left:4px solid #1a1a2e;padding:12px 16px;margin:6px 0;border-radius:0 6px 6px 0;font-family:'IBM Plex Mono',monospace;font-size:0.82rem;line-height:1.6;}
-.rule-box.atleast{border-left-color:#2563eb;}
-.rule-box.atmost{border-left-color:#dc2626;}
-.metric-card{background:#1a1a2e;color:white;border-radius:8px;padding:14px 18px;text-align:center;}
-.metric-card .value{font-size:2rem;font-weight:600;font-family:'IBM Plex Mono',monospace;}
-.metric-card .label{font-size:0.75rem;opacity:0.7;margin-top:2px;}
-.info-banner{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px 18px;font-size:0.88rem;color:#1e3a5f;margin-bottom:18px;}
-.tag{display:inline-block;background:#dbeafe;color:#1e40af;border-radius:4px;padding:1px 7px;font-size:0.73rem;font-family:'IBM Plex Mono',monospace;margin-right:3px;}
-.class-box{border-radius:8px;padding:12px 16px;margin:6px 0;font-family:'IBM Plex Mono',monospace;font-size:0.88rem;}
-.class-ok{background:#f0fdf4;border-left:4px solid #16a34a;}
-.class-range{background:#fffbeb;border-left:4px solid #d97706;}
-.class-err{background:#fef2f2;border-left:4px solid #dc2626;}
-.changed-row{background:#fef9c3;}
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Libre+Franklin:wght@400;500;600&display=swap');
+
+/* ── Global ───────────────────────────────────────────────── */
+html, body, [class*="css"] {
+    font-family: 'Libre Franklin', system-ui, sans-serif;
+    background-color: #faf8f4;
+    color: #1e1e1e;
+}
+h1, h2, h3, h4 {
+    font-family: 'EB Garamond', Georgia, serif;
+    font-weight: 400;
+    color: #1a2d4f;
+    letter-spacing: 0.01em;
+}
+
+/* ── Main content background ──────────────────────────────── */
+.stApp, [data-testid="stAppViewContainer"] {
+    background-color: #faf8f4 !important;
+}
+[data-testid="stAppViewBlockContainer"] {
+    background-color: #faf8f4 !important;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────── */
+[data-testid="stTabs"] [role="tablist"] {
+    background-color: #1a2d4f;
+    border-bottom: 2px solid #8b6914;
+}
+button[role="tab"] {
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.07em !important;
+    text-transform: uppercase !important;
+    color: #b8cce0 !important;
+    border-radius: 0 !important;
+    padding: 0.6rem 1rem !important;
+    border-bottom: 3px solid transparent !important;
+    background-color: #1a2d4f !important;
+}
+button[role="tab"][aria-selected="true"] {
+    color: #ffffff !important;
+    border-bottom: 3px solid #8b6914 !important;
+    background-color: #26426e !important;
+}
+button[role="tab"]:hover {
+    color: #ffffff !important;
+    background-color: rgba(255,255,255,0.04) !important;
+}
+
+/* ── Primary buttons ──────────────────────────────────────── */
+[data-testid="baseButton-primary"] {
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.8rem !important;
+    letter-spacing: 0.05em !important;
+    background: #ffffff !important;
+    color: #1a2d4f !important;
+    border: 2px solid #1a2d4f !important;
+    border-radius: 4px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s !important;
+}
+[data-testid="baseButton-primary"]:hover {
+    background: #1a2d4f !important;
+    color: #ffffff !important;
+}
+
+/* ── Secondary buttons ────────────────────────────────────── */
+[data-testid="baseButton-secondary"] {
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.78rem !important;
+    background: transparent !important;
+    color: #1a2d4f !important;
+    border: 1px solid #1a2d4f !important;
+    border-radius: 4px !important;
+}
+[data-testid="baseButton-secondary"]:hover {
+    background: #1a2d4f !important;
+    color: #ffffff !important;
+}
+
+/* ── Rule boxes ───────────────────────────────────────────── */
+.rule-box {
+    background: #ffffff;
+    border: 1px solid #c8bfa8;
+    border-left: 4px solid #1a2d4f;
+    padding: 10px 14px;
+    margin: 5px 0;
+    border-radius: 0;
+    font-family: 'EB Garamond', Georgia, serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: #26426e;
+    line-height: 1.6;
+}
+.rule-box.atleast { border-left-color: #1a2d4f; }
+.rule-box.atmost  { border-left-color: #8b6914; }
+
+/* ── Tags ─────────────────────────────────────────────────── */
+.tag {
+    display: inline-block;
+    background: #ede9e0;
+    color: #26426e;
+    border-radius: 2px;
+    padding: 1px 6px;
+    font-size: 0.7rem;
+    font-family: 'Libre Franklin', sans-serif;
+    font-style: normal;
+    font-weight: 500;
+    margin-right: 3px;
+}
+
+/* ── Class/assignment boxes ───────────────────────────────── */
+.class-box {
+    border-radius: 0;
+    padding: 10px 14px;
+    margin: 5px 0;
+    font-family: 'Libre Franklin', sans-serif;
+    font-size: 0.9rem;
+}
+.class-ok    { background: #e8f3e0; border-left: 4px solid #2d5a14; }
+.class-range { background: #f5edda; border-left: 4px solid #8b6914; }
+.class-err   { background: #fef2f2; border-left: 4px solid #dc2626; }
+
+/* ── Info banner ──────────────────────────────────────────── */
+.info-banner {
+    background: #ffffff;
+    border: 1px solid #c8bfa8;
+    border-left: 4px solid #1a2d4f;
+    border-radius: 0;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+    color: #1a2d4f;
+    margin-bottom: 16px;
+    font-family: 'Libre Franklin', sans-serif;
+}
+
+/* ── Metric cards ─────────────────────────────────────────── */
+.metric-card {
+    background: #1a2d4f;
+    color: white;
+    border-radius: 4px;
+    padding: 14px 18px;
+    text-align: center;
+}
+.metric-card .value {
+    font-size: 2rem;
+    font-weight: 400;
+    font-family: 'EB Garamond', serif;
+}
+.metric-card .label { font-size: 0.72rem; opacity: 0.75; margin-top: 2px; font-family: 'Libre Franklin', sans-serif; }
+
+/* ── Expanders ────────────────────────────────────────────── */
+[data-testid="stExpander"] {
+    border: 1px solid #c8bfa8 !important;
+    border-left: 4px solid #8b6914 !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+}
+[data-testid="stExpander"] summary p {
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.82rem !important;
+    color: #1a2d4f !important;
+    font-weight: 500 !important;
+}
+
+/* ── Dataframe header ─────────────────────────────────────── */
+[data-testid="stDataFrame"] th {
+    background-color: #1a2d4f !important;
+    color: white !important;
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+}
+
+/* ── Changed rows ─────────────────────────────────────────── */
+.changed-row { background: #f5edda; }
+
+/* ── Hide fullscreen on images ────────────────────────────── */
+[data-testid="stImage"] button,
+[data-testid="stImageContainer"] button {
+    display: none !important;
+}
+
+/* ── Hide CSV download from dataframe toolbar ─────────────── */
+[data-testid="stDataFrameResizable"] button[title="Download as CSV"],
+[data-testid="stElementToolbar"] button[title="Download as CSV"],
+button[title="Download as CSV"],
+button[aria-label="Download as CSV"] {
+    display: none !important;
+}
+
+/* ── Radio/checkbox font ──────────────────────────────────── */
+[data-testid="stRadio"] label p,
+[data-testid="stCheckbox"] label p {
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.9rem !important;
+    color: #1e1e1e !important;
+}
+
+/* ── Tab active underline — remove Streamlit default red ──── */
+button[role="tab"][aria-selected="true"] {
+    border-bottom: 3px solid #8b6914 !important;
+    box-shadow: none !important;
+}
+button[role="tab"] {
+    box-shadow: none !important;
+}
+
+/* ── Dataframe tables ─────────────────────────────────────── */
+thead tr th {
+    background-color: #1a2d4f !important;
+    color: #ffffff !important;
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+}
+[data-testid="stDataFrame"] thead th,
+[data-testid="stDataFrameResizable"] thead th {
+    background-color: #1a2d4f !important;
+    color: #ffffff !important;
+    font-family: 'Libre Franklin', sans-serif !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+}
+
+/* ── Selectbox ────────────────────────────────────────────── */
+[data-testid="stSelectbox"] > div > div {
+    border-color: #c8bfa8 !important;
+    border-radius: 4px !important;
+}
+
+/* ── Metric values ────────────────────────────────────────── */
+[data-testid="stMetric"] [data-testid="stMetricValue"] {
+    font-family: 'EB Garamond', serif !important;
+    color: #1a2d4f !important;
+    font-size: 2rem !important;
+}
+[data-testid="stMetric"] [data-testid="stMetricLabel"] {
+    font-family: 'Libre Franklin', sans-serif !important;
+    color: #5c5c5c !important;
+    font-size: 0.78rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+}
 </style>
 <style>
 /* Hide fullscreen button from images */
@@ -115,13 +343,13 @@ def show_explanation(name, s_minus, s_plus, al_m, am_m, al_texts, am_texts, idx)
         for r in exp['matched_atleast']:
             st.markdown(f'<div class="rule-box atleast">{r}</div>', unsafe_allow_html=True)
     else:
-        st.markdown("*No at-least rule satisfied → s⁻ = 1*")
+        st.markdown("*No at-least rule satisfied → Minimal assignment = 1*")
     if exp['matched_atmost']:
         st.markdown("**Satisfied at-most rules:**")
         for r in exp['matched_atmost']:
             st.markdown(f'<div class="rule-box atmost">{r}</div>', unsafe_allow_html=True)
     else:
-        st.markdown("*No at-most rule satisfied → s⁺ = p*")
+        st.markdown("*No at-most rule satisfied → Maximal assignment = p*")
 
 def rules_to_df(al_texts, am_texts, label_al="at-least", label_am="at-most",
                 al_supp=None, am_supp=None):
@@ -154,7 +382,7 @@ def rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
         buf.write('#mode,score\n')
     else:
         buf.write('#mode,class\n')
-    buf.write('type,class,' + ','.join(crit_names) + '\n')
+    buf.write('type,assignment,' + ','.join(crit_names) + '\n')
     def write_rules(rules, rtype):
         if rules is None or len(rules) == 0: return
         for rule in rules:
@@ -210,7 +438,7 @@ def bibtex():
 }
 @article{greco2001,
   title     = {Rough sets theory for multicriteria decision analysis},
-  author    = {Greco, Salvatore and Matarazzo, Benedetto and Slowinski, Roman},
+  author    = {Greco, Salvatore and Matarazzo, Benedetto and S{\l}owi{\'n}ski, Roman},
   journal   = {European journal of operational research},
   volume    = {129},
   number    = {1},
@@ -244,29 +472,16 @@ def get_matching_units(rules, match_matrix, all_names, rule_type, inc, dec, crit
 # ── Logo + Title ──────────────────────────────────────────────────────────────
 import os as _os
 _logo_path = _os.path.join(_os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))), 'assets', 'ei-score.svg')
-_col_logo, _col_title = st.columns([1, 8], gap="small")
+_col_logo, _col_title = st.columns([1, 5], vertical_alignment="center")
 with _col_logo:
     if _os.path.exists(_logo_path):
         st.image(_logo_path, width=150)
 with _col_title:
-    st.markdown(f"<h1 style='color: {color_main};'>EI-SCORE</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='color: {color_gold}; font-weight: bold; font-size: 1.2rem;'>"
-    "Explainable-Interpretable and Simple Customized Overall Ranking Engine"
-    "</p>", unsafe_allow_html=True)
-#st.markdown(
-#    f"""
-#    <div style="
-#        background-color: white; 
-#        color: {color_main}; 
-#        padding: 15px; 
-#        border-radius: 8px; 
-#        font-weight: 500;
-#        margin-top: 10px;
-#    ">
-#        User-friendly GUI to build your customized composite indicator based on Decision Rules
-#    </div>
-#    """, 
-#    unsafe_allow_html=True)
+    st.title("EI-SCORE")
+    st.markdown('<span style="font-size: 20px;">'
+                "**E**xplainable-**I**nterpretable **S**imple **C**ustomized **O**verall **R**anking **E**ngine"
+                "</span>",
+                unsafe_allow_html=True)
 st.markdown("""<div class="info-banner">
 User-friendly GUI to build your customized composite indicator based on Decision Rules
 </div>""", unsafe_allow_html=True)
@@ -274,7 +489,7 @@ User-friendly GUI to build your customized composite indicator based on Decision
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### 📂 Data")
-    uploaded = st.file_uploader("Upload CSV or TXT", type=["csv","txt"],
+    uploaded = st.file_uploader("Upload units", type=["xlsx","csv","txt"],
         help="Last column = class label. Optional first column = unit names. NaN = non-reference unit.")
     sep = st.selectbox("Separator", [",",";","\\t"," "], index=0)
     sep_actual = "\t" if sep=="\\t" else sep
@@ -329,24 +544,24 @@ if uploaded is None:
         with c1:
             st.markdown("""
 **File format**
-- CSV or TXT
+- EXCEL, CSV or TXT
 - Optional first column: unit names
 - Criteria columns (numeric)
 - Last column: class label
-  - Integer → reference unit
+  - Number → reference unit
   - Empty/NaN → non-reference unit
 """)
         with c2:
             st.markdown("""
 **Example**
 ```
-Name,g1,g2,g3,class
+Name,g1,g2,g3,assignment
 A1,4,3,2,1
 A2,5,4,3,2
 A3,7,6,5,
 A4,6,5,4,
 ```
-A3, A4 are non-reference.
+A1, A2 are reference. A3, A4 are non-reference.
 """)
         sample = pd.DataFrame({
             'Name':['A1','A2','A3','A4','A5','A6','A7','A8'],
@@ -354,16 +569,54 @@ A3, A4 are non-reference.
             'g3':[2,3,5,1,4,6,3,2],
             'class':[1,2,3,1,'','',2,'']
         })
-        st.download_button("⬇ Download sample CSV", sample.to_csv(index=False),
-                           file_name="drsa_sample.csv", mime="text/csv", key="dl_sample")
+        import io
+        _buf = io.BytesIO()
+        sample_xlsx = sample.copy()
+        sample_xlsx.to_excel(_buf, index=False)
+        sc_a, sc_b = st.columns(2)
+        with sc_a:
+            st.download_button("⬇ Download sample CSV", sample.to_csv(index=False),
+                               file_name="drsa_sample.csv",
+                               mime="text/csv",
+                               key="dl_sample",
+                               use_container_width=True)
+        with sc_b:
+            st.download_button("⬇ Download sample EXCEL", _buf.getvalue(),
+                               file_name="drsa_sample.xlsx",
+                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                               key="dl_sample_xlsx",
+                               use_container_width=True)
     with tab2: st.info("Upload a file in the sidebar to get started.")
     with tab3: st.info("Upload a file in the sidebar to get started.")
     with tab4: st.info("Upload a file in the sidebar to get started.")
 
 if uploaded is not None:
+    # Reset session_state if file changes
+    if st.session_state.get('_last_uploaded') != uploaded.name:
+        keys_to_reset = [
+            'al_rules', 'am_rules', 'al_texts', 'am_texts',
+            'al_supp', 'am_supp', 'al_units', 'am_units',
+            'al_rules_max', 'am_rules_max', 'al_texts_max', 'am_texts_max',
+            'al_units_max', 'am_units_max', 'al_units_min', 'am_units_min',
+            'al_match2', 'am_match2', 'matrix_s_minus', 'matrix_s_plus',
+            'classification_final', 'pipeline_result', 'mode',
+            'new_s_minus', 'new_s_plus', 'new_names', 'new_matrix',
+            'new_al_rules', 'new_am_rules', 'new_al_texts', 'new_am_texts',
+            'new_res', 'new_changed', 'score_map', 'score_map_inv',
+            'minimal_done', 'al_rules_min_ind', 'am_rules_min_ind',
+            'al_texts_min_ind', 'am_texts_min_ind',
+            'al_units_min_ind', 'am_units_min_ind',
+            'al_m_ref', 'am_m_ref',
+        ]
+        for k in keys_to_reset:
+            st.session_state.pop(k, None)
+        st.session_state['_last_uploaded'] = uploaded.name
     # ── Load data ──────────────────────────────────────────────────────────────────
     try:
-        df_raw = pd.read_csv(uploaded, sep=sep_actual, engine="python")
+        if uploaded.name.endswith(".xlsx"):
+            df_raw = pd.read_excel(uploaded)
+        else:
+            df_raw = pd.read_csv(uploaded, sep=sep_actual, engine="python")
     except Exception as e:
         st.error(f"Could not read file: {e}"); st.stop()
 
@@ -378,6 +631,12 @@ if uploaded is not None:
     if unit_names is None:
         unit_names = [f'a{i+1}' for i in range(len(df))]
 
+    # Check sufficient columns
+    if df.shape[1] < 2:
+        st.error("⚠️ Could not parse the file correctly. "
+                 "The dataset must have at least one criterion and one class column. "
+                 "Check the separator setting.")
+        st.stop()
     n_units    = len(df)
     n_crit     = df.shape[1] - 1
     crit_names = list(df.columns)[:-1]
@@ -417,7 +676,20 @@ if uploaded is not None:
         if len(selected_ref) == 0:
             st.error("Please select at least one reference unit."); st.stop()
 
+
+
         ref_indices_sel = [unit_names.index(n) for n in selected_ref]
+
+        # Check at least 2 distinct classes among reference units
+        _ref_classes = set()
+        for _ri in ref_indices_sel:
+            _v = matrix_raw[_ri, -1]
+            if not np.isnan(_v):
+                _ref_classes.add(_v)
+        if len(_ref_classes) < 2:
+            st.error("⚠️ Reference units must cover at least 2 distinct classes to induce rules. "
+                     "Please select reference units from at least 2 different classes.")
+            st.stop()
         c1,c2,c3 = st.columns(3)
         c1.metric("Total units", n_units)
         c2.metric("Reference units", len(ref_indices_sel))
@@ -436,11 +708,11 @@ if uploaded is not None:
         st.markdown("#### ⚙️ Settings")
         sc1, sc2, sc3 = st.columns(3)
         with sc1:
-            min_conf = st.slider("Min confidence (c)", 0.0, 1.0, 1.0, 0.05)
+            min_conf = st.slider("Confidence level", 0.0, 1.0, 1.0, 0.05)
         with sc2:
             pass  # missing value detection is automatic
         with sc3:
-            random_seed = st.number_input("Random seed", value=1, min_value=0, step=1)
+            random_seed = st.number_input("Random seed (for full pipeline)", value=1, min_value=0, step=1)
 
         st.session_state.update({
             'inc': inc, 'dec': dec,
@@ -461,10 +733,9 @@ if uploaded is not None:
 
         # ── Problem type ───────────────────────────────────────────────────────
         col_mode_val = st.radio(
-            "**Problem type:**",
+            "**Problem type**",
             ["Classification", "Scoring"], horizontal=True, key="col_mode_radio"
         )
-        # Build score mapping
         _raw_sc = sorted(matrix_raw[:, -1][~np.isnan(matrix_raw[:, -1])].tolist())
         _uniq_sc = sorted(set(_raw_sc))
         if col_mode_val == "Scoring":
@@ -482,97 +753,76 @@ if uploaded is not None:
         st.session_state["matrix"]        = matrix
         st.markdown("---")
 
-        inc        = st.session_state['inc']
-        dec        = st.session_state['dec']
-        matrix     = st.session_state['matrix']
-        unit_names = st.session_state['unit_names']
-        crit_names = st.session_state['crit_names']
-        ref_idx    = st.session_state['ref_indices']
-        ref_matrix = matrix[ref_idx, :]
-        ref_names  = [unit_names[i] for i in ref_idx]
-        all_crit   = matrix[:, :-1]
-        n_units    = st.session_state['n_units']
-        score_map  = st.session_state.get('score_map')
+        inc         = st.session_state['inc']
+        dec         = st.session_state['dec']
+        matrix      = st.session_state['matrix']
+        unit_names  = st.session_state['unit_names']
+        crit_names  = st.session_state['crit_names']
+        ref_idx     = st.session_state['ref_indices']
+        ref_matrix  = matrix[ref_idx, :]
+        ref_names   = [unit_names[i] for i in ref_idx]
+        all_crit    = matrix[:, :-1]
+        n_units     = st.session_state['n_units']
+        score_map   = st.session_state.get('score_map')
+        min_conf    = st.session_state.get('min_conf', 1.0)
+        handle_miss = st.session_state.get('handle_miss', False)
+        random_seed = st.session_state.get('random_seed', 1)
 
-        mode = st.radio("Mode",
+        mode = st.radio("**Mode**",
             ["🔬 Rule induction only", "🚀 Full pipeline"],
             horizontal=True)
 
-        if "induction only" in mode.lower():
-            run_al = st.checkbox("At-least rules (R≥)", value=True, key="run_al")
-            run_am = st.checkbox("At-most rules (R≤)",  value=True, key="run_am")
-        else:
-            run_al = run_am = True
+        run_al = run_am = True
 
         if st.button("▶ Run", type="primary", use_container_width=True):
-
             if "induction only" in mode.lower():
-                # ── Rule induction only ────────────────────────────────────────
                 with st.spinner("Inducing rules…"):
-                    al_r = am_r = al_m = al_d = am_m = am_d = None
-                    if run_al:
-                        al_r, al_m, al_d, _ = induce_atleast_rules(
-                            ref_matrix, inc, dec, min_conf, handle_miss)
-                    if run_am:
-                        am_r, am_m, am_d, _ = induce_atmost_rules(
-                            ref_matrix, inc, dec, min_conf, handle_miss)
-
+                    al_r, al_m, al_d, _ = induce_atleast_rules(ref_matrix, inc, dec, min_conf, handle_miss)
+                    am_r, am_m, am_d, _ = induce_atmost_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                 n_al = _nlen(al_r); n_am = _nlen(am_r)
-                al_texts = format_atleast_rules(al_r, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if n_al>0 else []
-                am_texts = format_atmost_rules(am_r, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if n_am>0 else []
+                if n_al + n_am == 0:
+                    st.warning("⚠️ No rules could be induced. Check that reference units cover "
+                               "at least 2 classes and the confidence level is not too high.")
+                    st.stop()
+                al_texts = format_atleast_rules(al_r, inc, dec, crit_names, score_map=score_map) if n_al>0 else []
+                am_texts = format_atmost_rules(am_r, inc, dec, crit_names, score_map=score_map) if n_am>0 else []
                 al_supp  = compute_relative_support(al_r, al_m, al_d) if n_al>0 else []
                 am_supp  = compute_relative_support(am_r, am_m, am_d) if n_am>0 else []
                 al_units = get_supporting_units(al_m, al_d, ref_names) if n_al>0 else []
                 am_units = get_supporting_units(am_m, am_d, ref_names) if n_am>0 else []
-
                 st.session_state.update({
                     'al_rules': al_r, 'am_rules': am_r,
                     'al_texts': al_texts, 'am_texts': am_texts,
                     'al_supp': al_supp, 'am_supp': am_supp,
                     'al_units': al_units, 'am_units': am_units,
+                    'al_m_ref': al_m, 'am_m_ref': am_m,
                     'pipeline_result': None, 'mode': 'induction',
+                    'classification_final': None,
+                    'matrix_s_minus': None, 'matrix_s_plus': None,
+                    'al_rules_max': None, 'am_rules_max': None,
+                    'al_match2': None, 'am_match2': None,
+                    'minimal_done': False,
+                    'al_rules_min_ind': None, 'am_rules_min_ind': None,
+                    'al_texts_min_ind': [], 'am_texts_min_ind': [],
+                    'al_units_min_ind': [], 'am_units_min_ind': [],
                 })
-
-                mc1,mc2,mc3 = st.columns(3)
-                for col,val,lbl in zip([mc1,mc2,mc3],[n_al,n_am,n_al+n_am],
-                                        ["At-least (R≥)","At-most (R≤)","Total"]):
-                    col.markdown(f'<div class="metric-card"><div class="value">{val}</div>'
-                                 f'<div class="label">{lbl}</div></div>', unsafe_allow_html=True)
-                st.markdown("")
-                if n_al > 0:
-                    with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · At-Least Rules ({n_al})", expanded=False):
-                        show_rules(al_r, al_texts, al_supp, al_units, "atleast")
-                if n_am > 0:
-                    with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · At-Most Rules ({n_am})", expanded=False):
-                        show_rules(am_r, am_texts, am_supp, am_units, "atmost")
-                if n_al + n_am > 0:
-                    st.markdown("### 💾 Export")
-                    csv_rules = rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
-                                             al_rules=al_r if n_al>0 else None,
-                                             am_rules=am_r if n_am>0 else None,
-                                       score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Download rules CSV", csv_rules,
-                                       file_name="drsa_rules.csv", mime="text/csv",
-                                       key="dl_rules_ind", use_container_width=True)
-
             else:
                 # ── Full pipeline ──────────────────────────────────────────────
                 prog = st.progress(0); status = st.empty()
-
-                status.info("⏳ Step 1/4: Inducing rules from reference units…"); prog.progress(10)
+                status.info("⏳ Step 1/5: Inducing rules from reference units…"); prog.progress(10)
                 al_r, al_m, al_d, _ = induce_atleast_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                 am_r, am_m, am_d, _ = induce_atmost_rules(ref_matrix, inc, dec, min_conf, handle_miss)
                 n_al2 = _nlen(al_r); n_am2 = _nlen(am_r)
-                status.success(f"✅ Step 1/4: {n_al2} at-least, {n_am2} at-most"); prog.progress(20)
+                status.success(f"✅ Step 1/5: {n_al2} at-least, {n_am2} at-most"); prog.progress(20)
 
-                status.info("⏳ Step 2/4: Greedy selection…"); prog.progress(30)
+                status.info("⏳ Step 2/5: Greedy selection…"); prog.progress(30)
                 from drsa.core.step_forward import step_forward as _sf
                 sel_al, sel_am, _, _ = _sf(al_r, am_r, al_m, am_m, al_d, am_d,
                                             ref_matrix, all_crit, inc, dec,
                                             random_seed=int(random_seed))
-                status.success(f"✅ Step 2/4: {_nlen(sel_al)} at-least, {_nlen(sel_am)} selected"); prog.progress(45)
+                status.success(f"✅ Step 2/5: {_nlen(sel_al)} at-least, {_nlen(sel_am)} selected"); prog.progress(45)
 
-                status.info("⏳ Step 3/4: Fixing assignments…"); prog.progress(50)
+                status.info("⏳ Step 3/5: Fixing assignments…"); prog.progress(50)
                 from drsa.core.classifier import classify_units as _cu
                 mat_nc = np.hstack([all_crit, np.full((n_units,1), np.nan)])
                 s_minus, s_plus, _, _ = _cu(mat_nc, sel_al, sel_am, inc, dec)
@@ -583,7 +833,7 @@ if uploaded is not None:
                         s_minus_f[idx] = dm_c; s_plus_f[idx] = dm_c
                 mat_sm = np.hstack([all_crit, s_minus_f.reshape(-1,1)])
                 mat_sp = np.hstack([all_crit, s_plus_f.reshape(-1,1)])
-                status.success("✅ Step 3/4: done"); prog.progress(55)
+                status.success("✅ Step 3/5: done"); prog.progress(55)
 
                 status.info("⏳ Step 4/5: Inducing rules from all units…"); prog.progress(60)
                 al_r2, al_m2, al_d2, _ = induce_atleast_rules(mat_sm, inc, dec, min_conf, handle_miss)
@@ -599,32 +849,24 @@ if uploaded is not None:
                 if milp_ok:
                     status.success(f"✅ Step 5/5: {_nlen(al_final)} at-least, {_nlen(am_final)} minimal rules")
                 else:
-                    status.error(f"⚠️ Step 5/5: {milp_msg}")
+                    status.warning(f"⚠️ MILP minimisation failed ({milp_msg}). "
+                                   f"Using maximal rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most) instead.")
                 prog.progress(88)
-
                 status.info("⏳ Final assignment…")
                 sm7, sp7, _, _ = _cu(mat_nc, al_final, am_final, inc, dec)
                 prog.progress(100); status.success("🎉 Pipeline complete!")
 
-                # Format texts
-                al_texts_max = format_atleast_rules(al_r2, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if n_al6>0 else []
-                am_texts_max = format_atmost_rules(am_r2, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if n_am6>0 else []
-                al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if _nlen(al_final)>0 else []
-                am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names, score_map=st.session_state.get('score_map')) if _nlen(am_final)>0 else []
-
-                # Compute match matrices for ALL units against maximal and minimal rules
+                al_texts_max = format_atleast_rules(al_r2, inc, dec, crit_names, score_map=score_map) if n_al6>0 else []
+                am_texts_max = format_atmost_rules(am_r2, inc, dec, crit_names, score_map=score_map) if n_am6>0 else []
+                al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names, score_map=score_map) if _nlen(al_final)>0 else []
+                am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names, score_map=score_map) if _nlen(am_final)>0 else []
                 all_nc = np.hstack([all_crit, np.full((n_units,1), np.nan)])
-                _, _, al_m_all_max, am_m_all_max = _cu(all_nc, al_r2,    am_r2,    inc, dec)
+                _, _, al_m_all_max, am_m_all_max = _cu(all_nc, al_r2, am_r2, inc, dec)
                 _, _, al_m_all_min, am_m_all_min = _cu(all_nc, al_final, am_final, inc, dec)
-                al_units_max = [[unit_names[j] for j in range(n_units) if al_m_all_max[j,i]==1]
-                                for i in range(_nlen(al_r2))]
-                am_units_max = [[unit_names[j] for j in range(n_units) if am_m_all_max[j,i]==1]
-                                for i in range(_nlen(am_r2))]
-                al_units_min = [[unit_names[j] for j in range(n_units) if al_m_all_min[j,i]==1]
-                                for i in range(_nlen(al_final))]
-                am_units_min = [[unit_names[j] for j in range(n_units) if am_m_all_min[j,i]==1]
-                                for i in range(_nlen(am_final))]
-
+                al_units_max = [[unit_names[j] for j in range(n_units) if al_m_all_max[j,i]==1] for i in range(_nlen(al_r2))]
+                am_units_max = [[unit_names[j] for j in range(n_units) if am_m_all_max[j,i]==1] for i in range(_nlen(am_r2))]
+                al_units_min = [[unit_names[j] for j in range(n_units) if al_m_all_min[j,i]==1] for i in range(_nlen(al_final))]
+                am_units_min = [[unit_names[j] for j in range(n_units) if am_m_all_min[j,i]==1] for i in range(_nlen(am_final))]
                 st.session_state.update({
                     'al_rules': al_final, 'am_rules': am_final,
                     'al_rules_max': al_r2, 'am_rules_max': am_r2,
@@ -643,139 +885,164 @@ if uploaded is not None:
                     },
                 })
 
-                # Summary
-                st.markdown("#### Pipeline summary")
+        # ══ VISUALIZZAZIONE — sempre da session_state ══════════════════════════
+        mode_saved = st.session_state.get('mode', '')
+
+        if mode_saved == 'induction':
+            al_texts = st.session_state.get('al_texts', [])
+            am_texts = st.session_state.get('am_texts', [])
+            al_r     = st.session_state.get('al_rules')
+            am_r     = st.session_state.get('am_rules')
+            al_supp  = st.session_state.get('al_supp', [])
+            am_supp  = st.session_state.get('am_supp', [])
+            al_units = st.session_state.get('al_units', [])
+            am_units = st.session_state.get('am_units', [])
+
+            if al_texts or am_texts:
+                n_al = _nlen(al_r); n_am = _nlen(am_r)
+                mc1,mc2,mc3 = st.columns(3)
+                for col,val,lbl in zip([mc1,mc2,mc3],[n_al,n_am,n_al+n_am],
+                                        ["At-least (R≥)","At-most (R≤)","Total"]):
+                    col.markdown(f'<div class="metric-card"><div class="value">{val}</div>'
+                                 f'<div class="label">{lbl}</div></div>', unsafe_allow_html=True)
+                st.markdown("")
+                if al_texts:
+                    with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · At-Least Rules ({n_al})", expanded=False):
+                        show_rules(al_r, al_texts, al_supp, al_units, "atleast")
+                if am_texts:
+                    with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · At-Most Rules ({n_am})", expanded=False):
+                        show_rules(am_r, am_texts, am_supp, am_units, "atmost")
+
+                st.markdown("### 💾 Export")
+                csv_rules = rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
+                                         al_rules=al_r, am_rules=am_r,
+                                         score_map=st.session_state.get('score_map'))
+                st.download_button("⬇ Maximal rules", csv_rules,
+                                   file_name="drsa_rules_maximal.csv", mime="text/csv",
+                                   key="dl_rules_ind", use_container_width=True)
+
+                # ── Find minimal set (solo se tutte reference) ─────────────────
+                if len(st.session_state.get('ref_indices', [])) == st.session_state.get('n_units', 0):
+                    st.markdown("---")
+                    if st.button("🔍 Find minimal set", use_container_width=True, key="btn_minimal_ind"):
+                        from drsa.core.milp import solve_minimal_rules as _smr
+                        from drsa.core.classifier import classify_units as _cu
+                        al_m_ref = st.session_state.get('al_m_ref')
+                        am_m_ref = st.session_state.get('am_m_ref')
+                        al_min, am_min, _, _, milp_ok, milp_msg = _smr(
+                            ref_matrix, al_m_ref, ref_matrix, am_m_ref, al_r, am_r)
+                        al_final = al_min if (milp_ok and _nlen(al_min)>0) else al_r
+                        am_final = am_min if (milp_ok and _nlen(am_min)>0) else am_r
+                        al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names,
+                            score_map=st.session_state.get('score_map')) if _nlen(al_final)>0 else []
+                        am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names,
+                            score_map=st.session_state.get('score_map')) if _nlen(am_final)>0 else []
+                        mat_nc_min = np.hstack([all_crit, np.full((n_units,1), np.nan)])
+                        sm_min, sp_min, al_m_min, am_m_min = _cu(mat_nc_min, al_final, am_final, inc, dec)
+                        al_units_min = [[unit_names[j] for j in range(n_units) if al_m_min[j,i]==1]
+                                        for i in range(_nlen(al_final))]
+                        am_units_min = [[unit_names[j] for j in range(n_units) if am_m_min[j,i]==1]
+                                        for i in range(_nlen(am_final))]
+                        st.session_state.update({
+                            'al_rules_min_ind': al_final, 'am_rules_min_ind': am_final,
+                            'al_texts_min_ind': al_texts_min, 'am_texts_min_ind': am_texts_min,
+                            'al_units_min_ind': al_units_min, 'am_units_min_ind': am_units_min,
+                            'classification_final': np.column_stack([sm_min, sp_min]),
+                            'al_rules': al_final, 'am_rules': am_final,
+                            'al_texts': al_texts_min, 'am_texts': am_texts_min,
+                            'al_rules_max': al_r, 'am_rules_max': am_r,
+                            'al_match2': al_m_ref, 'am_match2': am_m_ref,
+                            'matrix_s_minus': np.hstack([all_crit, sm_min.reshape(-1,1)]),
+                            'matrix_s_plus':  np.hstack([all_crit, sp_min.reshape(-1,1)]),
+                            'minimal_done': True,
+                        })
+
+                    if st.session_state.get('minimal_done'):
+                        al_final     = st.session_state.get('al_rules_min_ind')
+                        am_final     = st.session_state.get('am_rules_min_ind')
+                        al_texts_min = st.session_state.get('al_texts_min_ind', [])
+                        am_texts_min = st.session_state.get('am_texts_min_ind', [])
+                        al_units_min = st.session_state.get('al_units_min_ind', [])
+                        am_units_min = st.session_state.get('am_units_min_ind', [])
+                        if al_texts_min or am_texts_min:
+                            st.markdown("#### Minimal set")
+                            if al_texts_min:
+                                with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · Minimal At-Least ({_nlen(al_final)})", expanded=False):
+                                    show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
+                            if am_texts_min:
+                                with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · Minimal At-Most ({_nlen(am_final)})", expanded=False):
+                                    show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
+                            csv_min_ind = rules_to_csv(al_texts_min, am_texts_min, crit_names, inc, dec,
+                                                       al_rules=al_final, am_rules=am_final,
+                                                       score_map=st.session_state.get('score_map'))
+                            st.download_button("⬇ Minimal rules", csv_min_ind,
+                                               file_name="drsa_rules_minimal.csv", mime="text/csv",
+                                               key="dl_min_ind", use_container_width=True)
+            else:
+                st.info("Press **▶ Run** to start.")
+
+        elif mode_saved == 'pipeline':
+            res = st.session_state.get('pipeline_result', {})
+            if res:
                 df_steps = pd.DataFrame([
-                    ("Rules initially induced", n_al2, n_am2, n_al2+n_am2),
-                    ("Greedy selection of rules", _nlen(sel_al), _nlen(sel_am), _nlen(sel_al)+_nlen(sel_am)),
-                    ("Maximal set of rules", n_al6, n_am6, n_al6+n_am6),
-                    ("Minimal set of rules", _nlen(al_final), _nlen(am_final), _nlen(al_final)+_nlen(am_final)),
+                    ("Rules initially induced", *res['step2'], sum(res['step2'])),
+                    ("Greedy selection of rules", *res['step3'], sum(res['step3'])),
+                    ("Maximal set of rules", *res['step6'], sum(res['step6'])),
+                    ("Minimal set of rules", *res['step7'], sum(res['step7'])),
                 ], columns=["Step","At-least","At-most","Total"])
                 st.dataframe(df_steps, use_container_width=True, hide_index=True)
 
-                # Maximal rules expander
-                with st.expander(f"📂 Maximal rules ({n_al6} at-least, {n_am6} at-most)"):
+            al_r2        = st.session_state.get('al_rules_max')
+            am_r2        = st.session_state.get('am_rules_max')
+            al_final     = st.session_state.get('al_rules')
+            am_final     = st.session_state.get('am_rules')
+            al_texts_max = st.session_state.get('al_texts_max', [])
+            am_texts_max = st.session_state.get('am_texts_max', [])
+            al_units_max = st.session_state.get('al_units_max', [])
+            am_units_max = st.session_state.get('am_units_max', [])
+            al_texts_min = st.session_state.get('al_texts', [])
+            am_texts_min = st.session_state.get('am_texts', [])
+            al_units_min = st.session_state.get('al_units_min', [])
+            am_units_min = st.session_state.get('am_units_min', [])
+
+            if al_texts_max or am_texts_max:
+                with st.expander(f"📂 Maximal rules ({_nlen(al_r2)} at-least, {_nlen(am_r2)} at-most)"):
                     if al_texts_max:
                         st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least (maximal)**")
                         show_rules(al_r2, al_texts_max, units=al_units_max, rule_type="atleast")
                     if am_texts_max:
                         st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most (maximal)**")
                         show_rules(am_r2, am_texts_max, units=am_units_max, rule_type="atmost")
+            if al_texts_max or am_texts_max:
+                with st.expander(f"📂 Minimal rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most)"):
+                    if al_texts_min:
+                        st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
+                        show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
+                    if am_texts_min:
+                        st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
+                        show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
 
-                # Minimal rules
-                if al_texts_min:
-                    st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
-                    show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
-                if am_texts_min:
-                    st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
-                    show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
-
-                # Download — two persistent buttons
-                st.markdown("### 💾 Export rules")
-                c1, c2 = st.columns(2)
-                with c1:
-                    csv_min = rules_to_csv(al_texts_min, am_texts_min, crit_names, inc, dec,
-                                           al_rules=al_final, am_rules=am_final,
-                                       score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Minimal rules CSV", csv_min,
-                                       file_name="drsa_rules_minimal.csv", mime="text/csv",
-                                       key="dl_min_run", use_container_width=True)
-                with c2:
-                    csv_max = rules_to_csv(al_texts_max, am_texts_max, crit_names, inc, dec,
-                                           al_rules=al_r2, am_rules=am_r2,
-                                       score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Maximal rules CSV", csv_max,
-                                       file_name="drsa_rules_maximal.csv", mime="text/csv",
-                                       key="dl_max_run", use_container_width=True)
+            st.markdown("### 💾 Export rules")
+            _inc = st.session_state.get('inc', []); _dec = st.session_state.get('dec', [])
+            _crit = st.session_state.get('crit_names', [])
+            c1, c2 = st.columns(2)
+            with c1:
+                csv_min_p = rules_to_csv(al_texts_min, am_texts_min, _crit, _inc, _dec,
+                                         al_rules=al_final, am_rules=am_final,
+                                         score_map=st.session_state.get('score_map'))
+                st.download_button("⬇ Minimal rules", csv_min_p,
+                                   file_name="pipeline_rules_minimal.csv", mime="text/csv",
+                                   key="dl_min_prev", use_container_width=True)
+            with c2:
+                csv_max_p = rules_to_csv(al_texts_max, am_texts_max, _crit, _inc, _dec,
+                                         al_rules=al_r2, am_rules=am_r2,
+                                         score_map=st.session_state.get('score_map'))
+                st.download_button("⬇ Maximal rules", csv_max_p,
+                                   file_name="pipeline_rules_maximal.csv", mime="text/csv",
+                                   key="dl_max_prev", use_container_width=True)
 
         else:
-            # ── Show previously computed results ───────────────────────────────
-            al_texts = st.session_state.get('al_texts', [])
-            am_texts = st.session_state.get('am_texts', [])
-            if not al_texts and not am_texts:
-                st.info("Press **▶ Run** to start.")
-            else:
-                mode_saved = st.session_state.get('mode', '')
-                if mode_saved == 'pipeline':
-                    res = st.session_state.get('pipeline_result', {})
-                    if res:
-                        df_steps = pd.DataFrame([
-                            ("Step 2", *res['step2'], sum(res['step2'])),
-                            ("Step 3", *res['step3'], sum(res['step3'])),
-                            ("Step 6 – Maximal set of rules", *res['step6'], sum(res['step6'])),
-                            ("Step 7 – Minimal set of rules", *res['step7'], sum(res['step7'])),
-                        ], columns=["Step","At-least","At-most","Total"])
-                        st.dataframe(df_steps, use_container_width=True, hide_index=True)
-
-                    al_r2     = st.session_state.get('al_rules_max')
-                    am_r2     = st.session_state.get('am_rules_max')
-                    al_final  = st.session_state.get('al_rules')
-                    am_final  = st.session_state.get('am_rules')
-                    al_texts_max  = st.session_state.get('al_texts_max', [])
-                    am_texts_max  = st.session_state.get('am_texts_max', [])
-                    al_units_max  = st.session_state.get('al_units_max', [])
-                    am_units_max  = st.session_state.get('am_units_max', [])
-                    al_units_min  = st.session_state.get('al_units_min', [])
-                    am_units_min  = st.session_state.get('am_units_min', [])
-
-                    if al_texts_max or am_texts_max:
-                        with st.expander("📂 Maximal rules"):
-                            if al_texts_max:
-                                st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least (maximal)**")
-                                show_rules(al_r2, al_texts_max, units=al_units_max, rule_type="atleast")
-                            if am_texts_max:
-                                st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most (maximal)**")
-                                show_rules(am_r2, am_texts_max, units=am_units_max, rule_type="atmost")
-
-                    if al_texts:
-                        st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
-                        show_rules(al_final, al_texts, units=al_units_min, rule_type="atleast")
-                    if am_texts:
-                        st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
-                        show_rules(am_final, am_texts, units=am_units_min, rule_type="atmost")
-
-                    # Persistent download buttons
-                    st.markdown("### 💾 Export rules")
-                    _inc = st.session_state.get('inc', []); _dec = st.session_state.get('dec', [])
-                    _crit = st.session_state.get('crit_names', [])
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        csv_min_p = rules_to_csv(al_texts, am_texts, _crit, _inc, _dec,
-                                                 al_rules=al_final, am_rules=am_final,
-                                       score_map=st.session_state.get('score_map'))
-                        st.download_button("⬇ Minimal rules CSV", csv_min_p,
-                                           file_name="drsa_rules_minimal.csv", mime="text/csv",
-                                           key="dl_min_prev", use_container_width=True)
-                    with c2:
-                        csv_max_p = rules_to_csv(al_texts_max, am_texts_max, _crit, _inc, _dec,
-                                                 al_rules=al_r2, am_rules=am_r2,
-                                       score_map=st.session_state.get('score_map'))
-                        st.download_button("⬇ Maximal rules CSV", csv_max_p,
-                                           file_name="drsa_rules_maximal.csv", mime="text/csv",
-                                           key="dl_max_prev", use_container_width=True)
-                else:
-                    al_supp  = st.session_state.get('al_supp', [])
-                    am_supp  = st.session_state.get('am_supp', [])
-                    al_units = st.session_state.get('al_units', [])
-                    am_units = st.session_state.get('am_units', [])
-                    al_r     = st.session_state.get('al_rules')
-                    am_r     = st.session_state.get('am_rules')
-                    if al_texts:
-                        with st.expander(f"$\\mathcal{{R}}^{{\\geqslant}}$ · At-Least Rules ({_nlen(al_r)})", expanded=False):
-                            show_rules(al_r, al_texts, al_supp, al_units, "atleast")
-                    if am_texts:
-                        with st.expander(f"$\\mathcal{{R}}^{{\\leqslant}}$ · At-Most Rules ({_nlen(am_r)})", expanded=False):
-                            show_rules(am_r, am_texts, am_supp, am_units, "atmost")
-                    if al_texts or am_texts:
-                        st.markdown("### 💾 Export")
-                        _inc2 = st.session_state.get('inc',[]); _dec2 = st.session_state.get('dec',[])
-                        _crit2 = st.session_state.get('crit_names',[])
-                        csv_ind = rules_to_csv(al_texts, am_texts, _crit2, _inc2, _dec2,
-                                               al_rules=al_r, am_rules=am_r,
-                                       score_map=st.session_state.get('score_map'))
-                        st.download_button("⬇ Download rules CSV", csv_ind,
-                                           file_name="drsa_rules.csv", mime="text/csv",
-                                           key="dl_ind_prev", use_container_width=True)
+            st.info("Press **▶ Run** to start.")
 
     # ══════════════════════════════════════════════════════════════════════════════
     # TAB 3
@@ -795,13 +1062,12 @@ if uploaded is not None:
 
             st.markdown("#### Assignment of all units")
 
-            if 'classification_final' in st.session_state:
-                cl = st.session_state['classification_final']
+            cl = st.session_state.get('classification_final')
+            mat_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
+            if cl is not None:
                 s_minus = cl[:, 0]; s_plus = cl[:, 1]
-                mat_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
                 _, _, al_m, am_m = classify_units(mat_nc, al_rules, am_rules, inc, dec)
             else:
-                mat_nc = np.hstack([matrix[:,:-1], np.full((len(matrix),1), np.nan)])
                 s_minus, s_plus, al_m, am_m = classify_units(mat_nc, al_rules, am_rules, inc, dec)
 
             rows = []
@@ -812,15 +1078,15 @@ if uploaded is not None:
                 sm_lbl3 = _fmt_class(sm, _smap3)
                 sp_lbl3 = _fmt_class(sp, _smap3)
                 assign  = _assign_str(sm, sp, _smap3)
-                rows.append({"Unit":name,"s⁻":sm_lbl3,"s⁺":sp_lbl3,"Assignment":assign,
+                rows.append({"Unit":name,"Minimal assignment":sm_lbl3,"Maximal assignment":sp_lbl3,"Assignment":assign,
                              "Status":"⚠️ Contradictory" if contra else "✅ OK"})
 
             df_class = pd.DataFrame(rows)
             df_class_csv = pd.DataFrame({
                 "Unit":          [r["Unit"] for r in rows],
-                "s-":            [r["s⁻"] for r in rows],
-                "s+":            [r["s⁺"] for r in rows],  # already score labels
-                "Assignment":    [f"{r['s⁻']}-{r['s⁺']}" if r['s⁻']!=r['s⁺'] else str(r['s⁻']) for r in rows],
+                "minimal_assignment": [r["Minimal assignment"] for r in rows],
+                "maximal_assignment": [r["Maximal assignment"] for r in rows],
+                "Assignment":    [f"{r['Minimal assignment']}-{r['Maximal assignment']}" if r['Minimal assignment']!=r['Maximal assignment'] else str(r['Minimal assignment']) for r in rows],
                 "Contradiction": ["Y" if r["Status"].startswith("⚠️") else "N" for r in rows],
             })
             st.dataframe(df_class, use_container_width=True, height=380)
@@ -839,8 +1105,8 @@ if uploaded is not None:
             show_explanation(sel, s_minus, s_plus, al_m, am_m,
                              al_texts, am_texts, unit_names.index(sel))
 
-            st.download_button("⬇ Download assignment CSV", df_class_csv.to_csv(index=False),
-                               file_name="drsa_assignment.csv", mime="text/csv",
+            st.download_button("⬇ Assignment", df_class_csv.to_csv(index=False),
+                               file_name="units_assignment.csv", mime="text/csv",
                                key="dl_classif", use_container_width=True)
 
     # ══════════════════════════════════════════════════════════════════════════════
@@ -853,13 +1119,16 @@ if uploaded is not None:
             st.markdown("#### 🆕 Assign new units")
             st.markdown("Upload new units **without** the class column. The tool tries to handle contradictions.")
 
-            new_file = st.file_uploader("Upload new units", type=["csv","txt"], key="new_file")
+            new_file = st.file_uploader("Upload new units", type=["xlsx","csv","txt"], key="new_file")
             sep2 = st.selectbox("Separator", [",",";","\\t"," "], key="sep2")
             sep2_act = "\t" if sep2=="\\t" else sep2
 
             if new_file is not None:
                 try:
-                    df_new_raw = pd.read_csv(new_file, sep=sep2_act, engine="python")
+                    if new_file.name.endswith(".xlsx"):
+                        df_new_raw = pd.read_excel(new_file)
+                    else:
+                        df_new_raw = pd.read_csv(new_file, sep=sep2_act, engine="python")
                 except Exception as e:
                     st.error(f"Could not read file: {e}"); st.stop()
 
@@ -872,25 +1141,56 @@ if uploaded is not None:
                 df_new = df_new.apply(pd.to_numeric, errors='coerce')
                 if new_names is None:
                     new_names = [f'x{i+1}' for i in range(len(df_new))]
-                new_matrix = df_new.values.astype(float)
 
+                # Check criteria columns match
+                _orig_crit = st.session_state.get('crit_names', [])
+                _common = [c for c in _orig_crit if c in df_new.columns]
+                _missing = [c for c in _orig_crit if c not in df_new.columns]
+                if len(_common) == 0:
+                    st.error("⚠️ The uploaded file has no criteria columns matching the original dataset. "
+                             f"Expected: {', '.join(_orig_crit)}. Please upload a file with the same criteria names.")
+                    st.stop()
+                if _missing:
+                    st.warning(f"⚠️ Missing criteria columns: {', '.join(_missing)}. "
+                               "These will be treated as NaN.")
+                # Keep only relevant criteria in correct order
+                df_new = df_new.reindex(columns=_orig_crit)
+
+                # Check all NaN
+                if df_new.isna().all().all():
+                    st.error("⚠️ The uploaded file contains no valid numeric values.")
+                    st.stop()
+
+                # Check 0 rows
+                if len(df_new) == 0:
+                    st.error("⚠️ The uploaded file is empty.")
+                    st.stop()
+
+                new_matrix = df_new.values.astype(float)
                 st.dataframe(df_new_raw, use_container_width=True, height=180)
 
                 if st.button("▶ Assign new units", type="primary", use_container_width=True):
                     prog2 = st.progress(0); stat2 = st.empty()
-                    stat2.info("⏳ Running MILP (6), (7), (8)…"); prog2.progress(20)
-
-                    new_res = classify_new_units(
-                        new_matrix,
-                        st.session_state['matrix_s_minus'],
-                        st.session_state['matrix_s_plus'],
-                        st.session_state['al_rules_max'],
-                        st.session_state['al_match2'],
-                        st.session_state['am_rules_max'],
-                        st.session_state['am_match2'],
-                        st.session_state['inc'],
-                        st.session_state['dec'],
-                    )
+                    stat2.info("⏳ Running…"); prog2.progress(20)
+                    try:
+                        new_res = classify_new_units(
+                            new_matrix,
+                            st.session_state['matrix_s_minus'],
+                            st.session_state['matrix_s_plus'],
+                            st.session_state['al_rules_max'],
+                            st.session_state['al_match2'],
+                            st.session_state['am_rules_max'],
+                            st.session_state['am_match2'],
+                            st.session_state['inc'],
+                            st.session_state['dec'],
+                        )
+                    except ValueError as e:
+                        st.error(f"⚠️ Could not assign new units: {e}. "
+                                 "Make sure the new units file has the same criteria as the original dataset.")
+                        st.stop()
+                    except Exception as e:
+                        st.error(f"⚠️ Unexpected error: {e}")
+                        st.stop()
                     prog2.progress(90)
 
                     if 'error' in new_res:
@@ -971,8 +1271,8 @@ if uploaded is not None:
                     assign_new = _assign_str(sm_new, sp_new, _smap4a)
                     rows_all.append({
                         "Unit": name,
-                        "s⁻ (prev)": sm_o, "s⁺ (prev)": sp_o,
-                        "s⁻ (new)": sm_n,  "s⁺ (new)": sp_n,
+                        "Minimal assignment (previous)": sm_o, "Maximal assignment (previous)": sp_o,
+                        "Minimal assignment (new)": sm_n,  "Maximal assignment (new)": sp_n,
                         "Assignment": assign_new,
                         "Changed": "⚠️ Yes" if changed_flag else "",
                         "_changed": changed_flag,
@@ -995,8 +1295,8 @@ if uploaded is not None:
                     assign_new4 = _assign_str(sm, sp, smap4n)
                     rows_all.append({
                         "Unit": name,
-                        "s⁻ (prev)": smp_lbl4, "s⁺ (prev)": spp_lbl4,
-                        "s⁻ (new)": sm_lbl4,  "s⁺ (new)": sp_lbl4,
+                        "Minimal assignment (previous)": smp_lbl4, "Maximal assignment (previous)": spp_lbl4,
+                        "Minimal assignment (new)": sm_lbl4,  "Maximal assignment (new)": sp_lbl4,
                         "Assignment": assign_new4,
                         "Changed": "🆕 New" if not contra else "⚠️ Contradictory",
                         "_changed": True,
@@ -1024,7 +1324,7 @@ if uploaded is not None:
                 n_new_ok  = sum(1 for k in range(len(new_names))
                                if int(s_minus_f[k]) <= int(s_plus_f[k]))
                 ca, cb, cc = st.columns(3)
-                ca.metric("Changed in A", n_changed)
+                ca.metric("Changed previous units", n_changed)
                 cb.metric("New units assigned", n_new_ok)
                 cc.metric("New contradictions", len(new_names) - n_new_ok)
 
@@ -1117,8 +1417,8 @@ if uploaded is not None:
                     csv_new_min = rules_to_csv(al_texts_new, am_texts_new, _crit_n, _inc_n, _dec_n,
                                                al_rules=al_fin, am_rules=am_fin,
                                        score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Minimal rules CSV", csv_new_min,
-                                       file_name="drsa_newunits_rules_minimal.csv",
+                    st.download_button("⬇ Minimal rules", csv_new_min,
+                                       file_name="pipeline_newunits_rules_minimal.csv",
                                        mime="text/csv", key="dl_new_min", use_container_width=True)
                 with c2:
                     _al7n = new_res.get('step7_al_rules'); _am7n = new_res.get('step7_am_rules')
@@ -1129,32 +1429,32 @@ if uploaded is not None:
                     csv_new_max = rules_to_csv(_al7_txtn, _am7_txtn, _crit_n, _inc_n, _dec_n,
                                                al_rules=_al7n, am_rules=_am7n,
                                        score_map=st.session_state.get('score_map'))
-                    st.download_button("⬇ Maximal rules CSV", csv_new_max,
-                                       file_name="drsa_newunits_rules_maximal.csv",
+                    st.download_button("⬇ Maximal rules", csv_new_max,
+                                       file_name="pipeline_newunits_rules_maximal.csv",
                                        mime="text/csv", key="dl_new_max", use_container_width=True)
 
                 # Build clean CSV for download
                 df_new_csv = pd.DataFrame({
                     "Unit":          df_all["Unit"],
-                    "s- (prev)":     df_all["s⁻ (prev)"].apply(lambda x: "-" if x == "—" else x),
-                    "s+ (prev)":     df_all["s⁺ (prev)"].apply(lambda x: "-" if x == "—" else x),
-                    "s-":            df_all["s⁻ (new)"],
-                    "s+":            df_all["s⁺ (new)"],
+                    "minimal_assignment_previous": df_all["Minimal assignment (previous)"].apply(lambda x: "-" if x == "—" else x),
+                    "maximal_assignment_previous": df_all["Maximal assignment (previous)"].apply(lambda x: "-" if x == "—" else x),
+                    "minimal_assignment":          df_all["Minimal assignment (new)"],
+                    "maximal_assignment":          df_all["Maximal assignment (new)"],
                     "Assignment":    df_all.apply(lambda r:
-                                         f"{r['s⁻ (new)']}-{r['s⁺ (new)']}"
-                                         if r['s⁻ (new)'] != r['s⁺ (new)']
-                                         else str(r['s⁻ (new)']), axis=1),
+                                         f"{r['Minimal assignment (new)']}-{r['Maximal assignment (new)']}"
+                                         if r['Minimal assignment (new)'] != r['Maximal assignment (new)']
+                                         else str(r['Minimal assignment (new)']), axis=1),
                     "Contradiction": df_all.apply(lambda r:
-                                         "Y" if isinstance(r['s⁻ (new)'], (int,float))
-                                         and isinstance(r['s⁺ (new)'], (int,float))
-                                         and int(r['s⁻ (new)']) > int(r['s⁺ (new)'])
+                                         "Y" if isinstance(r['Minimal assignment (new)'], (int,float))
+                                         and isinstance(r['Maximal assignment (new)'], (int,float))
+                                         and int(r['Minimal assignment (new)']) > int(r['Maximal assignment (new)'])
                                          else "N", axis=1),
                     "Changed":       df_all["Changed"].apply(lambda x:
                                          "Y" if x in ["⚠️ Yes","🆕 New","⚠️ Contradictory"] else "N"),
                 })
-                st.download_button("⬇ Download assignment CSV",
+                st.download_button("⬇ Assignment",
                                    df_new_csv.to_csv(index=False),
-                                   file_name="drsa_new_units.csv",
+                                   file_name="new_units_assignment.csv",
                                    mime="text/csv", key="dl_new_cl", use_container_width=True)
 
     # ══════════════════════════════════════════════════════════════════════════════
@@ -1164,12 +1464,13 @@ with tab5:
     st.markdown("#### 📂 Apply saved rules")
 
     # ── File uploader (always visible) ─────────────────────────────────────────
-    col_r, col_s = st.columns([3, 1])
+    col_r, col_s = st.columns([3, 5])
     with col_r:
-        rules_file = st.file_uploader("Upload rules CSV", type=["csv","txt"], key="rules_file")
-    with col_s:
-        sep_r = st.selectbox("Separator", [",",";","\\t"," "], key="sep_rules")
-        sep_r_act = "\t" if sep_r=="\\t" else sep_r
+        rules_file = st.file_uploader("Upload rules", type=["csv"], key="rules_file")
+        sep_r_act = ","
+    #with col_s:
+    #    sep_r = st.selectbox("Separator", [",",";","\\t"," "], key="sep_rules")
+    #    sep_r_act = "\t" if sep_r=="\\t" else sep_r
 
     # ── Welcome (only when no file loaded) ─────────────────────────────────────
     if rules_file is None:
@@ -1177,18 +1478,17 @@ with tab5:
         with c1t5:
             st.markdown("""
 **Workflow**
-1. Load a rules CSV file
-2. Load an units file (optional)
+1. Load a rules stored file (CSV)
+2. (optional) Load units file
 3. Visualize rules with matching units
-4. Inspect assignment
+4. (optional) Load new units file
+5. Assign new units
 """)
         with c2t5:
             st.markdown("""
 **File format**
-- CSV or TXT
-- Two files:
-  - **Rules**: `#directions`, `#mode` rows + type/class/criteria
-  - **Units** (optional): name column + criteria (no class)
+- **Rules**: `#directions`, `#mode` rows + type/class/criteria - CSV
+- **Units** (optional): name column + criteria (no class) - EXCEL, CSV, TXT
 """)
         with c3t5:
             st.markdown("""
@@ -1196,7 +1496,7 @@ with tab5:
 ```
 #directions,increasing,increasing,decreasing
 #mode,class
-type,class,g1,g2,g3
+type,assignment,g1,g2,g3
 at-least,2,4.5,,
 at-most,1,,,2.5
 ```
@@ -1210,7 +1510,7 @@ x2,2.0,4.5,1.5
         sample_rules_class = (
             "#directions,increasing,increasing,decreasing\n"
             "#mode,class\n"
-            "type,class,g1,g2,g3\n"
+            "type,assignment,g1,g2,g3\n"
             "at-least,2,4.5,,\n"
             "at-least,3,,5.0,\n"
             "at-most,1,,,2.5\n"
@@ -1219,7 +1519,7 @@ x2,2.0,4.5,1.5
         sample_rules_score = (
             "#directions,increasing,increasing,decreasing\n"
             "#mode,score\n"
-            "type,class,g1,g2,g3\n"
+            "type,assignment,g1,g2,g3\n"
             "at-least,16.67,4.5,,\n"
             "at-least,41.67,,5.0,\n"
             "at-most,0,,,2.5\n"
@@ -1232,7 +1532,10 @@ x2,2.0,4.5,1.5
             "x3,6.0,6.0,5.5\n"
             "x4,3.5,2.0,3.0\n"
         )
-        sc1, sc2, sc3 = st.columns(3)
+        import io
+        _buf_alts = io.BytesIO()
+        pd.read_csv(io.StringIO(sample_alts)).to_excel(_buf_alts, index=False)
+        sc1, sc2, sc3, sc4 = st.columns(4)
         with sc1:
             st.download_button("⬇ Sample rules (Class)", sample_rules_class,
                                file_name="sample_rules_class.csv", mime="text/csv",
@@ -1242,10 +1545,15 @@ x2,2.0,4.5,1.5
                                file_name="sample_rules_score.csv", mime="text/csv",
                                key="dl_sample_rules_score", use_container_width=True)
         with sc3:
-            st.download_button("⬇ Sample units", sample_alts,
+            st.download_button("⬇ Sample units (CSV)", sample_alts,
                                file_name="sample_units.csv", mime="text/csv",
                                key="dl_sample_alts", use_container_width=True)
-
+        with sc4:
+            st.download_button("⬇ Sample units (EXCEL)", _buf_alts.getvalue(),
+                               file_name="sample_units.xlsx",
+                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                               key="dl_sample_alts_xlsx",
+                               use_container_width=True)
 
     if rules_file is not None:
         try:
@@ -1264,7 +1572,9 @@ x2,2.0,4.5,1.5
                 data_lines.append(line)
 
         if directions_line is None:
-            st.error("Missing #directions line in rules file."); st.stop()
+            st.error("⚠️ Missing #directions line in rules file. "
+                     "The rules file must start with a line like: #directions,increasing,decreasing,...")
+            st.stop()
 
         dir_parts = directions_line.split(sep_r_act)[1:]
 
@@ -1273,15 +1583,24 @@ x2,2.0,4.5,1.5
         file_mode = 'class'
         file_score_map = None
         file_score_map_inv = None
-        if mode_line:
+
+        if mode_line is None:
+            st.error("⚠️ Missing #mode line in rules file. "
+                     "The rules file must contain a line like: #mode,class or #mode,score")
+            st.stop()
+
+        try:
             file_mode = mode_line.split(sep_r_act)[1].strip()
+        except IndexError:
+            st.error("⚠️ Could not parse #mode line. Expected format: #mode,class or #mode,score")
+            st.stop()
 
         # Filter out metadata lines for parsing
         data_lines = [l for l in raw_lines if not l.startswith('#')]
         # Build score map from class column values if mode=score (after parsing)
         import io
         df_rules_raw = pd.read_csv(io.StringIO("\n".join(data_lines)), sep=sep_r_act)
-        crit_names5 = [c for c in df_rules_raw.columns if c not in ['type','class']]
+        crit_names5 = [c for c in df_rules_raw.columns if c not in ['type','assignment']]
         # Build score_map from unique class values if mode=score
         if file_mode == 'score':
             raw_vals = sorted(set(float(v) for v in df_rules_raw['class'].dropna()))
@@ -1302,7 +1621,7 @@ x2,2.0,4.5,1.5
 
         for _, row in df_rules_raw.iterrows():
             rtype = str(row.get('type','')).strip()
-            rclass_raw = float(row.get('class', 0))
+            rclass_raw = float(row.get('assignment', 0))
             # Convert score back to class index if needed
             if file_score_map_inv and rclass_raw in file_score_map_inv:
                 rclass = int(file_score_map_inv[rclass_raw])
@@ -1332,6 +1651,10 @@ x2,2.0,4.5,1.5
         al_rules5 = np.array(al_rules5) if al_rules5 else np.empty((0, rule_width+1))
         am_rules5 = np.array(am_rules5) if am_rules5 else np.empty((0, rule_width+1))
 
+        if len(df_rules_raw) == 0:
+            st.error("⚠️ The rules file contains no rules.")
+            st.stop()
+
         n_al5 = len(al_rules5); n_am5 = len(am_rules5)
         al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map) if n_al5>0 else []
         am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map) if n_am5>0 else []
@@ -1350,15 +1673,18 @@ x2,2.0,4.5,1.5
         col_a, col_sa = st.columns([3, 1])
         with col_a:
             alt_file5 = st.file_uploader("Upload units (optional, without class column). Note: column names must correspond to criteria names of rules",
-                                          type=["csv","txt"], key="alt_file5")
+                                          type=["xlsx","csv","txt"], key="alt_file5")
         with col_sa:
-            sep_a5 = st.selectbox("Separator", [",",";","\t"," "], key="sep_alt5")
-            sep_a5_act = "\t" if sep_a5=="\t" else sep_a5
+            sep_a5 = st.selectbox("Separator", [",",";","\\t"," "], key="sep_alt5")
+            sep_a5_act = "\t" if sep_a5=="\\t" else sep_a5
 
         alt_names5 = None; alt_matrix5 = None
         if alt_file5 is not None:
             try:
-                df_alt5_raw = pd.read_csv(alt_file5, sep=sep_a5_act, engine="python")
+                if alt_file5.name.endswith(".xlsx"):
+                    df_alt5_raw = pd.read_excel(alt_file5)
+                else:
+                    df_alt5_raw = pd.read_csv(alt_file5, sep=sep_a5_act, engine="python")
             except Exception as e:
                 st.error(f"Could not read units file: {e}"); st.stop()
 
@@ -1368,12 +1694,29 @@ x2,2.0,4.5,1.5
                 alt_names5 = df_alt5[fc5].astype(str).tolist()
                 df_alt5 = df_alt5.drop(columns=[fc5])
             df_alt5 = df_alt5.apply(pd.to_numeric, errors='coerce')
-            # Drop last column if it looks like a class column (all integers 1..p)
-            # Keep only criteria columns that match the rules (by name)
-            common_cols = [c for c in crit_names5 if c in df_alt5.columns]
-            if len(common_cols) < n_crit5:
-                st.warning(f"Units file has {len(common_cols)}/{n_crit5} matching criteria columns.")
-            df_alt5 = df_alt5[[c for c in crit_names5 if c in df_alt5.columns]]
+
+            # Check criteria columns match
+            _common5 = [c for c in crit_names5 if c in df_alt5.columns]
+            _missing5 = [c for c in crit_names5 if c not in df_alt5.columns]
+            if len(_common5) == 0:
+                st.error("⚠️ The uploaded units file has no criteria columns matching the rules. "
+                         f"Expected: {', '.join(crit_names5)}. Please upload a file with the same criteria names.")
+                st.stop()
+            if _missing5:
+                st.warning(f"⚠️ Missing criteria: {', '.join(_missing5)}. These will be treated as NaN.")
+
+            # Check 0 rows
+            if len(df_alt5) == 0:
+                st.error("⚠️ The uploaded units file is empty.")
+                st.stop()
+
+            # Check all NaN
+            df_alt5_check = df_alt5[_common5]
+            if df_alt5_check.isna().all().all():
+                st.error("⚠️ The uploaded units file contains no valid numeric values.")
+                st.stop()
+
+            df_alt5 = df_alt5.reindex(columns=crit_names5)
             if alt_names5 is None:
                 alt_names5 = [f'a{i+1}' for i in range(len(df_alt5))]
             alt_matrix5 = df_alt5.values.astype(float)
@@ -1422,16 +1765,16 @@ x2,2.0,4.5,1.5
                 assign_disp5 = _assign_str(sm, sp, file_score_map)
                 assign_csv5  = f"{sm_lbl5}-{sp_lbl5}" if sm!=sp else str(sm_lbl5)
                 rows5.append({"Unit":name,
-                               "s⁻":sm_lbl5,"s⁺":sp_lbl5,
+                               "Minimal assignment":sm_lbl5,"Maximal assignment":sp_lbl5,
                                "Assignment":assign_disp5,
                                "Status":"⚠️ Contradictory" if contra else "✅ OK",
                                "_sm":sm_lbl5,"_sp":sp_lbl5,"_assign_csv":assign_csv5,"_contra":contra})
             df_class5 = pd.DataFrame(rows5)
-            df_class5_disp = df_class5[["Unit","s⁻","s⁺","Assignment","Status"]]
+            df_class5_disp = df_class5[["Unit","Minimal assignment","Maximal assignment","Assignment","Status"]]
             df_class5_csv  = pd.DataFrame({
                 "Unit":         df_class5["Unit"],
-                "s-":           df_class5["_sm"],
-                "s+":           df_class5["_sp"],
+                "minimal_assignment": df_class5["_sm"],
+                "maximal_assignment": df_class5["_sp"],
                 "Assignment":   df_class5["_assign_csv"],
                 "Contradiction":df_class5["_contra"].map({True:"Y", False:"N"}),
             })
@@ -1448,7 +1791,7 @@ x2,2.0,4.5,1.5
             show_explanation(sel5, s_minus5, s_plus5, al_m5, am_m5,
                              al_texts5, am_texts5, alt_names5.index(sel5))
 
-            st.download_button("⬇ Download assignment CSV",
+            st.download_button("⬇ Assignment",
                                df_class5_csv.to_csv(index=False),
                                file_name="drsa_applied_assignment.csv",
                                mime="text/csv", key="dl_apply_class",
@@ -1463,14 +1806,17 @@ x2,2.0,4.5,1.5
             col_nu, col_sep_nu = st.columns([3,1])
             with col_nu:
                 new_file5 = st.file_uploader("Upload new units (without class column)",
-                                              type=["csv","txt"], key="new_file5")
+                                              type=["xlsx","csv","txt"], key="new_file5")
             with col_sep_nu:
-                sep_nu5 = st.selectbox("Separator", [",",";","\t"," "], key="sep_nu5")
-                sep_nu5_act = "\t" if sep_nu5=="\t" else sep_nu5
-
+                sep_nu5 = st.selectbox("Separator", [",",";","\\t"," "], key="sep_nu5")
+                sep_nu5_act = "\t" if sep_nu5=="\\t" else sep_nu5
+            
             if new_file5 is not None:
                 try:
-                    df_new5_raw = pd.read_csv(new_file5, sep=sep_nu5_act, engine="python")
+                    if new_file5.name.endswith(".xlsx"):
+                        df_new5_raw = pd.read_excel(new_file5)
+                    else:
+                        df_new5_raw = pd.read_csv(new_file5, sep=sep_nu5_act, engine="python")
                 except Exception as e:
                     st.error(f"Could not read file: {e}"); st.stop()
 
@@ -1483,9 +1829,25 @@ x2,2.0,4.5,1.5
                 else:
                     new_names5 = [f'x{i+1}' for i in range(len(df_new5))]
                 df_new5 = df_new5.apply(pd.to_numeric, errors='coerce')
-                df_new5 = df_new5[[c for c in crit_names5 if c in df_new5.columns]]
-                new_matrix5 = df_new5.values.astype(float)
 
+                # Check criteria columns match
+                _common_n5 = [c for c in crit_names5 if c in df_new5.columns]
+                _missing_n5 = [c for c in crit_names5 if c not in df_new5.columns]
+                if len(_common_n5) == 0:
+                    st.error("⚠️ The uploaded new units file has no criteria columns matching the rules. "
+                             f"Expected: {', '.join(crit_names5)}. Please upload a file with the same criteria names.")
+                    st.stop()
+                if _missing_n5:
+                    st.warning(f"⚠️ Missing criteria: {', '.join(_missing_n5)}. These will be treated as NaN.")
+                if len(df_new5) == 0:
+                    st.error("⚠️ The uploaded new units file is empty.")
+                    st.stop()
+                if df_new5[_common_n5].isna().all().all():
+                    st.error("⚠️ The uploaded new units file contains no valid numeric values.")
+                    st.stop()
+
+                df_new5 = df_new5.reindex(columns=crit_names5)
+                new_matrix5 = df_new5.values.astype(float)
                 st.dataframe(df_new5_raw, use_container_width=True, height=150)
 
                 if st.button("▶ Assign new units", type="primary",
@@ -1572,10 +1934,10 @@ x2,2.0,4.5,1.5
                          changed_flag = (sm_n != sm_o or sp_n != sp_o)
                          rows_new5.append({
                              "Unit": name,
-                             "s⁻ (prev)": _fmt_class(sm_o, file_score_map),
-                             "s⁺ (prev)": _fmt_class(sp_o, file_score_map),
-                             "s⁻ (new)":  _fmt_class(sm_n, file_score_map),
-                             "s⁺ (new)":  _fmt_class(sp_n, file_score_map),
+                             "Minimal (previous)": _fmt_class(sm_o, file_score_map),
+                             "Maximal (previous)": _fmt_class(sp_o, file_score_map),
+                             "Minimal (new)":  _fmt_class(sm_n, file_score_map),
+                             "Maximal (new)":  _fmt_class(sp_n, file_score_map),
                              "Assignment": _assign_str(sm_n, sp_n, file_score_map),
                              "Changed": "⚠️ Yes" if changed_flag else "",
                              "_changed": changed_flag,
@@ -1589,10 +1951,10 @@ x2,2.0,4.5,1.5
                          contra = sm > sp
                          rows_new5.append({
                              "Unit": name,
-                             "s⁻ (prev)": _fmt_class(sm1, file_score_map),
-                             "s⁺ (prev)": _fmt_class(sp1, file_score_map),
-                             "s⁻ (new)":  _fmt_class(sm,  file_score_map),
-                             "s⁺ (new)":  _fmt_class(sp,  file_score_map),
+                             "Minimal (previous)": _fmt_class(sm1, file_score_map),
+                             "Maximal (previous)": _fmt_class(sp1, file_score_map),
+                             "Minimal (new)":  _fmt_class(sm,  file_score_map),
+                             "Maximal (new)":  _fmt_class(sp,  file_score_map),
                              "Assignment": _assign_str(sm, sp, file_score_map),
                              "Changed": "🆕 New" if not contra else "⚠️ Contradictory",
                              "_changed": True,
@@ -1612,7 +1974,7 @@ x2,2.0,4.5,1.5
                                    if "Contr" not in r["Assignment"])
                     n_co5n  = len(new_names5) - n_ok5n
                     ca5, cb5, cc5 = st.columns(3)
-                    ca5.metric("Changed in A", n_ch5)
+                    ca5.metric("Changed previous units", n_ch5)
                     cb5.metric("New units assigned", n_ok5n)
                     cc5.metric("New contradictions", n_co5n)
                     ch_names5 = [r["Unit"] for r in rows_new5 if r["Changed"]=="⚠️ Yes"]
@@ -1690,27 +2052,27 @@ x2,2.0,4.5,1.5
                              crit_names5, inc5, dec5,
                              al_rules=al7_5, am_rules=am7_5,
                              score_map=file_score_map)
-                         st.download_button("⬇ Maximal rules CSV", csv_max5,
-                             file_name="drsa_new5_maximal.csv", mime="text/csv",
+                         st.download_button("⬇ New units maximal rules CSV", csv_max5,
+                             file_name="drsa_applied_new_units_maximal_rules.csv", mime="text/csv",
                              key="dl_new5_max", use_container_width=True)
                     with dc2:
                          csv_min5 = rules_to_csv(al_tf5, am_tf5, crit_names5, inc5, dec5,
                              al_rules=al_fin5, am_rules=am_fin5,
                              score_map=file_score_map)
-                         st.download_button("⬇ Minimal rules CSV", csv_min5,
-                             file_name="drsa_new5_minimal.csv", mime="text/csv",
+                         st.download_button("⬇ New units minimal rules", csv_min5,
+                             file_name="drsa_applied_new_units_minimal_rules.csv", mime="text/csv",
                              key="dl_new5_min", use_container_width=True)
                     with dc3:
                          df_n5_csv = pd.DataFrame({
                              "Unit":       [r["Unit"] for r in rows_new5],
-                             "s- (prev)":  [r["s⁻ (prev)"] for r in rows_new5],
-                             "s+ (prev)":  [r["s⁺ (prev)"] for r in rows_new5],
-                             "s-":         [r["s⁻ (new)"] for r in rows_new5],
-                             "s+":         [r["s⁺ (new)"] for r in rows_new5],
+                             "minimal_previous":   [r["Minimal (previous)"] for r in rows_new5],
+                             "maximal_previous":   [r["Maximal (previous)"] for r in rows_new5],
+                             "minimal_assignment": [r["Minimal (new)"] for r in rows_new5],
+                             "maximal_assignment": [r["Maximal (new)"] for r in rows_new5],
                              "Assignment": [r["Assignment"] for r in rows_new5],
-                             "Changed":    [r["Changed"] for r in rows_new5],
+                             #"Changed":    [r["Changed"] for r in rows_new5],
+                             "Changed":    ["Y" if r["Changed"].startswith("⚠️") else "N" for r in rows_new5],
                          })
-                         st.download_button("⬇ Assignment CSV", df_n5_csv.to_csv(index=False),
-                             file_name="drsa_new5_assignment.csv", mime="text/csv",
+                         st.download_button("⬇ New units assignment", df_n5_csv.to_csv(index=False),
+                             file_name="drsa_applied_new_assignment.csv", mime="text/csv",
                              key="dl_new5_cl", use_container_width=True)
-

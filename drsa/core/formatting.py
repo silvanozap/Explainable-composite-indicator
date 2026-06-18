@@ -50,20 +50,19 @@ def format_atleast_rules(rules: np.ndarray,
             name = criterion_names[crit_0based] if crit_0based < len(criterion_names) else f'g{crit_1based}'
 
             if crit_0based in increasing:
-                parts.append(f'{name}(a) ≥ {round(threshold, n_decimals)}')
+                parts.append(f'{name} ≥ {round(threshold, n_decimals)}')
             elif crit_0based in decreasing:
                 # threshold was negated internally; display original value
-                parts.append(f'{name}(a) ≤ {round(-threshold, n_decimals)}')
+                parts.append(f'{name} ≤ {round(-threshold, n_decimals)}')
             else:
-                parts.append(f'{name}(a) ≥ {round(threshold, n_decimals)}')
+                parts.append(f'{name} ≥ {round(threshold, n_decimals)}')
 
         rule_class = int(rule[-1])
         class_label = score_map[rule_class] if score_map and rule_class in score_map else rule_class
         mode_word = "Score" if score_map else "Class"
         condition = ' and '.join(parts)
-        text = (f'r≥{i+1}: If {condition}, '
-                f'then a is assigned to at least {mode_word} {class_label} '
-                f'(d≥{i+1} = {class_label})')
+        text = (f'If {condition}, '
+                f'then a is assigned to at least {mode_word} {class_label} ')
         result.append(text)
 
     return result
@@ -99,19 +98,18 @@ def format_atmost_rules(rules: np.ndarray,
             # At-most rules: increasing criteria use <=, decreasing use >=
             # The internal negation means we display -threshold for increasing
             if crit_0based in increasing:
-                parts.append(f'{name}(a) ≤ {round(-threshold, n_decimals)}')
+                parts.append(f'{name} ≤ {round(-threshold, n_decimals)}')
             elif crit_0based in decreasing:
-                parts.append(f'{name}(a) ≥ {round(threshold, n_decimals)}')
+                parts.append(f'{name} ≥ {round(threshold, n_decimals)}')
             else:
-                parts.append(f'{name}(a) ≤ {round(-threshold, n_decimals)}')
+                parts.append(f'{name} ≤ {round(-threshold, n_decimals)}')
 
         rule_class = int(rule[-1])
         class_label = score_map[rule_class] if score_map and rule_class in score_map else rule_class
         mode_word = "Score" if score_map else "Class"
         condition = ' and '.join(parts)
-        text = (f'r≤{i+1}: If {condition}, '
-                f'then a is assigned to at most {mode_word} {class_label} '
-                f'(d≤{i+1} = {class_label})')
+        text = (f'If {condition}, '
+                f'then a is assigned to at most {mode_word} {class_label} ')
         result.append(text)
 
     return result
