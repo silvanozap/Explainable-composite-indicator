@@ -22,7 +22,8 @@ def format_atleast_rules(rules: np.ndarray,
                           criterion_names: list = None,
                           n_decimals: int = 4,
                           score_map: dict = None,
-                          qual_mapping: dict = None) -> list:
+                          qual_mapping: dict = None,
+                          qual_class_inv: dict = None) -> list:
     """
     Convert at-least rule matrix to natural language strings.
 
@@ -69,11 +70,18 @@ def format_atleast_rules(rules: np.ndarray,
                 parts.append(f'{name} ≥ {_fmt_threshold(name, threshold, qual_mapping, n_decimals)}')
 
         rule_class = int(rule[-1])
-        class_label = score_map[rule_class] if score_map and rule_class in score_map else rule_class
-        mode_word = "Score" if score_map else "Class"
+        if qual_class_inv and rule_class in qual_class_inv:
+            class_label = qual_class_inv[rule_class]
+            mode_word = ""
+        elif score_map and rule_class in score_map:
+            class_label = score_map[rule_class]
+            mode_word = "Score "
+        else:
+            class_label = rule_class
+            mode_word = "Class "
         condition = ' and '.join(parts)
         text = (f'If {condition}, '
-                f'then a is assigned to at least {mode_word} {class_label} ')
+                f'then a is assigned to at least {mode_word}{class_label}')
         result.append(text)
 
     return result
@@ -85,7 +93,8 @@ def format_atmost_rules(rules: np.ndarray,
                          criterion_names: list = None,
                          n_decimals: int = 4,
                          score_map: dict = None,
-                         qual_mapping: dict = None) -> list:
+                         qual_mapping: dict = None,
+                         qual_class_inv: dict = None) -> list:
     """
     Convert at-most rule matrix to natural language strings.
 
@@ -117,11 +126,18 @@ def format_atmost_rules(rules: np.ndarray,
                 parts.append(f'{name} ≤ {_fmt_threshold(name, -threshold, qual_mapping, n_decimals)}')
 
         rule_class = int(rule[-1])
-        class_label = score_map[rule_class] if score_map and rule_class in score_map else rule_class
-        mode_word = "Score" if score_map else "Class"
+        if qual_class_inv and rule_class in qual_class_inv:
+            class_label = qual_class_inv[rule_class]
+            mode_word = ""
+        elif score_map and rule_class in score_map:
+            class_label = score_map[rule_class]
+            mode_word = "Score "
+        else:
+            class_label = rule_class
+            mode_word = "Class "
         condition = ' and '.join(parts)
         text = (f'If {condition}, '
-                f'then a is assigned to at most {mode_word} {class_label} ')
+                f'then a is assigned to at most {mode_word}{class_label}')
         result.append(text)
 
     return result

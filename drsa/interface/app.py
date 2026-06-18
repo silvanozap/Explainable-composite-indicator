@@ -853,8 +853,8 @@ if uploaded is not None:
                     st.warning("⚠️ No rules could be induced. Check that reference units cover "
                                "at least 2 classes and the confidence level is not too high.")
                     st.stop()
-                al_texts = format_atleast_rules(al_r, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if n_al>0 else []
-                am_texts = format_atmost_rules(am_r, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if n_am>0 else []
+                al_texts = format_atleast_rules(al_r, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if n_al>0 else []
+                am_texts = format_atmost_rules(am_r, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if n_am>0 else []
                 al_supp  = compute_relative_support(al_r, al_m, al_d) if n_al>0 else []
                 am_supp  = compute_relative_support(am_r, am_m, am_d) if n_am>0 else []
                 al_units = get_supporting_units(al_m, al_d, ref_names) if n_al>0 else []
@@ -925,10 +925,10 @@ if uploaded is not None:
                 sm7, sp7, _, _ = _cu(mat_nc, al_final, am_final, inc, dec)
                 prog.progress(100); status.success("🎉 Pipeline complete!")
 
-                al_texts_max = format_atleast_rules(al_r2, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if n_al6>0 else []
-                am_texts_max = format_atmost_rules(am_r2, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if n_am6>0 else []
-                al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(al_final)>0 else []
-                am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(am_final)>0 else []
+                al_texts_max = format_atleast_rules(al_r2, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if n_al6>0 else []
+                am_texts_max = format_atmost_rules(am_r2, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if n_am6>0 else []
+                al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if _nlen(al_final)>0 else []
+                am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if _nlen(am_final)>0 else []
                 all_nc = np.hstack([all_crit, np.full((n_units,1), np.nan)])
                 _, _, al_m_all_max, am_m_all_max = _cu(all_nc, al_r2, am_r2, inc, dec)
                 _, _, al_m_all_min, am_m_all_min = _cu(all_nc, al_final, am_final, inc, dec)
@@ -1241,6 +1241,16 @@ if uploaded is not None:
                     st.error("⚠️ The uploaded file is empty.")
                     st.stop()
 
+                # Apply qual mapping if present
+                _qmap4 = st.session_state.get('qual_mapping', {})
+                if _qmap4:
+                    for _col4, _map4 in _qmap4.items():
+                        if _col4 in df_new.columns:
+                            _unmapped4 = [v for v in df_new_raw[_col4].dropna().astype(str).str.strip().unique() if v not in _map4]
+                            if _unmapped4:
+                                st.error(f"⚠️ Value(s) {_unmapped4} of criterion '{_col4}' not found in mapping.")
+                                st.stop()
+                            df_new[_col4] = df_new_raw[_col4].astype(str).str.strip().map(_map4).astype(float)
                 new_matrix = df_new.values.astype(float)
                 st.dataframe(df_new_raw, use_container_width=True, height=180)
 
@@ -1749,8 +1759,8 @@ x2,2.0,4.5,1.5
             st.stop()
 
         n_al5 = len(al_rules5); n_am5 = len(am_rules5)
-        al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if n_al5>0 else []
-        am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if n_am5>0 else []
+        al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if n_al5>0 else []
+        am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if n_am5>0 else []
 
         mc1, mc2, mc3 = st.columns(3)
         mc1.metric("At-least rules", n_al5)
@@ -2120,9 +2130,9 @@ x2,2.0,4.5,1.5
                     all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
                     if _nlen(al7_5)>0 or _nlen(am7_5)>0:
                          al_t7_5 = format_atleast_rules(al7_5, inc5, dec5, crit_names5,
-                             score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(al7_5)>0 else []
+                             score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if _nlen(al7_5)>0 else []
                          am_t7_5 = format_atmost_rules(am7_5, inc5, dec5, crit_names5,
-                             score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(am7_5)>0 else []
+                             score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if _nlen(am7_5)>0 else []
                          _, _, al_m7_5, am_m7_5 = classify_units(
                              all_nc5v,
                              al7_5 if _nlen(al7_5)>0 else np.empty((0,1)),
@@ -2142,9 +2152,9 @@ x2,2.0,4.5,1.5
 
                     # ── Minimal rules expander ────────────────────────────────
                     al_tf5 = format_atleast_rules(al_fin5, inc5, dec5, crit_names5,
-                         score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(al_fin5)>0 else []
+                         score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if _nlen(al_fin5)>0 else []
                     am_tf5 = format_atmost_rules(am_fin5, inc5, dec5, crit_names5,
-                         score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(am_fin5)>0 else []
+                         score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(list(st.session_state.get('qual_cols', [None]))[-1] or '', {}).items()}) if _nlen(am_fin5)>0 else []
                     _, _, al_mf5, am_mf5 = classify_units(
                          all_nc5v, al_fin5, am_fin5, inc5, dec5)
                     al_uf5 = [[all_names_new5[j] for j in range(len(all_names_new5))
