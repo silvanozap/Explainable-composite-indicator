@@ -442,7 +442,7 @@ def bibtex():
 }
 @article{greco2001,
   title     = {Rough sets theory for multicriteria decision analysis},
-  author    = {Greco, Salvatore and Matarazzo, Benedetto and S{\l}owi{\'n}ski, Roman},
+  author    = {Greco, Salvatore and Matarazzo, Benedetto and S{\\l}owi{\\'n}ski, Roman},
   journal   = {European journal of operational research},
   volume    = {129},
   number    = {1},
