@@ -237,6 +237,8 @@ If you use this software in your research, projects, or publications, please cit
 - Corrente S., Greco S., Słowiński R., Zappalà S. (2026). *An explainable and interpretable composite indicator based on decision rules.* Omega, 142, 103513. [DOI: 10.1016/j.omega.2026.103513](https://doi.org/10.1016/j.omega.2026.103513)
 - Greco S., Matarazzo B., Słowiński R. (2001). *Rough sets theory for multicriteria decision analysis.* European Journal of Operational Research, 129(1), 1–47. [DOI: 10.1016/S0377-2217(00)00167-3](https://doi.org/10.1016/S0377-2217(00)00167-3)
 
+See CITATION.bib for the correct reference LaTeX format.
+
 ```bibtex
 @article{corrente2026omega,
   author  = {Corrente, Salvatore and Greco, Salvatore and S{\l}owi{\'n}ski, Roman and Zappal{\`a}, Silvano},
