@@ -1,6 +1,5 @@
 """
 Convert rule matrices to human-readable natural language strings.
-Based on from_atleast_to_rules.m and from_atmost_to_rules.m
 """
 
 import numpy as np
@@ -61,7 +60,6 @@ def format_atleast_rules(rules: np.ndarray,
 
     for i, rule in enumerate(rules):
         parts = []
-        # rule format: [crit_idx(1-based), threshold, crit_idx, threshold, ..., class]
         for pos in range(0, rules.shape[1] - 1, 2):
             crit_1based = int(rule[pos])
             if crit_1based == 0:
@@ -129,7 +127,6 @@ def format_atmost_rules(rules: np.ndarray,
             name = criterion_names[crit_0based] if crit_0based < len(criterion_names) else f'g{crit_1based}'
 
             # At-most rules: increasing criteria use <=, decreasing use >=
-            # The internal negation means we display -threshold for increasing
             if crit_0based in increasing:
                 parts.append(_fmt_cond(name, _fmt_threshold(name, -threshold, qual_mapping, n_decimals), '<=', qual_mapping))
             elif crit_0based in decreasing:

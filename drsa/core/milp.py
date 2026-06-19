@@ -1,7 +1,5 @@
 """
 MILP formulation for finding the minimal set of rules.
-Corresponds to: minimal_set_rules.m (problem E_min, equation 5 in the paper)
-Uses scipy.optimize.milp (available since scipy 1.7)
 """
 
 import numpy as np

@@ -1,6 +1,5 @@
 """
-Classification of new units — MILP (6), (7), (8).
-Direct translation of classify_new_alt_v3.m and main.m.
+Classification of new units — MILP (6), (7), (8) of the paper.
 
 Variable layout in MILP(6):
   [rho_al(n_al) | rho_am(n_am) | s-(x1),s+(x1),...,s-(xK),s+(xK) | eta(2*n_A)]
@@ -204,9 +203,6 @@ def classify_new_units(new_units, mat_sm, mat_sp,
             # At least one matched rule must be selected
             V = np.zeros(nc); V[:n_al] = -test_al
             A6 = np.vstack([A6, V]); b6 = np.append(b6, -1.0)
-            # MATLAB: diag(TEST.*d>=)*rho - s-(xk) <= 0 for ALL n_al rules
-            # Row i: TEST_i * d>=_i * rho_i - s-(xk) <= 0
-            # For TEST_i=0: 0 - s-(xk) <= 0 → s-(xk) >= 0 (redundant but present)
             for i in range(n_al):
                 V = np.zeros(nc)
                 V[i] = test_al[i] * al_rules_max[i, -1]   # +TEST_i * d>=_i * rho_i

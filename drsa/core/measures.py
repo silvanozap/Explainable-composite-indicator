@@ -1,6 +1,5 @@
 """
 Relative support and Bayesian confirmation measures for DRSA rules.
-Corresponds to: relative_support_al.m, relative_support_am.m, confirmation_measure.m
 """
 
 import numpy as np

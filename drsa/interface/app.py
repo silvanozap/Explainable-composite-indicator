@@ -23,31 +23,7 @@ from drsa import (
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="EI-SCORE", page_icon="assets/ei-score.svg", layout="wide"
-)## nuove righe modificate
-#hide_streamlit_style = """
-#            <style>
-#            /* Nasconde solo i bottoni a destra nell'header, non tutto l'header */
-#            [data-testid="stAppDeployButton"], 
-#            [data-testid="stActionButtonIcon"], 
-#            #MainMenu {visibility: hidden;}
-            
-#            /* Nasconde il footer */
-#            footer {visibility: hidden;}
-#            </style>
-#            """
-#st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-##### nuove righe end
-# ── MathJax ───────────────────────────────────────────────────────────────────
-#import streamlit.components.v1 as _components
-#_components.html("""
-#<script>
-#window.MathJax = {
-#  tex: { inlineMath: [['$','$'],['\\(','\\)']] },
-#  svg: { fontCache: 'global' }
-#};
-#</script>
-#<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
-#""", height=0)
+)
 
 st.markdown("""
 <style>
@@ -398,9 +374,6 @@ def rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
             thr = [body[k*2+1] for k in range(len(body)//2) if body[k*2] != 0]
             for p, t in zip(pos, thr):
                 if 0 <= p < len(crit_names):
-                    # Un-negate thresholds:
-                    # at-least: decreasing criteria are negated internally
-                    # at-most:  increasing criteria are negated internally
                     if rtype == 'at-least' and p in dec:
                         t = -t
                     elif rtype == 'at-most' and p in inc:
@@ -639,8 +612,8 @@ if uploaded is not None:
 
     # ── Detect qualitative columns BEFORE numeric conversion ──────────────────
     # A column is qualitative if it has non-numeric values and is not all-NaN
-    _qual_cols = {}  # {col_name: sorted list of distinct string values}
-    for _col in df.columns:  # includes all columns, including last (class)
+    _qual_cols = {}
+    for _col in df.columns:
         _numeric_mask = pd.to_numeric(df[_col], errors='coerce').notna()
         _non_numeric  = df[_col][~_numeric_mask].dropna()
         if len(_non_numeric) > 0:
@@ -1003,8 +976,6 @@ if uploaded is not None:
                             ref_matrix, al_m_ref, ref_matrix, am_m_ref, al_r, am_r)
                         al_final = al_min if (milp_ok and _nlen(al_min)>0) else al_r
                         am_final = am_min if (milp_ok and _nlen(am_min)>0) else am_r
-                        #al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names,
-                        #    score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(al_final)>0 else []
                         al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names, score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(al_final)>0 else []
                         am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names,
                                                            score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(am_final)>0 else []
@@ -1019,8 +990,6 @@ if uploaded is not None:
                             'al_texts_min_ind': al_texts_min, 'am_texts_min_ind': am_texts_min,
                             'al_units_min_ind': al_units_min, 'am_units_min_ind': am_units_min,
                             'classification_final': np.column_stack([sm_min, sp_min]),
-                            #'al_rules': al_final, 'am_rules': am_final,
-                            #'al_texts': al_texts_min, 'am_texts': am_texts_min,
                             'al_rules_max': al_r, 'am_rules_max': am_r,
                             'al_match2': al_m_ref, 'am_match2': am_m_ref,
                             'matrix_s_minus': np.hstack([all_crit, sm_min.reshape(-1,1)]),
@@ -1452,11 +1421,9 @@ if uploaded is not None:
                     al_texts7 = format_atleast_rules(al7, st.session_state['inc'],
                         st.session_state['dec'], st.session_state['crit_names'],
                         score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(al7)>0 else []
-                        #score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(al7)>0 else []
                     am_texts7 = format_atmost_rules(am7, st.session_state['inc'],
                         st.session_state['dec'], st.session_state['crit_names'],
                         score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(am7)>0 else []
-                        #score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(am7)>0 else []
                     _, _, al_m7_all, am_m7_all = classify_units(
                         all_nc_combined, al7 if _nlen(al7)>0 else np.empty((0,1)),
                         am7 if _nlen(am7)>0 else np.empty((0,1)),
@@ -1566,9 +1533,6 @@ with tab5:
     with col_r:
         rules_file = st.file_uploader("Upload rules", type=["csv"], key="rules_file")
         sep_r_act = ","
-    #with col_s:
-    #    sep_r = st.selectbox("Separator", [",",";","\\t"," "], key="sep_rules")
-    #    sep_r_act = "\t" if sep_r=="\\t" else sep_r
 
     # ── Welcome (only when no file loaded) ─────────────────────────────────────
     if rules_file is None:
@@ -1782,8 +1746,6 @@ x2,2.0,4.5,1.5
                     rclass = int(rclass_raw)
             except (ValueError, TypeError):
                 _str_val = str(_raw_val).strip()
-                #_class_col5 = list(crit_names5)[-1] if crit_names5 else ''
-                #_cmap5 = file_qual_mapping.get(_class_col5, {})
                 _cmap5 = _class_qmap5
                 rclass = int(_cmap5.get(_str_val, 0))
             rule_vec = []
@@ -1797,9 +1759,6 @@ x2,2.0,4.5,1.5
                     except (ValueError, TypeError):
                         _cmap_c = file_qual_mapping.get(cname, {})
                         v = float(_cmap_c.get(str(val).strip(), 0))
-                    # Re-negate to restore internal format:
-                    # at-least: decreasing criteria are stored negated
-                    # at-most:  increasing criteria are stored negated
                     if rtype == 'at-least' and ci in dec5:
                         v = -v
                     elif rtype == 'at-most' and ci in inc5:
@@ -1909,7 +1868,7 @@ x2,2.0,4.5,1.5
         s_minus5 = s_plus5 = al_m5 = am_m5 = None
 
         if alt_matrix5 is not None and n_crit5 == alt_matrix5.shape[1]:
-            p5 = 3  # default, will be overridden by rules
+            p5 = 3
             if n_al5 > 0:
                 p5 = max(p5, int(np.max(al_rules5[:, -1])))
             if n_am5 > 0:
@@ -1938,8 +1897,6 @@ x2,2.0,4.5,1.5
         if alt_matrix5 is not None and s_minus5 is not None:
             st.markdown("---")
             st.markdown("#### Assignment")
-            #_qmap5 = st.session_state.get('file_qual_mapping', {})
-            #_qcols5 = st.session_state.get('qual_cols', [])
             _class_col5 = list(crit_names5)[-1] if crit_names5 else None
             _qual_inv5 = {v: k for k, v in file_qual_mapping.get(_class_col5 or '', {}).items()} if file_qual_mapping and _class_col5 else {}
             rows5 = []
@@ -1950,8 +1907,6 @@ x2,2.0,4.5,1.5
                 sm_lbl5 = _qual_inv5.get(sm, _fmt_class(sm, _smap5))
                 sp_lbl5 = _qual_inv5.get(sp, _fmt_class(sp, _smap5))
                 assign_disp5  = _assign_str(sm, sp, _smap5, qual_inv=_qual_inv5 if _qual_inv5 else None)
-                #sm_lbl5 = _fmt_class(sm, file_score_map); sp_lbl5 = _fmt_class(sp, file_score_map)
-                #assign_disp5 = _assign_str(sm, sp, file_score_map)
                 assign_csv5  = f"{sm_lbl5}-{sp_lbl5}" if sm!=sp else str(sm_lbl5)
                 rows5.append({"Unit":name,
                                "Minimal assignment":sm_lbl5,"Maximal assignment":sp_lbl5,
@@ -2057,8 +2012,6 @@ x2,2.0,4.5,1.5
                              use_container_width=True, key="btn_assign_new5"):
                     from drsa.core.new_units import classify_new_units
 
-                    # Build combined matrix: previous units + their classification
-                    # s_minus5 and s_plus5 are already computed from eq.(4)
                     n_prev = len(alt_names5)
                     n_new  = len(new_names5)
 
@@ -2115,7 +2068,6 @@ x2,2.0,4.5,1.5
                     am_fin5 = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
                     all_m5v = np.vstack([alt_matrix5, new_matrix5])
                     all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
-                    # s-(new)/s+(new) from MILP(7) maximal rules
                     _al7_for_new = al7_5 if _nlen(al7_5)>0 else al_fin5
                     _am7_for_new = am7_5 if _nlen(am7_5)>0 else am_fin5
                     sm_new5_all, sp_new5_all, _, _ = classify_units(
@@ -2222,10 +2174,8 @@ x2,2.0,4.5,1.5
 
                     # ── Minimal rules expander ────────────────────────────────
                     al_tf5 = format_atleast_rules(al_fin5, inc5, dec5, crit_names5,
-                         #score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(al_fin5)>0 else []
                          score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv=_file_qual_class_inv)
                     am_tf5 = format_atmost_rules(am_fin5, inc5, dec5, crit_names5,
-                         #score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(am_fin5)>0 else []
                          score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv=_file_qual_class_inv)
                     _, _, al_mf5, am_mf5 = classify_units(
                          all_nc5v, al_fin5, am_fin5, inc5, dec5)
@@ -2252,8 +2202,6 @@ x2,2.0,4.5,1.5
                     # ── Downloads ─────────────────────────────────────────────
                     st.markdown("### 💾 Export")
                     dc1, dc2, dc3 = st.columns(3)
-                    #file_qual_mapping = 
-                    #score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv=_file_qual_class_inv)
                     with dc1:
                         csv_max5 = rules_to_csv(al_t7_5 if _nlen(al7_5)>0 else [],
                             am_t7_5 if _nlen(am7_5)>0 else [],
@@ -2280,7 +2228,6 @@ x2,2.0,4.5,1.5
                              "minimal_assignment": [r["Minimal (new)"] for r in rows_new5],
                              "maximal_assignment": [r["Maximal (new)"] for r in rows_new5],
                              "Assignment": [r["Assignment"] for r in rows_new5],
-                             #"Changed":    [r["Changed"] for r in rows_new5],
                              "Changed":    ["Y" if r["Changed"].startswith("⚠️") else "N" for r in rows_new5],
                          })
                          st.download_button("⬇ New units assignment", df_n5_csv.to_csv(index=False),
