@@ -62,7 +62,7 @@ def induce_atleast_rules(example_matrix: np.ndarray,
     ev = invert_direction(example_matrix[:, :-1], increasing, decreasing)
     n, G = ev.shape
 
-    at_least_rules = None   # will be np.ndarray once first rule is added
+    at_least_rules = None
     conf = []
     bases = []
 

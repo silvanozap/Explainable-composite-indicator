@@ -1,6 +1,5 @@
 """
 Utility functions for DRSA rule induction.
-Converted from MATLAB by Corrente, Greco, Slowiński, Zappalà (Omega, 2026).
 """
 
 import numpy as np
@@ -37,8 +36,7 @@ def from_binary_to_number(P: np.ndarray, G: int) -> np.ndarray:
     w = P.sum(axis=1)
     weights = 2 ** np.arange(G - 1, -1, -1)
     val = P @ weights
-    idx = np.lexsort((val, w))  # primary: w asc, secondary: val desc -> use -val trick
-    # MATLAB sorts by [w, -val] ascending, which means w asc then val desc
+    idx = np.lexsort((val, w))
     idx = np.lexsort((-val, w))
     return P[idx]
 

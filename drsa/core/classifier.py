@@ -81,9 +81,6 @@ def classify_units(example_matrix: np.ndarray,
     am_matched = np.zeros((n_units, n_am), dtype=float)
 
     if n_am > 0:
-        # At-most rules internal representation:
-        # duality negates ALL criteria, then invert_direction re-negates decreasing
-        # Result: decreasing criteria have ORIGINAL values, increasing have NEGATED values
         ev_work_am = ev.copy()
         for i_col in increasing:
             ev_work_am[:, i_col] = -ev_work_am[:, i_col]

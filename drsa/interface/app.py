@@ -23,31 +23,7 @@ from drsa import (
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="EI-SCORE", page_icon="assets/ei-score.svg", layout="wide"
-)## nuove righe modificate
-#hide_streamlit_style = """
-#            <style>
-#            /* Nasconde solo i bottoni a destra nell'header, non tutto l'header */
-#            [data-testid="stAppDeployButton"], 
-#            [data-testid="stActionButtonIcon"], 
-#            #MainMenu {visibility: hidden;}
-            
-#            /* Nasconde il footer */
-#            footer {visibility: hidden;}
-#            </style>
-#            """
-#st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-##### nuove righe end
-# ── MathJax ───────────────────────────────────────────────────────────────────
-import streamlit.components.v1 as _components
-_components.html("""
-<script>
-window.MathJax = {
-  tex: { inlineMath: [['$','$'],['\\(','\\)']] },
-  svg: { fontCache: 'global' }
-};
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
-""", height=0)
+)
 
 st.markdown("""
 <style>
@@ -365,12 +341,12 @@ def rules_to_df(al_texts, am_texts, label_al="at-least", label_am="at-most",
     return pd.DataFrame(rows)
 
 def rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
-                 al_rules=None, am_rules=None, score_map=None):
+                 al_rules=None, am_rules=None, score_map=None, qual_mapping=None):
     """
     Export rules in self-contained CSV format:
       #directions,increasing,decreasing,...
       #mode,class|score
-      #labels,v1,v2,...  (only if score)
+      #mapping,crit,val1:1,val2:2,...  (only if qualitative)
       type,class,crit1,crit2,...
       at-least,2,0.762,,...
     """
@@ -382,6 +358,10 @@ def rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
         buf.write('#mode,score\n')
     else:
         buf.write('#mode,class\n')
+    if qual_mapping:
+        for _col, _map in qual_mapping.items():
+            _pairs = ','.join(f'{v}:{r}' for v, r in sorted(_map.items(), key=lambda x: x[1]))
+            buf.write(f'#mapping,{_col},{_pairs}\n')
     buf.write('type,assignment,' + ','.join(crit_names) + '\n')
     def write_rules(rules, rtype):
         if rules is None or len(rules) == 0: return
@@ -394,9 +374,6 @@ def rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
             thr = [body[k*2+1] for k in range(len(body)//2) if body[k*2] != 0]
             for p, t in zip(pos, thr):
                 if 0 <= p < len(crit_names):
-                    # Un-negate thresholds:
-                    # at-least: decreasing criteria are negated internally
-                    # at-most:  increasing criteria are negated internally
                     if rtype == 'at-least' and p in dec:
                         t = -t
                     elif rtype == 'at-most' and p in inc:
@@ -413,15 +390,20 @@ def _fmt_class(val, score_map):
         return score_map[int(val)]
     return int(val)
 
-def _assign_str(sm, sp, score_map):
+def _assign_str(sm, sp, score_map, qual_inv=None):
     """Build assignment string using score or class labels."""
-    lm = _fmt_class(sm, score_map)
-    lp = _fmt_class(sp, score_map)
-    mode = "Score" if score_map else "Class"
+    if qual_inv:
+        lm = qual_inv.get(int(sm), _fmt_class(sm, score_map))
+        lp = qual_inv.get(int(sp), _fmt_class(sp, score_map))
+        mode = ""
+    else:
+        lm = _fmt_class(sm, score_map)
+        lp = _fmt_class(sp, score_map)
+        mode = "Score " if score_map else "Class "
     if sm == sp:
-        return f"{mode} {lm}"
+        return f"{mode}{lm}"
     elif sm <= sp:
-        return f"{mode} {lm} to {lp}"
+        return f"{mode}{lm} to {lp}"
     else:
         return f"CONTRADICTORY ({lm} > {lp})"
 
@@ -490,7 +472,7 @@ User-friendly GUI to build your customized composite indicator based on Decision
 with st.sidebar:
     st.markdown("### 📂 Data")
     uploaded = st.file_uploader("Upload units", type=["xlsx","csv","txt"],
-        help="Last column = class label. Optional first column = unit names. NaN = non-reference unit.")
+        help="Last column = class/score label. First column = unit names. NaN = non-reference unit.")
     sep = st.selectbox("Separator", [",",";","\\t"," "], index=0)
     sep_actual = "\t" if sep=="\\t" else sep
 
@@ -545,10 +527,10 @@ if uploaded is None:
             st.markdown("""
 **File format**
 - EXCEL, CSV or TXT
-- Optional first column: unit names
-- Criteria columns (numeric)
-- Last column: class label
-  - Number → reference unit
+- First column: unit names
+- Criteria columns (numeric or qualitative)
+- Last column: class/score label
+  - Filled → reference unit
   - Empty/NaN → non-reference unit
 """)
         with c2:
@@ -607,6 +589,7 @@ if uploaded is not None:
             'al_texts_min_ind', 'am_texts_min_ind',
             'al_units_min_ind', 'am_units_min_ind',
             'al_m_ref', 'am_m_ref',
+            'qual_mapping', 'qual_cols',
         ]
         for k in keys_to_reset:
             st.session_state.pop(k, None)
@@ -627,6 +610,19 @@ if uploaded is not None:
         unit_names = df[first_col].astype(str).tolist()
         df = df.drop(columns=[first_col])
 
+    # ── Detect qualitative columns BEFORE numeric conversion ──────────────────
+    # A column is qualitative if it has non-numeric values and is not all-NaN
+    _qual_cols = {}
+    for _col in df.columns:
+        _numeric_mask = pd.to_numeric(df[_col], errors='coerce').notna()
+        _non_numeric  = df[_col][~_numeric_mask].dropna()
+        if len(_non_numeric) > 0:
+            _distinct = sorted(df[_col].dropna().astype(str).str.strip().unique().tolist())
+            _qual_cols[_col] = _distinct
+
+    # Save original string values for qualitative columns
+    df_qual_orig = df[list(_qual_cols.keys())].copy() if _qual_cols else pd.DataFrame()
+
     df = df.apply(pd.to_numeric, errors='coerce')
     if unit_names is None:
         unit_names = [f'a{i+1}' for i in range(len(df))]
@@ -640,6 +636,14 @@ if uploaded is not None:
     n_units    = len(df)
     n_crit     = df.shape[1] - 1
     crit_names = list(df.columns)[:-1]
+
+    # Apply qualitative mapping — use session_state if available, else default alphabetical
+    qual_mapping = st.session_state.get('qual_mapping', {})
+    if _qual_cols:
+        for _col, _vals in _qual_cols.items():
+            _map = qual_mapping.get(_col, {v: i+1 for i, v in enumerate(_vals)})
+            df[_col] = df_qual_orig[_col].astype(str).str.strip().map(_map).astype(float)
+
     matrix_raw = df.values.astype(float)
     # Auto-detect missing values in criteria columns
     handle_miss = bool(np.isnan(matrix_raw[:, :-1]).any())
@@ -666,6 +670,42 @@ if uploaded is not None:
     with tab1:
         st.markdown("#### 📊 Dataset")
         st.dataframe(df_raw, use_container_width=True, height=250)
+
+        # ── Qualitative mapping UI ─────────────────────────────────────────────
+        if _qual_cols:
+            st.markdown("#### 🔤 Qualitative criteria mapping")
+            st.markdown("The following columns contain non-numeric values. "
+                        "For each value, select its rank (**1 = worst, p = best**). "
+                        "Ranks must be unique within each criterion.")
+            _new_qual_mapping = {}
+            for _col, _vals in _qual_cols.items():
+                st.markdown(f"**{_col}**")
+                _prev_map = st.session_state.get('qual_mapping', {}).get(_col, {})
+                _n_vals = len(_vals)
+                _col_layout = st.columns(min(_n_vals, 4))
+                _col_map = {}
+                _used_ranks = []
+                for _vi, _v in enumerate(_vals):
+                    _default_rank = _prev_map.get(_v.strip(), _vi + 1)
+                    with _col_layout[_vi % min(_n_vals, 4)]:
+                        _rank = st.selectbox(
+                            _v.strip(),
+                            options=list(range(1, _n_vals + 1)),
+                            index=min(_default_rank - 1, _n_vals - 1),
+                            key=f"qual_{_col}_{_vi}"
+                        )
+                        _col_map[_v.strip()] = _rank
+                        _used_ranks.append(_rank)
+                if len(set(_used_ranks)) < len(_used_ranks):
+                    st.warning(f"⚠️ Ranks for **{_col}** are not unique. Each value must have a different rank.")
+                _new_qual_mapping[_col] = _col_map
+            if _new_qual_mapping != st.session_state.get('qual_mapping', {}):
+                st.session_state['qual_mapping'] = _new_qual_mapping
+            for _col, _map in _new_qual_mapping.items():
+                if _col in df_qual_orig.columns:
+                    df[_col] = df_qual_orig[_col].astype(str).str.strip().map(_map).astype(float)
+        else:
+            _new_qual_mapping = {}
 
         st.markdown("#### 🎯 Reference units")
         selected_ref = st.multiselect(
@@ -721,6 +761,9 @@ if uploaded is not None:
             'n_units': n_units,
             'min_conf': min_conf, 'handle_miss': handle_miss, 'random_seed': random_seed,
             'score_map': score_map, 'score_map_inv': score_map_inv,
+            'qual_mapping': st.session_state.get('qual_mapping', {}),
+            'qual_cols': list(_qual_cols.keys()) if _qual_cols else [],
+            'qual_class_col': list(df_raw.columns)[-1] if _qual_cols and list(df_raw.columns)[-1] in _qual_cols else None,
         })
 
     # ══════════════════════════════════════════════════════════════════════════════
@@ -784,8 +827,8 @@ if uploaded is not None:
                     st.warning("⚠️ No rules could be induced. Check that reference units cover "
                                "at least 2 classes and the confidence level is not too high.")
                     st.stop()
-                al_texts = format_atleast_rules(al_r, inc, dec, crit_names, score_map=score_map) if n_al>0 else []
-                am_texts = format_atmost_rules(am_r, inc, dec, crit_names, score_map=score_map) if n_am>0 else []
+                al_texts = format_atleast_rules(al_r, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if n_al>0 else []
+                am_texts = format_atmost_rules(am_r, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if n_am>0 else []
                 al_supp  = compute_relative_support(al_r, al_m, al_d) if n_al>0 else []
                 am_supp  = compute_relative_support(am_r, am_m, am_d) if n_am>0 else []
                 al_units = get_supporting_units(al_m, al_d, ref_names) if n_al>0 else []
@@ -856,10 +899,10 @@ if uploaded is not None:
                 sm7, sp7, _, _ = _cu(mat_nc, al_final, am_final, inc, dec)
                 prog.progress(100); status.success("🎉 Pipeline complete!")
 
-                al_texts_max = format_atleast_rules(al_r2, inc, dec, crit_names, score_map=score_map) if n_al6>0 else []
-                am_texts_max = format_atmost_rules(am_r2, inc, dec, crit_names, score_map=score_map) if n_am6>0 else []
-                al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names, score_map=score_map) if _nlen(al_final)>0 else []
-                am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names, score_map=score_map) if _nlen(am_final)>0 else []
+                al_texts_max = format_atleast_rules(al_r2, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if n_al6>0 else []
+                am_texts_max = format_atmost_rules(am_r2, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if n_am6>0 else []
+                al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(al_final)>0 else []
+                am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names, score_map=score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(am_final)>0 else []
                 all_nc = np.hstack([all_crit, np.full((n_units,1), np.nan)])
                 _, _, al_m_all_max, am_m_all_max = _cu(all_nc, al_r2, am_r2, inc, dec)
                 _, _, al_m_all_min, am_m_all_min = _cu(all_nc, al_final, am_final, inc, dec)
@@ -916,7 +959,7 @@ if uploaded is not None:
                 st.markdown("### 💾 Export")
                 csv_rules = rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
                                          al_rules=al_r, am_rules=am_r,
-                                         score_map=st.session_state.get('score_map'))
+                                         score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                 st.download_button("⬇ Maximal rules", csv_rules,
                                    file_name="drsa_rules_maximal.csv", mime="text/csv",
                                    key="dl_rules_ind", use_container_width=True)
@@ -933,10 +976,9 @@ if uploaded is not None:
                             ref_matrix, al_m_ref, ref_matrix, am_m_ref, al_r, am_r)
                         al_final = al_min if (milp_ok and _nlen(al_min)>0) else al_r
                         am_final = am_min if (milp_ok and _nlen(am_min)>0) else am_r
-                        al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names,
-                            score_map=st.session_state.get('score_map')) if _nlen(al_final)>0 else []
+                        al_texts_min = format_atleast_rules(al_final, inc, dec, crit_names, score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(al_final)>0 else []
                         am_texts_min = format_atmost_rules(am_final, inc, dec, crit_names,
-                            score_map=st.session_state.get('score_map')) if _nlen(am_final)>0 else []
+                                                           score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(am_final)>0 else []
                         mat_nc_min = np.hstack([all_crit, np.full((n_units,1), np.nan)])
                         sm_min, sp_min, al_m_min, am_m_min = _cu(mat_nc_min, al_final, am_final, inc, dec)
                         al_units_min = [[unit_names[j] for j in range(n_units) if al_m_min[j,i]==1]
@@ -948,8 +990,6 @@ if uploaded is not None:
                             'al_texts_min_ind': al_texts_min, 'am_texts_min_ind': am_texts_min,
                             'al_units_min_ind': al_units_min, 'am_units_min_ind': am_units_min,
                             'classification_final': np.column_stack([sm_min, sp_min]),
-                            'al_rules': al_final, 'am_rules': am_final,
-                            'al_texts': al_texts_min, 'am_texts': am_texts_min,
                             'al_rules_max': al_r, 'am_rules_max': am_r,
                             'al_match2': al_m_ref, 'am_match2': am_m_ref,
                             'matrix_s_minus': np.hstack([all_crit, sm_min.reshape(-1,1)]),
@@ -974,7 +1014,7 @@ if uploaded is not None:
                                     show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
                             csv_min_ind = rules_to_csv(al_texts_min, am_texts_min, crit_names, inc, dec,
                                                        al_rules=al_final, am_rules=am_final,
-                                                       score_map=st.session_state.get('score_map'))
+                                                       score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                             st.download_button("⬇ Minimal rules", csv_min_ind,
                                                file_name="drsa_rules_minimal.csv", mime="text/csv",
                                                key="dl_min_ind", use_container_width=True)
@@ -1008,18 +1048,18 @@ if uploaded is not None:
             if al_texts_max or am_texts_max:
                 with st.expander(f"📂 Maximal rules ({_nlen(al_r2)} at-least, {_nlen(am_r2)} at-most)"):
                     if al_texts_max:
-                        st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least (maximal)**")
+                        st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least rules**")
                         show_rules(al_r2, al_texts_max, units=al_units_max, rule_type="atleast")
                     if am_texts_max:
-                        st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most (maximal)**")
+                        st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most rules**")
                         show_rules(am_r2, am_texts_max, units=am_units_max, rule_type="atmost")
             if al_texts_max or am_texts_max:
                 with st.expander(f"📂 Minimal rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most)"):
                     if al_texts_min:
-                        st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
+                        st.markdown("**$\\mathcal{R}^{\\geqslant}$ · At-Least rules**")
                         show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
                     if am_texts_min:
-                        st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
+                        st.markdown("**$\\mathcal{R}^{\\leqslant}$ · At-Most rules**")
                         show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
 
             st.markdown("### 💾 Export rules")
@@ -1029,14 +1069,14 @@ if uploaded is not None:
             with c1:
                 csv_min_p = rules_to_csv(al_texts_min, am_texts_min, _crit, _inc, _dec,
                                          al_rules=al_final, am_rules=am_final,
-                                         score_map=st.session_state.get('score_map'))
+                                         score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                 st.download_button("⬇ Minimal rules", csv_min_p,
                                    file_name="pipeline_rules_minimal.csv", mime="text/csv",
                                    key="dl_min_prev", use_container_width=True)
             with c2:
                 csv_max_p = rules_to_csv(al_texts_max, am_texts_max, _crit, _inc, _dec,
                                          al_rules=al_r2, am_rules=am_r2,
-                                         score_map=st.session_state.get('score_map'))
+                                         score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                 st.download_button("⬇ Maximal rules", csv_max_p,
                                    file_name="pipeline_rules_maximal.csv", mime="text/csv",
                                    key="dl_max_prev", use_container_width=True)
@@ -1070,14 +1110,20 @@ if uploaded is not None:
             else:
                 s_minus, s_plus, al_m, am_m = classify_units(mat_nc, al_rules, am_rules, inc, dec)
 
+            # Build inverse qual mapping for class column
+            _qmap3 = st.session_state.get('qual_mapping', {})
+            _qcols3 = st.session_state.get('qual_cols', [])
+            _class_col3 = _qcols3[-1] if _qcols3 else None
+            _qual_inv3 = {v: k for k, v in _qmap3[_class_col3].items()} if _class_col3 and _class_col3 in _qmap3 else {}
+
             rows = []
             for i, name in enumerate(unit_names):
                 sm, sp = int(s_minus[i]), int(s_plus[i])
                 contra  = sm > sp
                 _smap3  = st.session_state.get('score_map')
-                sm_lbl3 = _fmt_class(sm, _smap3)
-                sp_lbl3 = _fmt_class(sp, _smap3)
-                assign  = _assign_str(sm, sp, _smap3)
+                sm_lbl3 = _qual_inv3.get(sm, _fmt_class(sm, _smap3))
+                sp_lbl3 = _qual_inv3.get(sp, _fmt_class(sp, _smap3))
+                assign  = _assign_str(sm, sp, _smap3, qual_inv=_qual_inv3 if _qual_inv3 else None)
                 rows.append({"Unit":name,"Minimal assignment":sm_lbl3,"Maximal assignment":sp_lbl3,"Assignment":assign,
                              "Status":"⚠️ Contradictory" if contra else "✅ OK"})
 
@@ -1156,14 +1202,25 @@ if uploaded is not None:
                 # Keep only relevant criteria in correct order
                 df_new = df_new.reindex(columns=_orig_crit)
 
-                # Check all NaN
-                if df_new.isna().all().all():
-                    st.error("⚠️ The uploaded file contains no valid numeric values.")
-                    st.stop()
-
                 # Check 0 rows
                 if len(df_new) == 0:
                     st.error("⚠️ The uploaded file is empty.")
+                    st.stop()
+
+                # Apply qual mapping if present (before NaN check)
+                _qmap4 = st.session_state.get('qual_mapping', {})
+                if _qmap4:
+                    for _col4, _map4 in _qmap4.items():
+                        if _col4 in df_new.columns:
+                            _unmapped4 = [v for v in df_new_raw[_col4].dropna().astype(str).str.strip().unique() if v not in _map4]
+                            if _unmapped4:
+                                st.error(f"⚠️ Value(s) {_unmapped4} of criterion '{_col4}' not found in mapping.")
+                                st.stop()
+                            df_new[_col4] = df_new_raw[_col4].astype(str).str.strip().map(_map4).astype(float)
+
+                # Check all NaN after qual mapping
+                if df_new.isna().all().all():
+                    st.error("⚠️ The uploaded file contains no valid numeric values.")
                     st.stop()
 
                 new_matrix = df_new.values.astype(float)
@@ -1215,10 +1272,10 @@ if uploaded is not None:
 
                     al_texts_new = format_atleast_rules(al_fin, st.session_state['inc'],
                         st.session_state['dec'], st.session_state['crit_names'],
-                        score_map=st.session_state.get('score_map')) if _nlen(al_fin)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(al_fin)>0 else []
                     am_texts_new = format_atmost_rules(am_fin, st.session_state['inc'],
                         st.session_state['dec'], st.session_state['crit_names'],
-                        score_map=st.session_state.get('score_map')) if _nlen(am_fin)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(am_fin)>0 else []
                     st.session_state.update({
                         'new_s_minus':   new_res['final_s_minus'],
                         'new_s_plus':    new_res['final_s_plus'],
@@ -1253,7 +1310,11 @@ if uploaded is not None:
                 mat_sp_orig = st.session_state['matrix_s_plus']
                 all_unit_names = st.session_state['unit_names']
                 cl_all = new_res.get('classification_all')
-
+                # Build qual inverse mapping for class column
+                _qmap4a = st.session_state.get('qual_mapping', {})
+                _qcols4a = st.session_state.get('qual_cols', [])
+                _class_col4a = st.session_state.get('qual_class_col')
+                _qual_inv4a = {v: k for k, v in _qmap4a[_class_col4a].items()} if _class_col4a and _class_col4a in _qmap4a else {}
                 rows_all = []
                 # Existing units A
                 for i, name in enumerate(all_unit_names):
@@ -1266,9 +1327,11 @@ if uploaded is not None:
                         sm_new = sm_orig; sp_new = sp_orig
                     changed_flag = i in changed
                     _smap4a = st.session_state.get('score_map')
-                    sm_o = _fmt_class(sm_orig, _smap4a); sp_o = _fmt_class(sp_orig, _smap4a)
-                    sm_n = _fmt_class(sm_new,  _smap4a); sp_n = _fmt_class(sp_new,  _smap4a)
-                    assign_new = _assign_str(sm_new, sp_new, _smap4a)
+                    sm_o = _qual_inv4a.get(sm_orig, _fmt_class(sm_orig, _smap4a))
+                    sp_o = _qual_inv4a.get(sp_orig, _fmt_class(sp_orig, _smap4a))
+                    sm_n = _qual_inv4a.get(sm_new,  _fmt_class(sm_new,  _smap4a))
+                    sp_n = _qual_inv4a.get(sp_new,  _fmt_class(sp_new,  _smap4a))
+                    assign_new = _assign_str(sm_new, sp_new, _smap4a, qual_inv=_qual_inv4a if _qual_inv4a else None)
                     rows_all.append({
                         "Unit": name,
                         "Minimal assignment (previous)": sm_o, "Maximal assignment (previous)": sp_o,
@@ -1290,9 +1353,11 @@ if uploaded is not None:
                     sm_prev = int(new_res['step1_s_minus'][k]) if new_res.get('step1_s_minus') is not None else sm
                     sp_prev = int(new_res['step1_s_plus'][k])  if new_res.get('step1_s_plus')  is not None else sp
                     smap4n = st.session_state.get('score_map')
-                    sm_lbl4  = _fmt_class(sm, smap4n);    sp_lbl4  = _fmt_class(sp, smap4n)
-                    smp_lbl4 = _fmt_class(sm_prev, smap4n); spp_lbl4 = _fmt_class(sp_prev, smap4n)
-                    assign_new4 = _assign_str(sm, sp, smap4n)
+                    sm_lbl4  = _qual_inv4a.get(sm,_fmt_class(sm,smap4n))
+                    sp_lbl4  = _qual_inv4a.get(sp,_fmt_class(sp,smap4n))
+                    smp_lbl4 = _qual_inv4a.get(sm_prev, _fmt_class(sm_prev, smap4n))
+                    spp_lbl4 = _qual_inv4a.get(sp_prev, _fmt_class(sp_prev, smap4n))
+                    assign_new4 = _assign_str(sm, sp, smap4n, qual_inv=_qual_inv4a if _qual_inv4a else None)
                     rows_all.append({
                         "Unit": name,
                         "Minimal assignment (previous)": smp_lbl4, "Maximal assignment (previous)": spp_lbl4,
@@ -1355,10 +1420,10 @@ if uploaded is not None:
                 if _nlen(al7) > 0 or _nlen(am7) > 0:
                     al_texts7 = format_atleast_rules(al7, st.session_state['inc'],
                         st.session_state['dec'], st.session_state['crit_names'],
-                        score_map=st.session_state.get('score_map')) if _nlen(al7)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(al7)>0 else []
                     am_texts7 = format_atmost_rules(am7, st.session_state['inc'],
                         st.session_state['dec'], st.session_state['crit_names'],
-                        score_map=st.session_state.get('score_map')) if _nlen(am7)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if _nlen(am7)>0 else []
                     _, _, al_m7_all, am_m7_all = classify_units(
                         all_nc_combined, al7 if _nlen(al7)>0 else np.empty((0,1)),
                         am7 if _nlen(am7)>0 else np.empty((0,1)),
@@ -1416,19 +1481,19 @@ if uploaded is not None:
                 with c1:
                     csv_new_min = rules_to_csv(al_texts_new, am_texts_new, _crit_n, _inc_n, _dec_n,
                                                al_rules=al_fin, am_rules=am_fin,
-                                       score_map=st.session_state.get('score_map'))
+                                       score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                     st.download_button("⬇ Minimal rules", csv_new_min,
                                        file_name="pipeline_newunits_rules_minimal.csv",
                                        mime="text/csv", key="dl_new_min", use_container_width=True)
                 with c2:
                     _al7n = new_res.get('step7_al_rules'); _am7n = new_res.get('step7_am_rules')
                     _al7_txtn = format_atleast_rules(_al7n, _inc_n, _dec_n, _crit_n,
-                        score_map=st.session_state.get('score_map')) if _nlen(_al7n)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(_al7n)>0 else []
                     _am7_txtn = format_atmost_rules(_am7n, _inc_n, _dec_n, _crit_n,
-                        score_map=st.session_state.get('score_map')) if _nlen(_am7n)>0 else []
+                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {})) if _nlen(_am7n)>0 else []
                     csv_new_max = rules_to_csv(_al7_txtn, _am7_txtn, _crit_n, _inc_n, _dec_n,
                                                al_rules=_al7n, am_rules=_am7n,
-                                       score_map=st.session_state.get('score_map'))
+                                       score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
                     st.download_button("⬇ Maximal rules", csv_new_max,
                                        file_name="pipeline_newunits_rules_maximal.csv",
                                        mime="text/csv", key="dl_new_max", use_container_width=True)
@@ -1468,9 +1533,6 @@ with tab5:
     with col_r:
         rules_file = st.file_uploader("Upload rules", type=["csv"], key="rules_file")
         sep_r_act = ","
-    #with col_s:
-    #    sep_r = st.selectbox("Separator", [",",";","\\t"," "], key="sep_rules")
-    #    sep_r_act = "\t" if sep_r=="\\t" else sep_r
 
     # ── Welcome (only when no file loaded) ─────────────────────────────────────
     if rules_file is None:
@@ -1487,18 +1549,31 @@ with tab5:
         with c2t5:
             st.markdown("""
 **File format**
-- **Rules**: `#directions`, `#mode` rows + type/class/criteria - CSV
+- **Rules (quantitative)**: `#directions`, `#mode` rows + type/class/criteria - CSV
+- **Rules (qualitative)**: `#directions`, `#mode`, `#mapping`, rows + type/class/criteria - CSV
 - **Units** (optional): name column + criteria (no class) - EXCEL, CSV, TXT
 """)
         with c3t5:
             st.markdown("""
-**Rules example**
+**Rules example (quantitative)**
 ```
 #directions,increasing,increasing,decreasing
 #mode,class
 type,assignment,g1,g2,g3
 at-least,2,4.5,,
 at-most,1,,,2.5
+```
+**Rules example (qualitative)**
+```
+#directions,increasing,increasing,increasing
+#mode,class
+#mapping,g1,absent:1,present:2
+#mapping,g2,small:1,medium:2,big:3
+#mapping,g3,short:1,long:2
+#mapping,assignment,down:1,top:2
+type,assignment,g1,g2,g3
+at-least,2,2,,1
+at-most,1,,2,2
 ```
 **Units example**
 ```
@@ -1525,6 +1600,19 @@ x2,2.0,4.5,1.5
             "at-most,0,,,2.5\n"
             "at-most,16.67,,4.0,\n"
         )
+        sample_rules_qualitative = (
+            "#directions,increasing,increasing,decreasing\n"
+            "#mode,class\n"
+            "#mapping,g1,absent:1,present:2\n"
+            "#mapping,g2,small:1,medium:2,big:3\n"
+            "#mapping,g3,short:1,long:2\n"
+            "#mapping,assignment,Down:1,Top:2\n"
+            "type,assignment,g1,g2,g3\n"
+            "at-least,2,2,,\n"
+            "at-least,2,,2,\n"
+            "at-most,2,2,,\n"
+            "at-most,1,1,,\n"
+        )
         sample_alts = (
             "Name,g1,g2,g3\n"
             "x1,5.0,3.5,4.0\n"
@@ -1535,7 +1623,7 @@ x2,2.0,4.5,1.5
         import io
         _buf_alts = io.BytesIO()
         pd.read_csv(io.StringIO(sample_alts)).to_excel(_buf_alts, index=False)
-        sc1, sc2, sc3, sc4 = st.columns(4)
+        sc1, sc2, sc_qual, sc3, sc4 = st.columns(5)
         with sc1:
             st.download_button("⬇ Sample rules (Class)", sample_rules_class,
                                file_name="sample_rules_class.csv", mime="text/csv",
@@ -1544,6 +1632,10 @@ x2,2.0,4.5,1.5
             st.download_button("⬇ Sample rules (Score)", sample_rules_score,
                                file_name="sample_rules_score.csv", mime="text/csv",
                                key="dl_sample_rules_score", use_container_width=True)
+        with sc_qual:
+            st.download_button("⬇ Sample rules (Qualitative)", sample_rules_qualitative,
+                               file_name="sample_rules_qualitative.csv", mime="text/csv",
+                               key="sample_rules_qualitative", use_container_width=True)
         with sc3:
             st.download_button("⬇ Sample units (CSV)", sample_alts,
                                file_name="sample_units.csv", mime="text/csv",
@@ -1595,6 +1687,24 @@ x2,2.0,4.5,1.5
             st.error("⚠️ Could not parse #mode line. Expected format: #mode,class or #mode,score")
             st.stop()
 
+        # Parse #mapping lines
+        file_qual_mapping = {}
+        for _ml in raw_lines:
+            if _ml.startswith('#mapping'):
+                _parts = _ml.split(sep_r_act)
+                if len(_parts) >= 3:
+                    _cname = _parts[1].strip()
+                    _pairs = {}
+                    for _p in _parts[2:]:
+                        if ':' in _p:
+                            _v, _r = _p.rsplit(':', 1)
+                            try:
+                                _pairs[_v.strip()] = int(_r.strip())
+                            except ValueError:
+                                pass
+                    if _pairs:
+                        file_qual_mapping[_cname] = _pairs
+
         # Filter out metadata lines for parsing
         data_lines = [l for l in raw_lines if not l.startswith('#')]
         # Build score map from class column values if mode=score (after parsing)
@@ -1618,25 +1728,37 @@ x2,2.0,4.5,1.5
         al_rules5 = []; am_rules5 = []
         n_crit5 = len(crit_names5)
         rule_width = n_crit5 * 2  # crit_idx, threshold pairs
+        _mapped_cols = list(file_qual_mapping.keys())
+        _class_col_from_mapping = next((c for c in _mapped_cols if c not in crit_names5), None)
+        if _class_col_from_mapping:
+            _class_qmap5 = file_qual_mapping.get(_class_col_from_mapping, {})
+        else:
+            _class_qmap5 = {}
 
         for _, row in df_rules_raw.iterrows():
             rtype = str(row.get('type','')).strip()
-            rclass_raw = float(row.get('assignment', 0))
-            # Convert score back to class index if needed
-            if file_score_map_inv and rclass_raw in file_score_map_inv:
-                rclass = int(file_score_map_inv[rclass_raw])
-            else:
-                rclass = int(rclass_raw)
+            _raw_val = row.get('assignment', 0)
+            try:
+                rclass_raw = float(_raw_val)
+                if file_score_map_inv and rclass_raw in file_score_map_inv:
+                    rclass = int(file_score_map_inv[rclass_raw])
+                else:
+                    rclass = int(rclass_raw)
+            except (ValueError, TypeError):
+                _str_val = str(_raw_val).strip()
+                _cmap5 = _class_qmap5
+                rclass = int(_cmap5.get(_str_val, 0))
             rule_vec = []
             for ci, cname in enumerate(crit_names5):
                 val = row.get(cname, '')
                 if pd.isna(val) or str(val).strip() == '':
                     rule_vec.extend([0, 0])
                 else:
-                    v = float(val)
-                    # Re-negate to restore internal format:
-                    # at-least: decreasing criteria are stored negated
-                    # at-most:  increasing criteria are stored negated
+                    try:
+                        v = float(val)
+                    except (ValueError, TypeError):
+                        _cmap_c = file_qual_mapping.get(cname, {})
+                        v = float(_cmap_c.get(str(val).strip(), 0))
                     if rtype == 'at-least' and ci in dec5:
                         v = -v
                     elif rtype == 'at-most' and ci in inc5:
@@ -1656,9 +1778,9 @@ x2,2.0,4.5,1.5
             st.stop()
 
         n_al5 = len(al_rules5); n_am5 = len(am_rules5)
-        al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map) if n_al5>0 else []
-        am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map) if n_am5>0 else []
-
+        _file_qual_class_inv = {v: k for k, v in file_qual_mapping.get(list(crit_names5)[-1] if crit_names5 else '', {}).items()} if file_qual_mapping else {}
+        al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv={v: k for k, v in _class_qmap5.items()}) if n_al5>0 else []
+        am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv={v: k for k, v in _class_qmap5.items()}) if n_am5>0 else []
         mc1, mc2, mc3 = st.columns(3)
         mc1.metric("At-least rules", n_al5)
         mc2.metric("At-most rules", n_am5)
@@ -1710,13 +1832,31 @@ x2,2.0,4.5,1.5
                 st.error("⚠️ The uploaded units file is empty.")
                 st.stop()
 
-            # Check all NaN
-            df_alt5_check = df_alt5[_common5]
-            if df_alt5_check.isna().all().all():
+            # Apply qualitative mapping if present (before reindex)
+            if file_qual_mapping:
+                df_alt5_str = df_alt5_raw.copy()
+                if alt_names5 is not None:
+                    _fc5_drop = df_alt5_raw.columns[0]
+                    df_alt5_str = df_alt5_str.drop(columns=[_fc5_drop], errors='ignore')
+                df_alt5_str = df_alt5_str.apply(pd.to_numeric, errors='coerce')
+                for _col, _map in file_qual_mapping.items():
+                    if _col in df_alt5_raw.columns:
+                        _src = df_alt5_raw[_col] if alt_names5 is None else df_alt5_raw.iloc[:, 1:][_col] if _col in df_alt5_raw.iloc[:, 1:].columns else None
+                        if _src is not None:
+                            _unmapped = [v for v in _src.dropna().astype(str).str.strip().unique() if v not in _map]
+                            if _unmapped:
+                                st.error(f"⚠️ Value(s) {_unmapped} of criterion '{_col}' not found in the rules mapping.")
+                                st.stop()
+                            df_alt5_str[_col] = _src.astype(str).str.strip().map(_map).astype(float)
+                df_alt5 = df_alt5_str.reindex(columns=crit_names5)
+            else:
+                df_alt5 = df_alt5.reindex(columns=crit_names5)
+
+            # Check all NaN after qual mapping
+            if df_alt5.isna().all().all():
                 st.error("⚠️ The uploaded units file contains no valid numeric values.")
                 st.stop()
 
-            df_alt5 = df_alt5.reindex(columns=crit_names5)
             if alt_names5 is None:
                 alt_names5 = [f'a{i+1}' for i in range(len(df_alt5))]
             alt_matrix5 = df_alt5.values.astype(float)
@@ -1728,7 +1868,7 @@ x2,2.0,4.5,1.5
         s_minus5 = s_plus5 = al_m5 = am_m5 = None
 
         if alt_matrix5 is not None and n_crit5 == alt_matrix5.shape[1]:
-            p5 = 3  # default, will be overridden by rules
+            p5 = 3
             if n_al5 > 0:
                 p5 = max(p5, int(np.max(al_rules5[:, -1])))
             if n_am5 > 0:
@@ -1757,12 +1897,16 @@ x2,2.0,4.5,1.5
         if alt_matrix5 is not None and s_minus5 is not None:
             st.markdown("---")
             st.markdown("#### Assignment")
+            _class_col5 = list(crit_names5)[-1] if crit_names5 else None
+            _qual_inv5 = {v: k for k, v in file_qual_mapping.get(_class_col5 or '', {}).items()} if file_qual_mapping and _class_col5 else {}
             rows5 = []
             for i, name in enumerate(alt_names5):
                 sm, sp = int(s_minus5[i]), int(s_plus5[i])
                 contra = sm > sp
-                sm_lbl5 = _fmt_class(sm, file_score_map); sp_lbl5 = _fmt_class(sp, file_score_map)
-                assign_disp5 = _assign_str(sm, sp, file_score_map)
+                _smap5  = st.session_state.get('score_map')
+                sm_lbl5 = _qual_inv5.get(sm, _fmt_class(sm, _smap5))
+                sp_lbl5 = _qual_inv5.get(sp, _fmt_class(sp, _smap5))
+                assign_disp5  = _assign_str(sm, sp, _smap5, qual_inv=_qual_inv5 if _qual_inv5 else None)
                 assign_csv5  = f"{sm_lbl5}-{sp_lbl5}" if sm!=sp else str(sm_lbl5)
                 rows5.append({"Unit":name,
                                "Minimal assignment":sm_lbl5,"Maximal assignment":sp_lbl5,
@@ -1842,11 +1986,25 @@ x2,2.0,4.5,1.5
                 if len(df_new5) == 0:
                     st.error("⚠️ The uploaded new units file is empty.")
                     st.stop()
-                if df_new5[_common_n5].isna().all().all():
-                    st.error("⚠️ The uploaded new units file contains no valid numeric values.")
-                    st.stop()
+                # Apply qualitative mapping if present (before reindex)
+                if file_qual_mapping:
+                    df_new5_str = df_new5_raw.copy()
+                    if new_names5 is not None and df_new5_raw.columns[0] not in crit_names5:
+                        df_new5_str = df_new5_str.drop(columns=[df_new5_raw.columns[0]], errors='ignore')
+                    df_new5_str = df_new5_str.apply(pd.to_numeric, errors='coerce')
+                    for _col, _map in file_qual_mapping.items():
+                        if _col in df_new5_raw.columns:
+                            _src = df_new5_raw[_col] if new_names5 is None else (df_new5_raw[_col] if _col in df_new5_raw.columns else None)
+                            if _src is not None:
+                                _unmapped = [v for v in _src.dropna().astype(str).str.strip().unique() if v not in _map]
+                                if _unmapped:
+                                    st.error(f"⚠️ Value(s) {_unmapped} of criterion '{_col}' not found in the rules mapping.")
+                                    st.stop()
+                                df_new5_str[_col] = _src.astype(str).str.strip().map(_map).astype(float)
+                    df_new5 = df_new5_str.reindex(columns=crit_names5)
+                else:
+                    df_new5 = df_new5.reindex(columns=crit_names5)
 
-                df_new5 = df_new5.reindex(columns=crit_names5)
                 new_matrix5 = df_new5.values.astype(float)
                 st.dataframe(df_new5_raw, use_container_width=True, height=150)
 
@@ -1854,8 +2012,6 @@ x2,2.0,4.5,1.5
                              use_container_width=True, key="btn_assign_new5"):
                     from drsa.core.new_units import classify_new_units
 
-                    # Build combined matrix: previous units + their classification
-                    # s_minus5 and s_plus5 are already computed from eq.(4)
                     n_prev = len(alt_names5)
                     n_new  = len(new_names5)
 
@@ -1912,7 +2068,6 @@ x2,2.0,4.5,1.5
                     am_fin5 = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
                     all_m5v = np.vstack([alt_matrix5, new_matrix5])
                     all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
-                    # s-(new)/s+(new) from MILP(7) maximal rules
                     _al7_for_new = al7_5 if _nlen(al7_5)>0 else al_fin5
                     _am7_for_new = am7_5 if _nlen(am7_5)>0 else am_fin5
                     sm_new5_all, sp_new5_all, _, _ = classify_units(
@@ -1927,18 +2082,19 @@ x2,2.0,4.5,1.5
                     step1_sm5 = new_res5.get('step1_s_minus', None)
                     step1_sp5 = new_res5.get('step1_s_plus',  None)
                     changed5  = new_res5.get('changed_units', [])
-
+                    _class_col_n5 = list(crit_names5)[-1] if crit_names5 else None
+                    _qual_inv_n5 = {v: k for k, v in file_qual_mapping.get(_class_col_n5 or '', {}).items()} if file_qual_mapping and _class_col_n5 else {}
                     for i, name in enumerate(alt_names5_p):
                          sm_o = int(s_minus5_p[i]); sp_o = int(s_plus5_p[i])
                          sm_n = int(sm_new5_all[i]); sp_n = int(sp_new5_all[i])
                          changed_flag = (sm_n != sm_o or sp_n != sp_o)
                          rows_new5.append({
                              "Unit": name,
-                             "Minimal (previous)": _fmt_class(sm_o, file_score_map),
-                             "Maximal (previous)": _fmt_class(sp_o, file_score_map),
-                             "Minimal (new)":  _fmt_class(sm_n, file_score_map),
-                             "Maximal (new)":  _fmt_class(sp_n, file_score_map),
-                             "Assignment": _assign_str(sm_n, sp_n, file_score_map),
+                             "Minimal (previous)": _qual_inv_n5.get(sm_o, _fmt_class(sm_o, file_score_map)),
+                             "Maximal (previous)": _qual_inv_n5.get(sp_o, _fmt_class(sp_o, file_score_map)),
+                             "Minimal (new)":  _qual_inv_n5.get(sm_n, _fmt_class(sm_n, file_score_map)),
+                             "Maximal (new)":  _qual_inv_n5.get(sp_n, _fmt_class(sp_n, file_score_map)),
+                             "Assignment": _assign_str(sm_n, sp_n, file_score_map, qual_inv=_qual_inv_n5 if _qual_inv_n5 else None),
                              "Changed": "⚠️ Yes" if changed_flag else "",
                              "_changed": changed_flag,
                          })
@@ -1951,11 +2107,11 @@ x2,2.0,4.5,1.5
                          contra = sm > sp
                          rows_new5.append({
                              "Unit": name,
-                             "Minimal (previous)": _fmt_class(sm1, file_score_map),
-                             "Maximal (previous)": _fmt_class(sp1, file_score_map),
-                             "Minimal (new)":  _fmt_class(sm,  file_score_map),
-                             "Maximal (new)":  _fmt_class(sp,  file_score_map),
-                             "Assignment": _assign_str(sm, sp, file_score_map),
+                             "Minimal (previous)": _qual_inv_n5.get(sm1, _fmt_class(sm1, file_score_map)),
+                             "Maximal (previous)": _qual_inv_n5.get(sp1, _fmt_class(sp1, file_score_map)),
+                             "Minimal (new)":  _qual_inv_n5.get(sm,  _fmt_class(sm,  file_score_map)),
+                             "Maximal (new)":  _qual_inv_n5.get(sp,  _fmt_class(sp,  file_score_map)),
+                             "Assignment": _assign_str(sm, sp, file_score_map, qual_inv=_qual_inv_n5 if _qual_inv_n5 else None),
                              "Changed": "🆕 New" if not contra else "⚠️ Contradictory",
                              "_changed": True,
                          })
@@ -1996,9 +2152,9 @@ x2,2.0,4.5,1.5
                     all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
                     if _nlen(al7_5)>0 or _nlen(am7_5)>0:
                          al_t7_5 = format_atleast_rules(al7_5, inc5, dec5, crit_names5,
-                             score_map=file_score_map) if _nlen(al7_5)>0 else []
+                             score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv=_file_qual_class_inv)
                          am_t7_5 = format_atmost_rules(am7_5, inc5, dec5, crit_names5,
-                             score_map=file_score_map) if _nlen(am7_5)>0 else []
+                                                       score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv=_file_qual_class_inv)
                          _, _, al_m7_5, am_m7_5 = classify_units(
                              all_nc5v,
                              al7_5 if _nlen(al7_5)>0 else np.empty((0,1)),
@@ -2018,9 +2174,9 @@ x2,2.0,4.5,1.5
 
                     # ── Minimal rules expander ────────────────────────────────
                     al_tf5 = format_atleast_rules(al_fin5, inc5, dec5, crit_names5,
-                         score_map=file_score_map) if _nlen(al_fin5)>0 else []
+                         score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv=_file_qual_class_inv)
                     am_tf5 = format_atmost_rules(am_fin5, inc5, dec5, crit_names5,
-                         score_map=file_score_map) if _nlen(am_fin5)>0 else []
+                         score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv=_file_qual_class_inv)
                     _, _, al_mf5, am_mf5 = classify_units(
                          all_nc5v, al_fin5, am_fin5, inc5, dec5)
                     al_uf5 = [[all_names_new5[j] for j in range(len(all_names_new5))
@@ -2047,21 +2203,23 @@ x2,2.0,4.5,1.5
                     st.markdown("### 💾 Export")
                     dc1, dc2, dc3 = st.columns(3)
                     with dc1:
-                         csv_max5 = rules_to_csv(al_t7_5 if _nlen(al7_5)>0 else [],
-                             am_t7_5 if _nlen(am7_5)>0 else [],
-                             crit_names5, inc5, dec5,
-                             al_rules=al7_5, am_rules=am7_5,
-                             score_map=file_score_map)
-                         st.download_button("⬇ New units maximal rules CSV", csv_max5,
-                             file_name="drsa_applied_new_units_maximal_rules.csv", mime="text/csv",
-                             key="dl_new5_max", use_container_width=True)
+                        csv_max5 = rules_to_csv(al_t7_5 if _nlen(al7_5)>0 else [],
+                            am_t7_5 if _nlen(am7_5)>0 else [],
+                            crit_names5, inc5, dec5,
+                            al_rules=al7_5, am_rules=am7_5,
+                            score_map=file_score_map,
+                            qual_mapping=file_qual_mapping)
+                        st.download_button("⬇ New units maximal rules", csv_max5,
+                            file_name="drsa_applied_new_units_maximal_rules.csv", mime="text/csv",
+                            key="dl_new5_max", use_container_width=True)
                     with dc2:
-                         csv_min5 = rules_to_csv(al_tf5, am_tf5, crit_names5, inc5, dec5,
-                             al_rules=al_fin5, am_rules=am_fin5,
-                             score_map=file_score_map)
-                         st.download_button("⬇ New units minimal rules", csv_min5,
-                             file_name="drsa_applied_new_units_minimal_rules.csv", mime="text/csv",
-                             key="dl_new5_min", use_container_width=True)
+                        csv_min5 = rules_to_csv(al_tf5, am_tf5, crit_names5, inc5, dec5,
+                            al_rules=al_fin5, am_rules=am_fin5,
+                            score_map=file_score_map,
+                            qual_mapping=file_qual_mapping)
+                        st.download_button("⬇ New units minimal rules", csv_min5,
+                            file_name="drsa_applied_new_units_minimal_rules.csv", mime="text/csv",
+                            key="dl_new5_min", use_container_width=True)
                     with dc3:
                          df_n5_csv = pd.DataFrame({
                              "Unit":       [r["Unit"] for r in rows_new5],
@@ -2070,7 +2228,6 @@ x2,2.0,4.5,1.5
                              "minimal_assignment": [r["Minimal (new)"] for r in rows_new5],
                              "maximal_assignment": [r["Maximal (new)"] for r in rows_new5],
                              "Assignment": [r["Assignment"] for r in rows_new5],
-                             #"Changed":    [r["Changed"] for r in rows_new5],
                              "Changed":    ["Y" if r["Changed"].startswith("⚠️") else "N" for r in rows_new5],
                          })
                          st.download_button("⬇ New units assignment", df_n5_csv.to_csv(index=False),

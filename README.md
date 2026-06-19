@@ -16,11 +16,12 @@ EI-SCORE provides an interactive Streamlit interface for building explainable co
 
 - **Classification problems** — assigning units to ordered classes
 - **Scoring problems** — ranking units by a continuous score
-- **Full pipeline** — from raw data to minimal rule sets (Steps 1–7 of papers)
-- **New unit assignment** — via MILP formulations (Milp Problems 6, 7, 8)
+- **Qualitative criteria** — non-numeric criteria with user-defined preference ordering
+- **Full pipeline** — from raw data to minimal rule sets
+- **New unit assignment** — via MILP formulations
 - **Rule reuse** — apply saved rules to new datasets
 
-The methodology recognize and handle the presence of missing values.
+The methodology recognises and handles missing values in criteria.
 
 ---
 
@@ -34,6 +35,7 @@ numpy==2.4.2
 pandas==3.0.1
 scipy==1.17.0
 streamlit==1.58.0
+openpyxl==3.1.5
 ```
 
 ---
@@ -65,32 +67,39 @@ The application opens automatically in your default browser at `http://localhost
 ```
 Explainable-composite-indicator/
 ├── assets/
-│   └── logo.png
+│   ├── ei-score.svg               # Application logo
+│   └── user_guide.pdf             # Compiled user guide
 ├── docs/
-│   └── user_guide.tex          # LaTeX source of the user guide
+│   └── user_guide.tex             # LaTeX source of the user guide
 ├── drsa/
 │   ├── core/
-│   │   ├── rules.py            # Rule induction algorithms
-│   │   ├── utils.py            # Supporting functions
-│   │   ├── formatting.py       # Rule text formatting
-│   │   ├── classifier.py       # Unit assignment
-│   │   ├── measures.py         # Quality measures
-│   │   ├── step_forward.py     # Greedy selection
-│   │   ├── milp.py             # MILP minimal set of rules
-│   │   ├── pipeline.py         # Full pipeline orchestration
-│   │   └── new_units.py        # MILP assign new units
+│   │   ├── rules.py               # Rule induction algorithms
+│   │   ├── utils.py               # Supporting functions
+│   │   ├── formatting.py          # Rule text formatting
+│   │   ├── classifier.py          # Unit assignment
+│   │   ├── measures.py            # Quality measures
+│   │   ├── step_forward.py        # Greedy selection
+│   │   ├── milp.py                # MILP minimal set of rules
+│   │   ├── pipeline.py            # Full pipeline orchestration
+│   │   └── new_units.py           # MILP assign new units
 │   └── interface/
-│       └── app.py              # Streamlit application
+│       └── app.py                 # Streamlit application
 ├── examples/
-│   ├── Ex.1_HDI.csv                  # Human Development Index
-│   ├── Ex.2_PTF.csv                  # Stock portfolio
-│   ├── Ex.2_PTF_new_units.csv        # New stocks for PTF
-│   ├── Ex.3_ElectreScore.csv         # Scoring problem
-│   ├── Ex.4_MISSING.csv              # Dataset with missing
-│   ├── Ex.4_MISSING_new_units.csv    # New units with missing
-│   ├── Ex.5_GCS_original.csv         # Glasgow Coma Scale
-│   ├── Ex.5_GCS_new_units.csv        # New patient for GCS
-│   └── Ex.5_maximal_rules.csv        # Pre-computed GCS rules
+│   ├── Ex.1_HDI.csv               # Human Development Index (classification)
+│   ├── Ex.2_PTF.csv               # Stock portfolio (full pipeline)
+│   ├── Ex.2_PTF_new_units.csv     # New stocks for PTF
+│   ├── Ex.3_ElectreScore.csv      # Scoring problem
+│   ├── Ex.4_MISSING.csv           # Dataset with missing values
+│   ├── Ex.4_MISSING_new_units.csv # New units with missing values
+│   ├── Ex.5_GCS_original.csv      # Glasgow Coma Scale (Apply Rules)
+│   ├── Ex.5_GCS_new_units.csv     # New patients for GCS
+│   ├── Ex.5_maximal_rules.csv     # Pre-computed GCS rules
+│   ├── Ex.6_GCS_qualitative.xlsx  # GCS dataset with qualitative criteria
+│   ├── Ex.7_qualitative_maximal_rules.csv  # Pre-computed rules (qualitative)
+│   ├── Ex.7_GCS_qualitative.txt   # GCS units for Apply Rules (qualitative)
+│   └── Ex.7_GCS_qualitative_new.xlsx       # New units (qualitative)
+├── .streamlit/
+│   └── config.toml                # Streamlit theme configuration
 ├── requirements.txt
 ├── LICENSE
 └── README.md
@@ -100,7 +109,8 @@ Explainable-composite-indicator/
 
 ## Input File Format
 
-### Units file (CSV or TXT)
+### Units file (CSV, TXT, or Excel)
+
 ```
 Name,criterion_1,criterion_2,...,criterion_k,class
 A1,4,3,2,1
@@ -109,44 +119,53 @@ A3,7,6,5,
 A4,6,5,4,
 ```
 
-- **First column** (optional): unit names
-- **Criteria columns**: numeric values
-- **Last column**: class/score label — numeric for reference units, empty for non-reference units
+- **First column**: unit names
+- **Criteria columns (intermediate)**: numeric or qualitative values
+- **Last column**: class/score label — non-empty for reference units, empty for non-reference units
 - **Missing values**: detected and handled automatically
+- **File format**: CSV and TXT files require a separator (comma, semicolon, tab, or space); Excel files (`.xlsx`) are read directly from the first sheet
 
-For **scoring problems**, the last column contains a continuous score. Select "Scoring" in the *Problem type* radio button in Tab Run.
+For **scoring problems**, the last column contains a continuous score. Select *Scoring* in the Problem type radio button in Tab Run.
+
+For **qualitative criteria**, non-numeric columns are automatically detected. A mapping widget appears in Tab Data & Setup to assign a numeric rank to each qualitative value (1 = worst, p = best).
 
 ### Rules file (CSV)
+
 ```
 #directions,increasing,decreasing,...
 #mode,class
-type,class,criterion_1,criterion_2,...
+#mapping,criterion_name,value1:1,value2:2,...
+type,assignment,criterion_1,criterion_2,...
 at-least,2,0.762,,
 at-most,1,,2.71,
 ```
 
-For scoring problems, use `#mode,score` and score values in the `class` column.
+- `#directions`: preference direction for each criterion (`increasing` or `decreasing`)
+- `#mode`: `class` or `score`
+- `#mapping` (optional): qualitative mapping for each non-numeric criterion and/or class column
+- `type`: `at-least` or `at-most`
+- `assignment`: class index or score value
 
 ---
 
 ## Application Workflow
 
 ### Tab 1 — Data & Setup
-Upload your dataset, select criterion preference directions (increasing/decreasing), select reference units, and configure settings (min confidence, random seed).
+Upload your dataset (CSV, TXT, or Excel), define criterion preference directions (increasing/decreasing), select reference units, and configure settings (confidence level, random seed). If qualitative criteria are detected, a mapping widget allows assigning a numeric rank to each qualitative value.
 
 ### Tab 2 — Run
-- Select **problem type**
-- **Rule induction only**: induces at-least (R≥) and at-most (R≤) rules from reference units
-- **Full pipeline**: greedy selection → assignment of all units → maximal rule set → minimal rule set
+- Select **problem type** (Classification or Scoring)
+- **Rule induction only**: induces at-least (R≥) and at-most (R≤) rules from reference units. If all units are reference units, a **Find minimal set** button appears to compute the minimal subset of rules that preserves the same classification.
+- **Full pipeline**: greedy selection → assignment of all units → maximal rule set → minimal rule set via MILP
 
 ### Tab 3 — Assignment
-Displays assignment of all units with lower (s⁻) and upper (s⁺) bounds. Unit-by-unit explanation available.
+Displays the assignment of all units with Minimal assignment and Maximal assignment bounds. Unit-by-unit explanation available showing which rules are satisfied.
 
 ### Tab 4 — New Units
-Classify new units using MILP Problems (6), (7), and (8) of paper. Requires Full pipeline to be run first.
+Classify new units using MILP Problems. Requires the Full pipeline to be run first. New units files may contain qualitative values, which are automatically converted using the mapping defined in Tab 1.
 
 ### Tab 5 — Apply Rules
-Load saved rules and assign units. Extends to new unit assignment using loaded rules. Always accessible regardless of whether a data file is loaded.
+Load saved rules and assign units. Qualitative mappings stored in the `#mapping` lines of the rules file are applied automatically. Supports new unit assignment using loaded rules. Always accessible regardless of whether a dataset is loaded in the Sidebar.
 
 ---
 
@@ -164,7 +183,7 @@ Load saved rules and assign units. Extends to new unit assignment using loaded r
 **Setup:** 50 stocks, 8 financial criteria (all increasing ↑), 3 classes  
 **Workflow:** Upload PTF.csv → Full pipeline → Tab Assignment → Tab New Units → upload PTF_new_units.csv
 
-### Example 3 — Scored units (ElectreScore)
+### Example 3 — Scoring (ElectreScore)
 **File:** `examples/Ex.3_ElectreScore.csv`  
 **Problem:** Scoring  
 **Setup:** 10 investment projects, 5 criteria (g1↓, g2↓, g3↑, g4↑, g5↑), continuous score 0–100  
@@ -179,8 +198,20 @@ Load saved rules and assign units. Extends to new unit assignment using loaded r
 ### Example 5 — Apply Rules (Glasgow Coma Scale)
 **Files:** `examples/Ex.5_GCS_original.csv`, `examples/Ex.5_GCS_new_units.csv`, `examples/Ex.5_maximal_rules.csv`  
 **Problem:** Load previous rules, assign units, assign new units  
-**Setup:** Pre-computed GCS rules (3 criteria, class mode)  
+**Setup:** Pre-computed GCS rules (3 numeric criteria, class mode)  
 **Workflow:** Tab Apply Rules → upload Ex.5_maximal_rules.csv → upload Ex.5_GCS_original.csv → inspect assignment → upload Ex.5_GCS_new_units.csv → Assign new units
+
+### Example 6 — Qualitative Criteria (Glasgow Coma Scale)
+**File:** `examples/Ex.6_GCS_qualitative.xlsx`  
+**Problem:** Classification with qualitative criteria  
+**Setup:** GCS dataset with qualitative entries (Eye opening, Verbal response, Motor response, Severity class)  
+**Workflow:** Upload Ex.6_GCS_qualitative.xlsx → assign ranks in Qualitative criteria mapping → set directions → Full pipeline → Tab Assignment
+
+### Example 7 — Apply Rules with Qualitative Criteria
+**Files:** `examples/Ex.7_qualitative_maximal_rules.csv`, `examples/Ex.7_GCS_qualitative.txt`, `examples/Ex.7_GCS_qualitative_new.xlsx`  
+**Problem:** Load pre-computed rules with qualitative criteria, assign units and new units  
+**Setup:** Pre-computed qualitative GCS rules with `#mapping` lines  
+**Workflow:** Tab Apply Rules → upload Ex.7_qualitative_maximal_rules.csv → upload Ex.7_GCS_qualitative.txt → inspect assignment → upload Ex.7_GCS_qualitative_new.xlsx → Assign new units
 
 ---
 
@@ -195,14 +226,16 @@ Load saved rules and assign units. Extends to new unit assignment using loaded r
 
 ## License
 
-This project is licensed under the MIT License — see [LICENSE.txt](LICENSE) for details.
+This project is licensed under the MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-## Bibitex Citations
+## Citation
+
 If you use this software in your research, projects, or publications, please cite the following papers:
--  Corrente S., Greco S., Słowiński R., Zappalà S. (2026). *An explainable and interpretable composite indicator based on decision rules.* Omega, 142, 103513. [DOI: 10.1016/j.omega.2026.103513](https://doi.org/10.1016/j.omega.2026.103513)
-- Greco, S., Matarazzo, B., \& Slowinski, R. (2001). *Rough sets theory for multicriteria decision analysis*. European Journal of Operational Research, 129(1), 1--47. [DOI: 10.1016/S0377-2217(00)00167-3](https://doi.org/10.1016/S0377-2217(00)00167-3)
+
+- Corrente S., Greco S., Słowiński R., Zappalà S. (2026). *An explainable and interpretable composite indicator based on decision rules.* Omega, 142, 103513. [DOI: 10.1016/j.omega.2026.103513](https://doi.org/10.1016/j.omega.2026.103513)
+- Greco S., Matarazzo B., Słowiński R. (2001). *Rough sets theory for multicriteria decision analysis.* European Journal of Operational Research, 129(1), 1–47. [DOI: 10.1016/S0377-2217(00)00167-3](https://doi.org/10.1016/S0377-2217(00)00167-3)
 
 ```bibtex
 @article{corrente2026omega,
@@ -215,9 +248,9 @@ If you use this software in your research, projects, or publications, please cit
   doi     = {10.1016/j.omega.2026.103513}
 }
 @article{greco2001,
+  author    = {Greco, Salvatore and Matarazzo, Benedetto and S{\l}owi{\'n}ski, Roman},
   title     = {Rough sets theory for multicriteria decision analysis},
-  author    = {Greco, Salvatore and Matarazzo, Benedetto and Slowinski, Roman},
-  journal   = {European journal of operational research},
+  journal   = {European Journal of Operational Research},
   volume    = {129},
   number    = {1},
   pages     = {1--47},
@@ -225,5 +258,4 @@ If you use this software in your research, projects, or publications, please cit
   publisher = {Elsevier},
   doi       = {10.1016/S0377-2217(00)00167-3}
 }
-
 ```

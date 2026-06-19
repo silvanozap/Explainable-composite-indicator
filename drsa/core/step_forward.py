@@ -1,6 +1,5 @@
 """
 Greedy step-forward rule selection for non-contradictory classification.
-Corresponds to: step_forward_all_4.m
 """
 
 import numpy as np
@@ -58,7 +57,6 @@ def step_forward(atleast_rules: np.ndarray,
     s_al, n_al_m = confirmation_measure(support_al, support_al_dec)
     s_am, n_am_m = confirmation_measure(support_am, support_am_dec)
 
-    # Build combined array: [rs, S, N, type(1=al, 2=am), original_index]
     info_al = np.column_stack([rs_al, s_al, n_al_m,
                                 np.ones(n_al),
                                 np.arange(n_al)])
@@ -68,7 +66,6 @@ def step_forward(atleast_rules: np.ndarray,
     info_all = np.vstack([info_al, info_am])
 
     # ── Sort by (RS desc, S desc, N desc), shuffle within tied groups ─────────
-    # Find unique (RS, S, N) combinations
     keys = info_all[:, :3]
     unique_keys = np.unique(keys, axis=0)[::-1]  # descending
 
