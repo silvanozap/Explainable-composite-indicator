@@ -1,0 +1,24 @@
+#directions,increasing,increasing,increasing
+#mode,class
+#mapping,Eye opening,Not:1,To pain:2,To sounds:3,Spontaneous:4
+#mapping,Verbal response,Not:1,Incomprehensible sounds:2,Inappropriate words:3,Confused conversation:4,Oriented:5
+#mapping,Motor response,Abnormal extension:1,Abnormal flexion:2,Withdraws from pain:3,Localizes pain:4,Obeys commands:5
+#mapping,Severity class,Severe:1,Moderate:2,Mild:3
+type,assignment,Eye opening,Verbal response,Motor response
+at-least,2,4.0,,
+at-least,2,,4.0,
+at-least,3,,5.0,
+at-least,2,,,3.0
+at-least,3,,,5.0
+at-least,3,4.0,4.0,
+at-least,2,3.0,3.0,
+at-least,3,4.0,,4.0
+at-least,2,,3.0,2.0
+at-most,2,2.0,,
+at-most,1,1.0,,
+at-most,1,,2.0,
+at-most,2,,,3.0
+at-most,1,,,1.0
+at-most,2,3.0,4.0,
+at-most,1,2.0,,2.0
+at-most,2,,3.0,4.0

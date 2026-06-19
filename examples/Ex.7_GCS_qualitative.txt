@@ -1,0 +1,22 @@
+Unit,Eye opening,Verbal response,Motor response,Severity class
+a1,To pain,Incomprehensible sounds,Abnormal flexion,Severe
+a2,To sounds,Confused conversation,Localizes pain,Moderate
+a3,Spontaneous,Inappropriate words,Withdraws from pain,Moderate
+a4,To pain,Incomprehensible sounds,Abnormal extension,Severe
+a5,To sounds,Incomprehensible sounds,Abnormal extension,Severe
+a6,To pain,Confused conversation,Withdraws from pain,Moderate
+a7,Spontaneous,Confused conversation,Localizes pain,Mild
+a8,Spontaneous,Inappropriate words,Obeys commands,Mild
+a9,To sounds,Inappropriate words,Withdraws from pain,Moderate
+a10,Spontaneous,Inappropriate words,Abnormal flexion,Moderate
+a11,Spontaneous,Oriented,Localizes pain,Mild
+a12,Spontaneous,Oriented,Obeys commands,Mild
+a13,To pain,Inappropriate words,Abnormal extension,Severe
+a14,To sounds,Oriented,Localizes pain,Mild
+a15,Not,Incomprehensible sounds,Abnormal extension,Severe
+a16,To pain,Not,Abnormal extension,Severe
+a17,To pain,Inappropriate words,Withdraws from pain,Moderate
+a18,Spontaneous,Confused conversation,Obeys commands,Mild
+a19,To pain,Inappropriate words,Localizes pain,Moderate
+a20,Not,Not,Abnormal extension,Severe
+a21,Spontaneous,Oriented,Localizes pain,Mild
