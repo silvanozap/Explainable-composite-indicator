@@ -1019,8 +1019,8 @@ if uploaded is not None:
                             'al_texts_min_ind': al_texts_min, 'am_texts_min_ind': am_texts_min,
                             'al_units_min_ind': al_units_min, 'am_units_min_ind': am_units_min,
                             'classification_final': np.column_stack([sm_min, sp_min]),
-                            'al_rules': al_final, 'am_rules': am_final,
-                            'al_texts': al_texts_min, 'am_texts': am_texts_min,
+                            #'al_rules': al_final, 'am_rules': am_final,
+                            #'al_texts': al_texts_min, 'am_texts': am_texts_min,
                             'al_rules_max': al_r, 'am_rules_max': am_r,
                             'al_match2': al_m_ref, 'am_match2': am_m_ref,
                             'matrix_s_minus': np.hstack([all_crit, sm_min.reshape(-1,1)]),
@@ -2261,7 +2261,7 @@ x2,2.0,4.5,1.5
                             al_rules=al7_5, am_rules=am7_5,
                             score_map=file_score_map,
                             qual_mapping=file_qual_mapping)
-                        st.download_button("⬇ New units maximal rules CSV", csv_max5,
+                        st.download_button("⬇ New units maximal rules", csv_max5,
                             file_name="drsa_applied_new_units_maximal_rules.csv", mime="text/csv",
                             key="dl_new5_max", use_container_width=True)
                     with dc2:
