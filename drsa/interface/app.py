@@ -1341,7 +1341,11 @@ if uploaded is not None:
                 mat_sp_orig = st.session_state['matrix_s_plus']
                 all_unit_names = st.session_state['unit_names']
                 cl_all = new_res.get('classification_all')
-
+                # Build qual inverse mapping for class column
+                _qmap4a = st.session_state.get('qual_mapping', {})
+                _qcols4a = st.session_state.get('qual_cols', [])
+                _class_col4a = st.session_state.get('qual_class_col')
+                _qual_inv4a = {v: k for k, v in _qmap4a[_class_col4a].items()} if _class_col4a and _class_col4a in _qmap4a else {}
                 rows_all = []
                 # Existing units A
                 for i, name in enumerate(all_unit_names):
@@ -1354,9 +1358,11 @@ if uploaded is not None:
                         sm_new = sm_orig; sp_new = sp_orig
                     changed_flag = i in changed
                     _smap4a = st.session_state.get('score_map')
-                    sm_o = _fmt_class(sm_orig, _smap4a); sp_o = _fmt_class(sp_orig, _smap4a)
-                    sm_n = _fmt_class(sm_new,  _smap4a); sp_n = _fmt_class(sp_new,  _smap4a)
-                    assign_new = _assign_str(sm_new, sp_new, _smap4a)
+                    sm_o = _qual_inv4a.get(sm_orig, _fmt_class(sm_orig, _smap4a))
+                    sp_o = _qual_inv4a.get(sp_orig, _fmt_class(sp_orig, _smap4a))
+                    sm_n = _qual_inv4a.get(sm_new,  _fmt_class(sm_new,  _smap4a))
+                    sp_n = _qual_inv4a.get(sp_new,  _fmt_class(sp_new,  _smap4a))
+                    assign_new = _assign_str(sm_new, sp_new, _smap4a, qual_inv=_qual_inv4a if _qual_inv4a else None)
                     rows_all.append({
                         "Unit": name,
                         "Minimal assignment (previous)": sm_o, "Maximal assignment (previous)": sp_o,
@@ -1378,9 +1384,11 @@ if uploaded is not None:
                     sm_prev = int(new_res['step1_s_minus'][k]) if new_res.get('step1_s_minus') is not None else sm
                     sp_prev = int(new_res['step1_s_plus'][k])  if new_res.get('step1_s_plus')  is not None else sp
                     smap4n = st.session_state.get('score_map')
-                    sm_lbl4  = _fmt_class(sm, smap4n);    sp_lbl4  = _fmt_class(sp, smap4n)
-                    smp_lbl4 = _fmt_class(sm_prev, smap4n); spp_lbl4 = _fmt_class(sp_prev, smap4n)
-                    assign_new4 = _assign_str(sm, sp, smap4n)
+                    sm_lbl4  = _qual_inv4a.get(sm,_fmt_class(sm,smap4n))
+                    sp_lbl4  = _qual_inv4a.get(sp,_fmt_class(sp,smap4n))
+                    smp_lbl4 = _qual_inv4a.get(sm_prev, _fmt_class(sm_prev, smap4n))
+                    spp_lbl4 = _qual_inv4a.get(sp_prev, _fmt_class(sp_prev, smap4n))
+                    assign_new4 = _assign_str(sm, sp, smap4n, qual_inv=_qual_inv4a if _qual_inv4a else None)
                     rows_all.append({
                         "Unit": name,
                         "Minimal assignment (previous)": smp_lbl4, "Maximal assignment (previous)": spp_lbl4,
@@ -1764,8 +1772,11 @@ x2,2.0,4.5,1.5
             st.stop()
 
         n_al5 = len(al_rules5); n_am5 = len(am_rules5)
-        al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if n_al5>0 else []
-        am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if n_am5>0 else []
+        _file_qual_class_inv = {v: k for k, v in file_qual_mapping.get(list(crit_names5)[-1] if crit_names5 else '', {}).items()} if file_qual_mapping else {}
+        al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv=_file_qual_class_inv) if n_al5>0 else []
+        am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv=_file_qual_class_inv) if n_am5>0 else []
+        #al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if n_al5>0 else []
+        #am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=st.session_state.get('qual_mapping', {}), qual_class_inv={v: k for k, v in st.session_state.get('qual_mapping', {}).get(st.session_state.get('qual_class_col') or '', {}).items()}) if n_am5>0 else []
 
         mc1, mc2, mc3 = st.columns(3)
         mc1.metric("At-least rules", n_al5)
