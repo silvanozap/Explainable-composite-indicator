@@ -38,16 +38,16 @@ st.set_page_config(
 #st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 ##### nuove righe end
 # ── MathJax ───────────────────────────────────────────────────────────────────
-import streamlit.components.v1 as _components
-_components.html("""
-<script>
-window.MathJax = {
-  tex: { inlineMath: [['$','$'],['\\(','\\)']] },
-  svg: { fontCache: 'global' }
-};
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
-""", height=0)
+#import streamlit.components.v1 as _components
+#_components.html("""
+#<script>
+#window.MathJax = {
+#  tex: { inlineMath: [['$','$'],['\\(','\\)']] },
+#  svg: { fontCache: 'global' }
+#};
+#</script>
+#<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+#""", height=0)
 
 st.markdown("""
 <style>
@@ -499,7 +499,7 @@ User-friendly GUI to build your customized composite indicator based on Decision
 with st.sidebar:
     st.markdown("### 📂 Data")
     uploaded = st.file_uploader("Upload units", type=["xlsx","csv","txt"],
-        help="Last column = class label. Optional first column = unit names. NaN = non-reference unit.")
+        help="Last column = class/score label. First column = unit names. NaN = non-reference unit.")
     sep = st.selectbox("Separator", [",",";","\\t"," "], index=0)
     sep_actual = "\t" if sep=="\\t" else sep
 
@@ -554,10 +554,10 @@ if uploaded is None:
             st.markdown("""
 **File format**
 - EXCEL, CSV or TXT
-- Optional first column: unit names
-- Criteria columns (numeric)
-- Last column: class label
-  - Number → reference unit
+- First column: unit names
+- Criteria columns (numeric or qualitative)
+- Last column: class/score label
+  - Filled → reference unit
   - Empty/NaN → non-reference unit
 """)
         with c2:
@@ -1079,18 +1079,18 @@ if uploaded is not None:
             if al_texts_max or am_texts_max:
                 with st.expander(f"📂 Maximal rules ({_nlen(al_r2)} at-least, {_nlen(am_r2)} at-most)"):
                     if al_texts_max:
-                        st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least (maximal)**")
+                        st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least rules**")
                         show_rules(al_r2, al_texts_max, units=al_units_max, rule_type="atleast")
                     if am_texts_max:
-                        st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most (maximal)**")
+                        st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most rules**")
                         show_rules(am_r2, am_texts_max, units=am_units_max, rule_type="atmost")
             if al_texts_max or am_texts_max:
                 with st.expander(f"📂 Minimal rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most)"):
                     if al_texts_min:
-                        st.markdown("### $\\mathcal{R}^{\\geqslant}$ · Minimal At-Least Rules")
+                        st.markdown("**$\\mathcal{R}^{\\geqslant}$ · At-Least rules**")
                         show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
                     if am_texts_min:
-                        st.markdown("### $\\mathcal{R}^{\\leqslant}$ · Minimal At-Most Rules")
+                        st.markdown("**$\\mathcal{R}^{\\leqslant}$ · At-Most rules**")
                         show_rules(am_final, am_texts_min, units=am_units_min, rule_type="atmost")
 
             st.markdown("### 💾 Export rules")
@@ -1585,18 +1585,31 @@ with tab5:
         with c2t5:
             st.markdown("""
 **File format**
-- **Rules**: `#directions`, `#mode` rows + type/class/criteria - CSV
+- **Rules (quantitative)**: `#directions`, `#mode` rows + type/class/criteria - CSV
+- **Rules (qualitative)**: `#directions`, `#mode`, `#mapping`, rows + type/class/criteria - CSV
 - **Units** (optional): name column + criteria (no class) - EXCEL, CSV, TXT
 """)
         with c3t5:
             st.markdown("""
-**Rules example**
+**Rules example (quantitative)**
 ```
 #directions,increasing,increasing,decreasing
 #mode,class
 type,assignment,g1,g2,g3
 at-least,2,4.5,,
 at-most,1,,,2.5
+```
+**Rules example (qualitative)**
+```
+#directions,increasing,increasing,increasing
+#mode,class
+#mapping,g1,absent:1,present:2
+#mapping,g2,small:1,medium:2,big:3
+#mapping,g3,short:1,long:2
+#mapping,assignment,down:1,top:2
+type,assignment,g1,g2,g3
+at-least,2,2,,1
+at-most,1,,2,2
 ```
 **Units example**
 ```
@@ -1623,6 +1636,19 @@ x2,2.0,4.5,1.5
             "at-most,0,,,2.5\n"
             "at-most,16.67,,4.0,\n"
         )
+        sample_rules_qualitative = (
+            "#directions,increasing,increasing,decreasing\n"
+            "#mode,class\n"
+            "#mapping,g1,absent:1,present:2\n"
+            "#mapping,g2,small:1,medium:2,big:3\n"
+            "#mapping,g3,short:1,long:2\n"
+            "#mapping,assignment,Down:1,Top:2\n"
+            "type,assignment,g1,g2,g3\n"
+            "at-least,2,2,,\n"
+            "at-least,2,,2,\n"
+            "at-most,2,2,,\n"
+            "at-most,1,1,,\n"
+        )
         sample_alts = (
             "Name,g1,g2,g3\n"
             "x1,5.0,3.5,4.0\n"
@@ -1633,7 +1659,7 @@ x2,2.0,4.5,1.5
         import io
         _buf_alts = io.BytesIO()
         pd.read_csv(io.StringIO(sample_alts)).to_excel(_buf_alts, index=False)
-        sc1, sc2, sc3, sc4 = st.columns(4)
+        sc1, sc2, sc_qual, sc3, sc4 = st.columns(5)
         with sc1:
             st.download_button("⬇ Sample rules (Class)", sample_rules_class,
                                file_name="sample_rules_class.csv", mime="text/csv",
@@ -1642,6 +1668,10 @@ x2,2.0,4.5,1.5
             st.download_button("⬇ Sample rules (Score)", sample_rules_score,
                                file_name="sample_rules_score.csv", mime="text/csv",
                                key="dl_sample_rules_score", use_container_width=True)
+        with sc_qual:
+            st.download_button("⬇ Sample rules (Qualitative)", sample_rules_qualitative,
+                               file_name="sample_rules_qualitative.csv", mime="text/csv",
+                               key="sample_rules_qualitative", use_container_width=True)
         with sc3:
             st.download_button("⬇ Sample units (CSV)", sample_alts,
                                file_name="sample_units.csv", mime="text/csv",

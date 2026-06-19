@@ -147,8 +147,12 @@ def format_atmost_rules(rules: np.ndarray,
             class_label = rule_class
             mode_word = "Class "
         condition = ' and '.join(parts)
-        text = (f'If {condition}, '
-                f'then a is assigned to at most {mode_word}{class_label}')
+        if qual_class_inv and rule_class in qual_class_inv:
+            text = (f'If {condition}, '
+                    f'then a is assigned to a class not better than {class_label}')
+        else:
+            text = (f'If {condition}, '
+                    f'then a is assigned to at most {mode_word}{class_label}')
         result.append(text)
 
     return result
