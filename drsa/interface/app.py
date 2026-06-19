@@ -1713,7 +1713,7 @@ x2,2.0,4.5,1.5
         crit_names5 = [c for c in df_rules_raw.columns if c not in ['type','assignment']]
         # Build score_map from unique class values if mode=score
         if file_mode == 'score':
-            raw_vals = sorted(set(float(v) for v in df_rules_raw['class'].dropna()))
+            raw_vals = sorted(set(float(v) for v in df_rules_raw['assignment'].dropna()))
             file_score_map     = {i+1: v for i, v in enumerate(raw_vals)}
             file_score_map_inv = {v: i+1 for i, v in enumerate(raw_vals)}
 
