@@ -1734,22 +1734,39 @@ x2,2.0,4.5,1.5
         al_rules5 = []; am_rules5 = []
         n_crit5 = len(crit_names5)
         rule_width = n_crit5 * 2  # crit_idx, threshold pairs
+        _mapped_cols = list(file_qual_mapping.keys())
+        _class_col_from_mapping = next((c for c in _mapped_cols if c not in crit_names5), None)
+        if _class_col_from_mapping:
+            _class_qmap5 = file_qual_mapping.get(_class_col_from_mapping, {})
+        else:
+            _class_qmap5 = {}
 
         for _, row in df_rules_raw.iterrows():
             rtype = str(row.get('type','')).strip()
-            rclass_raw = float(row.get('assignment', 0))
-            # Convert score back to class index if needed
-            if file_score_map_inv and rclass_raw in file_score_map_inv:
-                rclass = int(file_score_map_inv[rclass_raw])
-            else:
-                rclass = int(rclass_raw)
+            _raw_val = row.get('assignment', 0)
+            try:
+                rclass_raw = float(_raw_val)
+                if file_score_map_inv and rclass_raw in file_score_map_inv:
+                    rclass = int(file_score_map_inv[rclass_raw])
+                else:
+                    rclass = int(rclass_raw)
+            except (ValueError, TypeError):
+                _str_val = str(_raw_val).strip()
+                #_class_col5 = list(crit_names5)[-1] if crit_names5 else ''
+                #_cmap5 = file_qual_mapping.get(_class_col5, {})
+                _cmap5 = _class_qmap5
+                rclass = int(_cmap5.get(_str_val, 0))
             rule_vec = []
             for ci, cname in enumerate(crit_names5):
                 val = row.get(cname, '')
                 if pd.isna(val) or str(val).strip() == '':
                     rule_vec.extend([0, 0])
                 else:
-                    v = float(val)
+                    try:
+                        v = float(val)
+                    except (ValueError, TypeError):
+                        _cmap_c = file_qual_mapping.get(cname, {})
+                        v = float(_cmap_c.get(str(val).strip(), 0))
                     # Re-negate to restore internal format:
                     # at-least: decreasing criteria are stored negated
                     # at-most:  increasing criteria are stored negated
@@ -1773,8 +1790,8 @@ x2,2.0,4.5,1.5
 
         n_al5 = len(al_rules5); n_am5 = len(am_rules5)
         _file_qual_class_inv = {v: k for k, v in file_qual_mapping.get(list(crit_names5)[-1] if crit_names5 else '', {}).items()} if file_qual_mapping else {}
-        al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv=_file_qual_class_inv) if n_al5>0 else []
-        am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv=_file_qual_class_inv) if n_am5>0 else []
+        al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv={v: k for k, v in _class_qmap5.items()}) if n_al5>0 else []
+        am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv={v: k for k, v in _class_qmap5.items()}) if n_am5>0 else []
         mc1, mc2, mc3 = st.columns(3)
         mc1.metric("At-least rules", n_al5)
         mc2.metric("At-most rules", n_am5)
