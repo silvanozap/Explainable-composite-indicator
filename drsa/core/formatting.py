@@ -6,12 +6,33 @@ Based on from_atleast_to_rules.m and from_atmost_to_rules.m
 import numpy as np
 
 
+def _fmt_threshold(name, value, qual_mapping, n_decimals):
+    """Return display string for a threshold value, using qual_mapping if available."""
+    if qual_mapping and name in qual_mapping:
+        _inv = {v: k for k, v in qual_mapping[name].items()}
+        _rounded = round(float(value))
+        if _rounded in _inv:
+            return _inv[_rounded]
+    return str(round(value, n_decimals))
+
+def _fmt_cond(name, val_str, op, qual_mapping):
+    """Format a condition using natural language for qualitative criteria."""
+    if qual_mapping and name in qual_mapping:
+        if op == '>=':
+            return f'{name} is not worse than {val_str}'
+        else:
+            return f'{name} is not better than {val_str}'
+    return f'{name} {op} {val_str}'
+
+
 def format_atleast_rules(rules: np.ndarray,
                           increasing: list,
                           decreasing: list,
                           criterion_names: list = None,
                           n_decimals: int = 4,
-                          score_map: dict = None) -> list:
+                          score_map: dict = None,
+                          qual_mapping: dict = None,
+                          qual_class_inv: dict = None) -> list:
     """
     Convert at-least rule matrix to natural language strings.
 
@@ -50,19 +71,29 @@ def format_atleast_rules(rules: np.ndarray,
             name = criterion_names[crit_0based] if crit_0based < len(criterion_names) else f'g{crit_1based}'
 
             if crit_0based in increasing:
-                parts.append(f'{name} ≥ {round(threshold, n_decimals)}')
+                parts.append(_fmt_cond(name, _fmt_threshold(name, threshold, qual_mapping, n_decimals), '>=', qual_mapping))
             elif crit_0based in decreasing:
-                # threshold was negated internally; display original value
-                parts.append(f'{name} ≤ {round(-threshold, n_decimals)}')
+                parts.append(_fmt_cond(name, _fmt_threshold(name, -threshold, qual_mapping, n_decimals), '<=', qual_mapping))
             else:
-                parts.append(f'{name} ≥ {round(threshold, n_decimals)}')
+                parts.append(_fmt_cond(name, _fmt_threshold(name, threshold, qual_mapping, n_decimals), '>=', qual_mapping))
 
         rule_class = int(rule[-1])
-        class_label = score_map[rule_class] if score_map and rule_class in score_map else rule_class
-        mode_word = "Score" if score_map else "Class"
+        if qual_class_inv and rule_class in qual_class_inv:
+            class_label = qual_class_inv[rule_class]
+            mode_word = ""
+        elif score_map and rule_class in score_map:
+            class_label = score_map[rule_class]
+            mode_word = "Score "
+        else:
+            class_label = rule_class
+            mode_word = "Class "
         condition = ' and '.join(parts)
-        text = (f'If {condition}, '
-                f'then a is assigned to at least {mode_word} {class_label} ')
+        if qual_class_inv and rule_class in qual_class_inv:
+            text = (f'If {condition}, '
+                    f'then a is assigned to a class not worse than {class_label}')
+        else:
+            text = (f'If {condition}, '
+                    f'then a is assigned to at least {mode_word}{class_label}')
         result.append(text)
 
     return result
@@ -73,7 +104,9 @@ def format_atmost_rules(rules: np.ndarray,
                          decreasing: list,
                          criterion_names: list = None,
                          n_decimals: int = 4,
-                         score_map: dict = None) -> list:
+                         score_map: dict = None,
+                         qual_mapping: dict = None,
+                         qual_class_inv: dict = None) -> list:
     """
     Convert at-most rule matrix to natural language strings.
 
@@ -98,18 +131,24 @@ def format_atmost_rules(rules: np.ndarray,
             # At-most rules: increasing criteria use <=, decreasing use >=
             # The internal negation means we display -threshold for increasing
             if crit_0based in increasing:
-                parts.append(f'{name} ≤ {round(-threshold, n_decimals)}')
+                parts.append(_fmt_cond(name, _fmt_threshold(name, -threshold, qual_mapping, n_decimals), '<=', qual_mapping))
             elif crit_0based in decreasing:
-                parts.append(f'{name} ≥ {round(threshold, n_decimals)}')
+                parts.append(_fmt_cond(name, _fmt_threshold(name, threshold, qual_mapping, n_decimals), '>=', qual_mapping))
             else:
-                parts.append(f'{name} ≤ {round(-threshold, n_decimals)}')
-
+                parts.append(_fmt_cond(name, _fmt_threshold(name, -threshold, qual_mapping, n_decimals), '<=', qual_mapping))
         rule_class = int(rule[-1])
-        class_label = score_map[rule_class] if score_map and rule_class in score_map else rule_class
-        mode_word = "Score" if score_map else "Class"
+        if qual_class_inv and rule_class in qual_class_inv:
+            class_label = qual_class_inv[rule_class]
+            mode_word = ""
+        elif score_map and rule_class in score_map:
+            class_label = score_map[rule_class]
+            mode_word = "Score "
+        else:
+            class_label = rule_class
+            mode_word = "Class "
         condition = ' and '.join(parts)
         text = (f'If {condition}, '
-                f'then a is assigned to at most {mode_word} {class_label} ')
+                f'then a is assigned to at most {mode_word}{class_label}')
         result.append(text)
 
     return result
