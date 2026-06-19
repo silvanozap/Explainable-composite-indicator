@@ -1826,22 +1826,25 @@ x2,2.0,4.5,1.5
                 st.error("⚠️ The uploaded units file is empty.")
                 st.stop()
 
-            df_alt5 = df_alt5.reindex(columns=crit_names5)
-
-            # Apply qualitative mapping if present (before NaN check)
+            # Apply qualitative mapping if present (before reindex)
             if file_qual_mapping:
                 df_alt5_str = df_alt5_raw.copy()
                 if alt_names5 is not None:
                     _fc5_drop = df_alt5_raw.columns[0]
                     df_alt5_str = df_alt5_str.drop(columns=[_fc5_drop], errors='ignore')
+                df_alt5_str = df_alt5_str.apply(pd.to_numeric, errors='coerce')
                 for _col, _map in file_qual_mapping.items():
-                    if _col in df_alt5_str.columns:
-                        _unmapped = [v for v in df_alt5_str[_col].dropna().astype(str).unique() if v not in _map]
-                        if _unmapped:
-                            st.error(f"⚠️ Value(s) {_unmapped} of criterion '{_col}' not found in the rules mapping. "
-                                     "Check the units file or the rules file.")
-                            st.stop()
-                        df_alt5[_col] = df_alt5_str[_col].map(_map).astype(float)
+                    if _col in df_alt5_raw.columns:
+                        _src = df_alt5_raw[_col] if alt_names5 is None else df_alt5_raw.iloc[:, 1:][_col] if _col in df_alt5_raw.iloc[:, 1:].columns else None
+                        if _src is not None:
+                            _unmapped = [v for v in _src.dropna().astype(str).str.strip().unique() if v not in _map]
+                            if _unmapped:
+                                st.error(f"⚠️ Value(s) {_unmapped} of criterion '{_col}' not found in the rules mapping.")
+                                st.stop()
+                            df_alt5_str[_col] = _src.astype(str).str.strip().map(_map).astype(float)
+                df_alt5 = df_alt5_str.reindex(columns=crit_names5)
+            else:
+                df_alt5 = df_alt5.reindex(columns=crit_names5)
 
             # Check all NaN after qual mapping
             if df_alt5.isna().all().all():
