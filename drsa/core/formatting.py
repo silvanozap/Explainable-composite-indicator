@@ -15,6 +15,15 @@ def _fmt_threshold(name, value, qual_mapping, n_decimals):
             return _inv[_rounded]
     return str(round(value, n_decimals))
 
+def _fmt_cond(name, val_str, op, qual_mapping):
+    """Format a condition using natural language for qualitative criteria."""
+    if qual_mapping and name in qual_mapping:
+        if op == '>=':
+            return f'{name} is not worse than {val_str}'
+        else:
+            return f'{name} is not better than {val_str}'
+    return f'{name} {op} {val_str}'
+
 
 def format_atleast_rules(rules: np.ndarray,
                           increasing: list,
@@ -61,21 +70,13 @@ def format_atleast_rules(rules: np.ndarray,
             threshold = rule[pos + 1]
             name = criterion_names[crit_0based] if crit_0based < len(criterion_names) else f'g{crit_1based}'
 
-            # at-least
-            def _fmt_cond(name, val_str, op, qual_mapping):
-                if qual_mapping and name in qual_mapping:
-                    return f'{name} is not worse than {val_str}' if op == '>=' else f'{name} is not better than {val_str}'
-                return f'{name} {op} {val_str}'
-
             if crit_0based in increasing:
-                _val = _fmt_threshold(name, threshold, qual_mapping, n_decimals)
-                parts.append(_fmt_cond(name, _val, '>=', qual_mapping))
+                parts.append(_fmt_cond(name, _fmt_threshold(name, threshold, qual_mapping, n_decimals), '>=', qual_mapping))
             elif crit_0based in decreasing:
-                _val = _fmt_threshold(name, -threshold, qual_mapping, n_decimals)
-                parts.append(_fmt_cond(name, _val, '<=', qual_mapping))
+                parts.append(_fmt_cond(name, _fmt_threshold(name, -threshold, qual_mapping, n_decimals), '<=', qual_mapping))
             else:
-                _val = _fmt_threshold(name, threshold, qual_mapping, n_decimals)
-                parts.append(_fmt_cond(name, _val, '>=', qual_mapping))
+                parts.append(_fmt_cond(name, _fmt_threshold(name, threshold, qual_mapping, n_decimals), '>=', qual_mapping))
+
         rule_class = int(rule[-1])
         if qual_class_inv and rule_class in qual_class_inv:
             class_label = qual_class_inv[rule_class]
@@ -87,8 +88,12 @@ def format_atleast_rules(rules: np.ndarray,
             class_label = rule_class
             mode_word = "Class "
         condition = ' and '.join(parts)
-        text = (f'If {condition}, '
-                f'then a is assigned to at least {mode_word}{class_label}')
+        if qual_class_inv and rule_class in qual_class_inv:
+            text = (f'If {condition}, '
+                    f'then a is assigned to a class not worse than {class_label}')
+        else:
+            text = (f'If {condition}, '
+                    f'then a is assigned to at least {mode_word}{class_label}')
         result.append(text)
 
     return result
@@ -123,21 +128,14 @@ def format_atmost_rules(rules: np.ndarray,
             threshold = rule[pos + 1]
             name = criterion_names[crit_0based] if crit_0based < len(criterion_names) else f'g{crit_1based}'
 
-            # at-least
-            def _fmt_cond(name, val_str, op, qual_mapping):
-                if qual_mapping and name in qual_mapping:
-                    return f'{name} is not worse than {val_str}' if op == '>=' else f'{name} is not better than {val_str}'
-                return f'{name} {op} {val_str}'
-
+            # At-most rules: increasing criteria use <=, decreasing use >=
+            # The internal negation means we display -threshold for increasing
             if crit_0based in increasing:
-                _val = _fmt_threshold(name, -threshold, qual_mapping, n_decimals)
-                parts.append(_fmt_cond(name, _val, '<=', qual_mapping))
+                parts.append(_fmt_cond(name, _fmt_threshold(name, -threshold, qual_mapping, n_decimals), '<=', qual_mapping))
             elif crit_0based in decreasing:
-                _val = _fmt_threshold(name, threshold, qual_mapping, n_decimals)
-                parts.append(_fmt_cond(name, _val, '>=', qual_mapping))
+                parts.append(_fmt_cond(name, _fmt_threshold(name, threshold, qual_mapping, n_decimals), '>=', qual_mapping))
             else:
-                _val = _fmt_threshold(name, -threshold, qual_mapping, n_decimals)
-                parts.append(_fmt_cond(name, _val, '<=', qual_mapping))
+                parts.append(_fmt_cond(name, _fmt_threshold(name, -threshold, qual_mapping, n_decimals), '<=', qual_mapping))
         rule_class = int(rule[-1])
         if qual_class_inv and rule_class in qual_class_inv:
             class_label = qual_class_inv[rule_class]
