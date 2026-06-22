@@ -1150,10 +1150,24 @@ if uploaded is not None:
             sel = st.selectbox("Select unit", unit_names, key="sel_tab3")
             show_explanation(sel, s_minus, s_plus, al_m, am_m,
                              al_texts, am_texts, unit_names.index(sel))
-
-            st.download_button("⬇ Assignment", df_class_csv.to_csv(index=False),
+            import io
+            _buf_xlsx = io.BytesIO()
+            with pd.ExcelWriter(_buf_xlsx, engine="openpyxl") as writer:
+                df_class_csv.to_excel(writer, index=False, sheet_name="Assignment")
+                _buf_xlsx.seek(0)
+            col_csv, col_xlsx = st.columns(2)
+            with col_csv:
+                st.download_button("⬇ Assignment (CSV)", df_class_csv.to_csv(index=False),
                                file_name="units_assignment.csv", mime="text/csv",
                                key="dl_classif", use_container_width=True)
+            with col_xlsx:
+                st.download_button("⬇ Assignment (EXCEL)", _buf_xlsx,
+                               file_name="units_assignment.xlsx",
+                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                               key="dl_classif_xlsx", use_container_width=True)
+            
+
+            
 
     # ══════════════════════════════════════════════════════════════════════════════
     # TAB 4
@@ -1517,10 +1531,22 @@ if uploaded is not None:
                     "Changed":       df_all["Changed"].apply(lambda x:
                                          "Y" if x in ["⚠️ Yes","🆕 New","⚠️ Contradictory"] else "N"),
                 })
-                st.download_button("⬇ Assignment",
-                                   df_new_csv.to_csv(index=False),
-                                   file_name="new_units_assignment.csv",
-                                   mime="text/csv", key="dl_new_cl", use_container_width=True)
+                import io
+                _buf_new_xlsx = io.BytesIO()
+                with pd.ExcelWriter(_buf_new_xlsx, engine="openpyxl") as writer:
+                    df_new_csv.to_excel(writer, index=False, sheet_name="Assignment")
+                    _buf_new_xlsx.seek(0)
+                col_new_csv, col_new_xlsx = st.columns(2)
+                with col_new_csv:
+                    st.download_button("⬇ Assignment (CSV)",
+                        df_new_csv.to_csv(index=False),
+                        file_name="new_units_assignment.csv",
+                        mime="text/csv", key="dl_new_cl", use_container_width=True)
+                with col_new_xlsx:
+                    st.download_button("⬇ Assignment (EXCEL)", _buf_new_xlsx,
+                               file_name="new_units_assignment.xlsx",
+                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                               key="dl_new_cl_xlsx", use_container_width=True)
 
     # ══════════════════════════════════════════════════════════════════════════════
     # TAB 5 — Apply Rules
@@ -1935,11 +1961,23 @@ x2,2.0,4.5,1.5
             show_explanation(sel5, s_minus5, s_plus5, al_m5, am_m5,
                              al_texts5, am_texts5, alt_names5.index(sel5))
 
-            st.download_button("⬇ Assignment",
-                               df_class5_csv.to_csv(index=False),
-                               file_name="drsa_applied_assignment.csv",
-                               mime="text/csv", key="dl_apply_class",
-                               use_container_width=True)
+            import io
+            _buf_apply_xlsx = io.BytesIO()
+            with pd.ExcelWriter(_buf_apply_xlsx, engine="openpyxl") as writer:
+                df_class5_csv.to_excel(writer, index=False, sheet_name="Assignment")
+                _buf_apply_xlsx.seek(0)
+            col_apply_rule_csv, col_apply_rule_xlsx = st.columns(2)
+            with col_apply_rule_csv:
+                st.download_button("⬇ Assignment (CSV)",
+                    df_class5_csv.to_csv(index=False),
+                    file_name="drsa_applied_assignment.csv",
+                    mime="text/csv", key="dl_apply_class",
+                    use_container_width=True)
+            with col_apply_rule_xlsx:
+                st.download_button("⬇ Assignment (EXCEL)", _buf_apply_xlsx,
+                        file_name="drsa_applied_assignment.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="dl_apply_xlsxl_class", use_container_width=True)
 
         # ── New units section ───────────────────────────────────────────────
         if alt_matrix5 is not None and s_minus5 is not None:
@@ -2201,7 +2239,7 @@ x2,2.0,4.5,1.5
 
                     # ── Downloads ─────────────────────────────────────────────
                     st.markdown("### 💾 Export")
-                    dc1, dc2, dc3 = st.columns(3)
+                    dc1, dc2 = st.columns(2)
                     with dc1:
                         csv_max5 = rules_to_csv(al_t7_5 if _nlen(al7_5)>0 else [],
                             am_t7_5 if _nlen(am7_5)>0 else [],
@@ -2220,8 +2258,9 @@ x2,2.0,4.5,1.5
                         st.download_button("⬇ New units minimal rules", csv_min5,
                             file_name="drsa_applied_new_units_minimal_rules.csv", mime="text/csv",
                             key="dl_new5_min", use_container_width=True)
-                    with dc3:
-                         df_n5_csv = pd.DataFrame({
+                    import io
+                    _buf_apply_rules_new_units_xlsx = io.BytesIO()
+                    df_n5_csv = pd.DataFrame({
                              "Unit":       [r["Unit"] for r in rows_new5],
                              "minimal_previous":   [r["Minimal (previous)"] for r in rows_new5],
                              "maximal_previous":   [r["Maximal (previous)"] for r in rows_new5],
@@ -2230,6 +2269,16 @@ x2,2.0,4.5,1.5
                              "Assignment": [r["Assignment"] for r in rows_new5],
                              "Changed":    ["Y" if r["Changed"].startswith("⚠️") else "N" for r in rows_new5],
                          })
-                         st.download_button("⬇ New units assignment", df_n5_csv.to_csv(index=False),
+                    with pd.ExcelWriter(_buf_apply_rules_new_units_xlsx, engine="openpyxl") as writer:
+                        df_n5_csv.to_excel(writer, index=False, sheet_name="Assignment")
+                        _buf_apply_rules_new_units_xlsx.seek(0)
+                    dc3, dc4 = st.columns(2)
+                    with dc3:
+                         st.download_button("⬇ New units assignment (CSV)", df_n5_csv.to_csv(index=False),
                              file_name="drsa_applied_new_assignment.csv", mime="text/csv",
                              key="dl_new5_cl", use_container_width=True)
+                    with dc4:
+                        st.download_button("⬇ New units assignment (EXCEL)", _buf_apply_rules_new_units_xlsx,
+                               file_name="drsa_applied_new_assignment.xlsx",
+                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                               key="dl_new5_cl_xlsx", use_container_width=True)
