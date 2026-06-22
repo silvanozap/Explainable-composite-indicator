@@ -18,7 +18,7 @@ EI-SCORE provides an interactive Streamlit interface for building explainable co
 - **Scoring problems** — ranking units by a continuous score
 - **Qualitative criteria** — non-numeric criteria with user-defined preference ordering
 - **Full pipeline** — from raw data to minimal rule sets
-- **New unit assignment** — via MILP formulations
+- **Incremental learning** — New unit assignment via MILP formulations
 - **Rule reuse** — apply saved rules to new datasets
 
 The methodology recognises and handles missing values in criteria.
@@ -161,7 +161,7 @@ Upload your dataset (CSV, TXT, or Excel), define criterion preference directions
 ### Tab 3 — Assignment
 Displays the assignment of all units with Minimal assignment and Maximal assignment bounds. Unit-by-unit explanation available showing which rules are satisfied.
 
-### Tab 4 — New Units
+### Tab 4 — Incremental learning
 Classify new units using MILP Problems. Requires the Full pipeline to be run first. New units files may contain qualitative values, which are automatically converted using the mapping defined in Tab 1.
 
 ### Tab 5 — Apply Rules
@@ -179,9 +179,9 @@ Load saved rules and assign units. Qualitative mappings stored in the `#mapping`
 
 ### Example 2 — Stock Portfolio (PTF)
 **Files:** `examples/Ex.2_PTF.csv`, `examples/Ex.2_PTF_new_units.csv`  
-**Problem:** Full pipeline + New units  
+**Problem:** Full pipeline + Incremental learning  
 **Setup:** 50 stocks, 8 financial criteria (all increasing ↑), 3 classes  
-**Workflow:** Upload PTF.csv → Full pipeline → Tab Assignment → Tab New Units → upload PTF_new_units.csv
+**Workflow:** Upload PTF.csv → Full pipeline → Tab Assignment → Tab Incremental learning → upload PTF_new_units.csv
 
 ### Example 3 — Scoring (ElectreScore)
 **File:** `examples/Ex.3_ElectreScore.csv`  
@@ -193,7 +193,7 @@ Load saved rules and assign units. Qualitative mappings stored in the `#mapping`
 **Files:** `examples/Ex.4_MISSING.csv`, `examples/Ex.4_MISSING_new_units.csv`  
 **Problem:** Classification with missing values, Full pipeline  
 **Setup:** 20 students, 3 criteria (all increasing ↑), 3 classes, several missing values  
-**Workflow:** Upload MISSING.csv → Full pipeline → Tab Assignment → Tab New Units → upload MISSING_new_units.csv
+**Workflow:** Upload MISSING.csv → Full pipeline → Tab Assignment → Tab Incremental learning → upload MISSING_new_units.csv
 
 ### Example 5 — Apply Rules (Glasgow Coma Scale)
 **Files:** `examples/Ex.5_GCS_original.csv`, `examples/Ex.5_GCS_new_units.csv`, `examples/Ex.5_maximal_rules.csv`  

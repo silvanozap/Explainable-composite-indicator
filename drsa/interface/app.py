@@ -482,7 +482,7 @@ with st.sidebar:
         "1. **Data & Setup** — upload dataset, set directions and settings\n"
         "2. **Run** — induce only rules or full pipeline\n"
         "3. **Assignment** — inspect assignment of all units\n"
-        "4. **New Units** — assign new units with previous induced rules\n"
+        "4. **Incremental learning** — assign new units with previous induced rules\n"
         "5. **Apply Rules** — load saved rules and assign units"
     )
 
@@ -515,7 +515,7 @@ with st.sidebar:
 
 # ── TABS ───────────────────────────────────────────────────────────────────────
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📋 Data & Setup", "⚙️ Run", "🔍 Assignment", "🆕 New Units", "📂 Apply Rules"
+    "📋 Data & Setup", "⚙️ Run", "🔍 Assignment", "🆕 Incremental learning", "📂 Apply Rules"
 ])
 
 
@@ -1570,7 +1570,7 @@ with tab5:
 2. (optional) Load units file
 3. Visualize rules with matching units
 4. (optional) Load new units file
-5. Assign new units
+5. Incremental learning to assign new units
 """)
         with c2t5:
             st.markdown("""
@@ -1982,8 +1982,8 @@ x2,2.0,4.5,1.5
         # ── New units section ───────────────────────────────────────────────
         if alt_matrix5 is not None and s_minus5 is not None:
             st.markdown("---")
-            st.markdown("#### 🆕 Assign new units")
-            st.markdown("Upload new units to assign.")
+            st.markdown("#### 🆕 Incremental learning")
+            st.markdown("Upload **new units** to assign.")
 
             col_nu, col_sep_nu = st.columns([3,1])
             with col_nu:
