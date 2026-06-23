@@ -589,7 +589,7 @@ if uploaded is not None:
             'al_texts_min_ind', 'am_texts_min_ind',
             'al_units_min_ind', 'am_units_min_ind',
             'al_m_ref', 'am_m_ref',
-            'qual_mapping', 'qual_cols',
+            'qual_mapping', 'qual_cols', 'qual_extra_values',
         ]
         for k in keys_to_reset:
             st.session_state.pop(k, None)
@@ -678,14 +678,20 @@ if uploaded is not None:
                         "For each value, select its rank (**1 = worst, p = best**). "
                         "Ranks must be unique within each criterion.")
             _new_qual_mapping = {}
+            # qual_extra_values: {col: [val1, val2, ...]} — user-added values not in the dataset
+            if 'qual_extra_values' not in st.session_state:
+                st.session_state['qual_extra_values'] = {}
             for _col, _vals in _qual_cols.items():
                 st.markdown(f"**{_col}**")
                 _prev_map = st.session_state.get('qual_mapping', {}).get(_col, {})
-                _n_vals = len(_vals)
+                # Merge detected values with any user-added extra values for this column
+                _extra_vals = st.session_state['qual_extra_values'].get(_col, [])
+                _all_vals = _vals + [v for v in _extra_vals if v not in _vals]
+                _n_vals = len(_all_vals)
                 _col_layout = st.columns(min(_n_vals, 4))
                 _col_map = {}
                 _used_ranks = []
-                for _vi, _v in enumerate(_vals):
+                for _vi, _v in enumerate(_all_vals):
                     _default_rank = _prev_map.get(_v.strip(), _vi + 1)
                     with _col_layout[_vi % min(_n_vals, 4)]:
                         _rank = st.selectbox(
@@ -699,6 +705,41 @@ if uploaded is not None:
                 if len(set(_used_ranks)) < len(_used_ranks):
                     st.warning(f"⚠️ Ranks for **{_col}** are not unique. Each value must have a different rank.")
                 _new_qual_mapping[_col] = _col_map
+                # ── Add extra values ───────────────────────────────────────────
+                with st.expander(f"➕ Add extra values for **{_col}**"):
+                    st.markdown("Use this to pre-assign ranks to values not present in the current dataset "
+                                "(e.g. values that may appear in Incremental Learning).")
+                    _add_col1, _add_col2 = st.columns([3, 1])
+                    with _add_col1:
+                        _new_val = st.text_input("New value", key=f"qual_newval_{_col}",
+                                                 placeholder="e.g. Discreta")
+                    with _add_col2:
+                        _add_btn = st.button("Add", key=f"qual_addbtn_{_col}")
+                    if _add_btn and _new_val.strip():
+                        _nv = _new_val.strip()
+                        _extras = st.session_state['qual_extra_values'].get(_col, [])
+                        if _nv not in _vals and _nv not in _extras:
+                            _extras = _extras + [_nv]
+                            st.session_state['qual_extra_values'][_col] = _extras
+                            st.rerun()
+                        elif _nv in _vals or _nv in _extras:
+                            st.warning(f"Value **{_nv}** already exists.")
+                    # Show added extra values with remove buttons
+                    _cur_extras = st.session_state['qual_extra_values'].get(_col, [])
+                    if _cur_extras:
+                        st.markdown("Added values:")
+                        for _ei, _ev in enumerate(_cur_extras):
+                            _ecol1, _ecol2 = st.columns([4, 1])
+                            with _ecol1:
+                                st.write(f"• {_ev}")
+                            with _ecol2:
+                                if st.button("✕", key=f"qual_rm_{_col}_{_ei}"):
+                                    _cur_extras2 = [v for v in _cur_extras if v != _ev]
+                                    st.session_state['qual_extra_values'][_col] = _cur_extras2
+                                    # Remove from mapping too
+                                    if _col in st.session_state.get('qual_mapping', {}):
+                                        st.session_state['qual_mapping'][_col].pop(_ev, None)
+                                    st.rerun()
             if _new_qual_mapping != st.session_state.get('qual_mapping', {}):
                 st.session_state['qual_mapping'] = _new_qual_mapping
             for _col, _map in _new_qual_mapping.items():
@@ -1923,8 +1964,7 @@ x2,2.0,4.5,1.5
         if alt_matrix5 is not None and s_minus5 is not None:
             st.markdown("---")
             st.markdown("#### Assignment")
-            _class_col5 = list(crit_names5)[-1] if crit_names5 else None
-            _qual_inv5 = {v: k for k, v in file_qual_mapping.get(_class_col5 or '', {}).items()} if file_qual_mapping and _class_col5 else {}
+            _qual_inv5 = {v: k for k, v in _class_qmap5.items()} if _class_qmap5 else {}
             rows5 = []
             for i, name in enumerate(alt_names5):
                 sm, sp = int(s_minus5[i]), int(s_plus5[i])
@@ -2120,8 +2160,9 @@ x2,2.0,4.5,1.5
                     step1_sm5 = new_res5.get('step1_s_minus', None)
                     step1_sp5 = new_res5.get('step1_s_plus',  None)
                     changed5  = new_res5.get('changed_units', [])
-                    _class_col_n5 = list(crit_names5)[-1] if crit_names5 else None
-                    _qual_inv_n5 = {v: k for k, v in file_qual_mapping.get(_class_col_n5 or '', {}).items()} if file_qual_mapping and _class_col_n5 else {}
+                    #_class_col_n5 = list(crit_names5)[-1] if crit_names5 else None
+                    #_qual_inv_n5 = {v: k for k, v in file_qual_mapping.get(_class_col_n5 or '', {}).items()} if file_qual_mapping and _class_col_n5 else {}
+                    _qual_inv_n5 = {v: k for k, v in _class_qmap5.items()} if _class_qmap5 else {}
                     for i, name in enumerate(alt_names5_p):
                          sm_o = int(s_minus5_p[i]); sp_o = int(s_plus5_p[i])
                          sm_n = int(sm_new5_all[i]); sp_n = int(sp_new5_all[i])
