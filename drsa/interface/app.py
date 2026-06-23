@@ -2105,9 +2105,9 @@ x2,2.0,4.5,1.5
                             al_rules5, match_al5,
                             am_rules5, match_am5,
                             inc5, dec5)
-                        s_minus_new5 = new_res5.get('s_minus_final',
+                        s_minus_new5 = new_res5.get('final_s_minus',
                                        np.full(n_new, 1))
-                        s_plus_new5  = new_res5.get('s_plus_final',
+                        s_plus_new5  = new_res5.get('final_s_plus',
                                        np.full(n_new, 1))
                         al_fin5 = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
                         am_fin5 = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
@@ -2140,32 +2140,24 @@ x2,2.0,4.5,1.5
                     s_plus5_p    = st.session_state['s_plus5_prev']
 
                     st.markdown("#### Assignment results")
-                    al7_5 = new_res5.get('step7_al_rules')
-                    am7_5 = new_res5.get('step7_am_rules')
                     al_fin5 = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
                     am_fin5 = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
-                    all_m5v = np.vstack([alt_matrix5, new_matrix5])
-                    all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
-                    _al7_for_new = al7_5 if _nlen(al7_5)>0 else al_fin5
-                    _am7_for_new = am7_5 if _nlen(am7_5)>0 else am_fin5
-                    sm_new5_all, sp_new5_all, _, _ = classify_units(
-                         all_nc5v, _al7_for_new, _am7_for_new, inc5, dec5)
+                    cl_all5 = new_res5.get('classification_all')
+                    changed5  = new_res5.get('changed_units', [])
+                    step1_sm5 = new_res5.get('step1_s_minus', None)
+                    step1_sp5 = new_res5.get('step1_s_plus',  None)
+                    _qual_inv_n5 = {v: k for k, v in _class_qmap5.items()} if _class_qmap5 else {}
 
                     rows_new5 = []
                     all_names_new5 = list(alt_names5_p) + list(new_names5)
 
                     # Previous units — check if assignment changed
-                    al_fin5 = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
-                    am_fin5 = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
-                    step1_sm5 = new_res5.get('step1_s_minus', None)
-                    step1_sp5 = new_res5.get('step1_s_plus',  None)
-                    changed5  = new_res5.get('changed_units', [])
-                    #_class_col_n5 = list(crit_names5)[-1] if crit_names5 else None
-                    #_qual_inv_n5 = {v: k for k, v in file_qual_mapping.get(_class_col_n5 or '', {}).items()} if file_qual_mapping and _class_col_n5 else {}
-                    _qual_inv_n5 = {v: k for k, v in _class_qmap5.items()} if _class_qmap5 else {}
                     for i, name in enumerate(alt_names5_p):
                          sm_o = int(s_minus5_p[i]); sp_o = int(s_plus5_p[i])
-                         sm_n = int(sm_new5_all[i]); sp_n = int(sp_new5_all[i])
+                         if cl_all5 is not None and i < len(cl_all5):
+                             sm_n = int(cl_all5[i, 0]); sp_n = int(cl_all5[i, 1])
+                         else:
+                             sm_n = sm_o; sp_n = sp_o
                          changed_flag = (sm_n != sm_o or sp_n != sp_o)
                          rows_new5.append({
                              "Unit": name,
