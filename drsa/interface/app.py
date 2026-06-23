@@ -1969,7 +1969,7 @@ x2,2.0,4.5,1.5
             for i, name in enumerate(alt_names5):
                 sm, sp = int(s_minus5[i]), int(s_plus5[i])
                 contra = sm > sp
-                _smap5  = st.session_state.get('score_map')
+                _smap5  = file_score_map
                 sm_lbl5 = _qual_inv5.get(sm, _fmt_class(sm, _smap5))
                 sp_lbl5 = _qual_inv5.get(sp, _fmt_class(sp, _smap5))
                 assign_disp5  = _assign_str(sm, sp, _smap5, qual_inv=_qual_inv5 if _qual_inv5 else None)
@@ -2154,7 +2154,7 @@ x2,2.0,4.5,1.5
                     all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
 
                     # Previous units — check if assignment changed
-                    _smap_n5 = st.session_state.get('score_map')
+                    _smap_n5 = file_score_map
                     for i, name in enumerate(alt_names5_p):
                          sm_o = int(s_minus5_p[i]); sp_o = int(s_plus5_p[i])
                          if cl_all5 is not None and i < len(cl_all5):
