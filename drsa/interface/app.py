@@ -1845,7 +1845,7 @@ x2,2.0,4.5,1.5
             st.stop()
 
         n_al5 = len(al_rules5); n_am5 = len(am_rules5)
-        _file_qual_class_inv = {v: k for k, v in file_qual_mapping.get(list(crit_names5)[-1] if crit_names5 else '', {}).items()} if file_qual_mapping else {}
+        _file_qual_class_inv = {v: k for k, v in _class_qmap5.items()} if _class_qmap5 else {}
         al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv={v: k for k, v in _class_qmap5.items()}) if n_al5>0 else []
         am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv={v: k for k, v in _class_qmap5.items()}) if n_am5>0 else []
         mc1, mc2, mc3 = st.columns(3)
@@ -2150,8 +2150,11 @@ x2,2.0,4.5,1.5
 
                     rows_new5 = []
                     all_names_new5 = list(alt_names5_p) + list(new_names5)
+                    all_m5v = np.vstack([alt_matrix5, new_matrix5])
+                    all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
 
                     # Previous units — check if assignment changed
+                    _smap_n5 = st.session_state.get('score_map')
                     for i, name in enumerate(alt_names5_p):
                          sm_o = int(s_minus5_p[i]); sp_o = int(s_plus5_p[i])
                          if cl_all5 is not None and i < len(cl_all5):
@@ -2161,11 +2164,11 @@ x2,2.0,4.5,1.5
                          changed_flag = (sm_n != sm_o or sp_n != sp_o)
                          rows_new5.append({
                              "Unit": name,
-                             "Minimal (previous)": _qual_inv_n5.get(sm_o, _fmt_class(sm_o, file_score_map)),
-                             "Maximal (previous)": _qual_inv_n5.get(sp_o, _fmt_class(sp_o, file_score_map)),
-                             "Minimal (new)":  _qual_inv_n5.get(sm_n, _fmt_class(sm_n, file_score_map)),
-                             "Maximal (new)":  _qual_inv_n5.get(sp_n, _fmt_class(sp_n, file_score_map)),
-                             "Assignment": _assign_str(sm_n, sp_n, file_score_map, qual_inv=_qual_inv_n5 if _qual_inv_n5 else None),
+                             "Minimal (previous)": _qual_inv_n5.get(sm_o, _fmt_class(sm_o, _smap_n5)),
+                             "Maximal (previous)": _qual_inv_n5.get(sp_o, _fmt_class(sp_o, _smap_n5)),
+                             "Minimal (new)":  _qual_inv_n5.get(sm_n, _fmt_class(sm_n, _smap_n5)),
+                             "Maximal (new)":  _qual_inv_n5.get(sp_n, _fmt_class(sp_n, _smap_n5)),
+                             "Assignment": _assign_str(sm_n, sp_n, _smap_n5, qual_inv=_qual_inv_n5 if _qual_inv_n5 else None),
                              "Changed": "⚠️ Yes" if changed_flag else "",
                              "_changed": changed_flag,
                          })
@@ -2178,11 +2181,11 @@ x2,2.0,4.5,1.5
                          contra = sm > sp
                          rows_new5.append({
                              "Unit": name,
-                             "Minimal (previous)": _qual_inv_n5.get(sm1, _fmt_class(sm1, file_score_map)),
-                             "Maximal (previous)": _qual_inv_n5.get(sp1, _fmt_class(sp1, file_score_map)),
-                             "Minimal (new)":  _qual_inv_n5.get(sm,  _fmt_class(sm,  file_score_map)),
-                             "Maximal (new)":  _qual_inv_n5.get(sp,  _fmt_class(sp,  file_score_map)),
-                             "Assignment": _assign_str(sm, sp, file_score_map, qual_inv=_qual_inv_n5 if _qual_inv_n5 else None),
+                             "Minimal (previous)": _qual_inv_n5.get(sm1, _fmt_class(sm1, _smap_n5)),
+                             "Maximal (previous)": _qual_inv_n5.get(sp1, _fmt_class(sp1, _smap_n5)),
+                             "Minimal (new)":  _qual_inv_n5.get(sm,  _fmt_class(sm,  _smap_n5)),
+                             "Maximal (new)":  _qual_inv_n5.get(sp,  _fmt_class(sp,  _smap_n5)),
+                             "Assignment": _assign_str(sm, sp, _smap_n5, qual_inv=_qual_inv_n5 if _qual_inv_n5 else None),
                              "Changed": "🆕 New" if not contra else "⚠️ Contradictory",
                              "_changed": True,
                          })
