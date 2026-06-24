@@ -707,12 +707,11 @@ if uploaded is not None:
                 _new_qual_mapping[_col] = _col_map
                 # ── Add extra values ───────────────────────────────────────────
                 with st.expander(f"➕ Add extra values for **{_col}**"):
-                    st.markdown("Use this to pre-assign ranks to values not present in the current dataset "
-                                "(e.g. values that may appear in Incremental Learning).")
+                    st.markdown("Use this to pre-assign ranks to values not present in the current dataset. ")
                     _add_col1, _add_col2 = st.columns([3, 1])
                     with _add_col1:
                         _new_val = st.text_input("New value", key=f"qual_newval_{_col}",
-                                                 placeholder="e.g. Discreta")
+                                                 placeholder="Ex. Good")
                     with _add_col2:
                         _add_btn = st.button("Add", key=f"qual_addbtn_{_col}")
                     if _add_btn and _new_val.strip():
