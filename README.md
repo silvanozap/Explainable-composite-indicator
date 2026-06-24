@@ -98,6 +98,8 @@ Explainable-composite-indicator/
 │   ├── Ex.7_qualitative_maximal_rules.csv  # Pre-computed rules (qualitative)
 │   ├── Ex.7_GCS_qualitative.txt   # GCS units for Apply Rules (qualitative)
 │   └── Ex.7_GCS_qualitative_new.xlsx       # New units (qualitative)
+│   └── Ex.8_ElectreScore_mixed.xlsx       # Units with mixed criteria value
+│   └── Ex.8_ElectreScore_mixed_new.xlsx       # New units with mixed criteria value
 ├── .streamlit/
 │   └── config.toml                # Streamlit theme configuration
 ├── requirements.txt
@@ -212,6 +214,12 @@ Load saved rules and assign units. Qualitative mappings stored in the `#mapping`
 **Problem:** Load pre-computed rules with qualitative criteria, assign units and new units  
 **Setup:** Pre-computed qualitative GCS rules with `#mapping` lines  
 **Workflow:** Tab Apply Rules → upload Ex.7_qualitative_maximal_rules.csv → upload Ex.7_GCS_qualitative.txt → inspect assignment → upload Ex.7_GCS_qualitative_new.xlsx → Assign new units
+
+### Example 8 — Miex Criteria (Quantitative and qualitative)
+**File:** `Ex.8_ElectreScore_mixed.xlsx`, `Ex.8_ElectreScore_mixed_new.xlsx`  
+**Problem:** Classification with qualitative and quantitative criteria  
+**Setup:** 10 investment projects, 5 criteria (Investment cost ↓, Annual cost ↓, Recruitment ↑, Image ↑, Access ↑), continuous score 0–100  
+**Workflow:** Upload Ex.8_ElectreScore_mixed.xlsx → assign ranks in Qualitative criteria mapping → set directions → Full pipeline → Tab Incremental learning → Upload Ex.8_ElectreScore_mixed_new.xlsx → Assign new units
 
 ---
 
