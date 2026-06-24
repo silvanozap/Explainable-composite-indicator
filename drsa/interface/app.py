@@ -589,7 +589,7 @@ if uploaded is not None:
             'al_texts_min_ind', 'am_texts_min_ind',
             'al_units_min_ind', 'am_units_min_ind',
             'al_m_ref', 'am_m_ref',
-            'qual_mapping', 'qual_cols',
+            'qual_mapping', 'qual_cols', 'qual_extra_values',
         ]
         for k in keys_to_reset:
             st.session_state.pop(k, None)
@@ -678,14 +678,20 @@ if uploaded is not None:
                         "For each value, select its rank (**1 = worst, p = best**). "
                         "Ranks must be unique within each criterion.")
             _new_qual_mapping = {}
+            # qual_extra_values: {col: [val1, val2, ...]} — user-added values not in the dataset
+            if 'qual_extra_values' not in st.session_state:
+                st.session_state['qual_extra_values'] = {}
             for _col, _vals in _qual_cols.items():
                 st.markdown(f"**{_col}**")
                 _prev_map = st.session_state.get('qual_mapping', {}).get(_col, {})
-                _n_vals = len(_vals)
+                # Merge detected values with any user-added extra values for this column
+                _extra_vals = st.session_state['qual_extra_values'].get(_col, [])
+                _all_vals = _vals + [v for v in _extra_vals if v not in _vals]
+                _n_vals = len(_all_vals)
                 _col_layout = st.columns(min(_n_vals, 4))
                 _col_map = {}
                 _used_ranks = []
-                for _vi, _v in enumerate(_vals):
+                for _vi, _v in enumerate(_all_vals):
                     _default_rank = _prev_map.get(_v.strip(), _vi + 1)
                     with _col_layout[_vi % min(_n_vals, 4)]:
                         _rank = st.selectbox(
@@ -699,6 +705,40 @@ if uploaded is not None:
                 if len(set(_used_ranks)) < len(_used_ranks):
                     st.warning(f"⚠️ Ranks for **{_col}** are not unique. Each value must have a different rank.")
                 _new_qual_mapping[_col] = _col_map
+                # ── Add extra values ───────────────────────────────────────────
+                with st.expander(f"➕ Add extra values for **{_col}**"):
+                    st.markdown("Use this to pre-assign ranks to values not present in the current dataset. ")
+                    _add_col1, _add_col2 = st.columns([3, 1])
+                    with _add_col1:
+                        _new_val = st.text_input("New value", key=f"qual_newval_{_col}",
+                                                 placeholder="Ex. Good")
+                    with _add_col2:
+                        _add_btn = st.button("Add", key=f"qual_addbtn_{_col}")
+                    if _add_btn and _new_val.strip():
+                        _nv = _new_val.strip()
+                        _extras = st.session_state['qual_extra_values'].get(_col, [])
+                        if _nv not in _vals and _nv not in _extras:
+                            _extras = _extras + [_nv]
+                            st.session_state['qual_extra_values'][_col] = _extras
+                            st.rerun()
+                        elif _nv in _vals or _nv in _extras:
+                            st.warning(f"Value **{_nv}** already exists.")
+                    # Show added extra values with remove buttons
+                    _cur_extras = st.session_state['qual_extra_values'].get(_col, [])
+                    if _cur_extras:
+                        st.markdown("Added values:")
+                        for _ei, _ev in enumerate(_cur_extras):
+                            _ecol1, _ecol2 = st.columns([4, 1])
+                            with _ecol1:
+                                st.write(f"• {_ev}")
+                            with _ecol2:
+                                if st.button("✕", key=f"qual_rm_{_col}_{_ei}"):
+                                    _cur_extras2 = [v for v in _cur_extras if v != _ev]
+                                    st.session_state['qual_extra_values'][_col] = _cur_extras2
+                                    # Remove from mapping too
+                                    if _col in st.session_state.get('qual_mapping', {}):
+                                        st.session_state['qual_mapping'][_col].pop(_ev, None)
+                                    st.rerun()
             if _new_qual_mapping != st.session_state.get('qual_mapping', {}):
                 st.session_state['qual_mapping'] = _new_qual_mapping
             for _col, _map in _new_qual_mapping.items():
@@ -1804,7 +1844,7 @@ x2,2.0,4.5,1.5
             st.stop()
 
         n_al5 = len(al_rules5); n_am5 = len(am_rules5)
-        _file_qual_class_inv = {v: k for k, v in file_qual_mapping.get(list(crit_names5)[-1] if crit_names5 else '', {}).items()} if file_qual_mapping else {}
+        _file_qual_class_inv = {v: k for k, v in _class_qmap5.items()} if _class_qmap5 else {}
         al_texts5 = format_atleast_rules(al_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv={v: k for k, v in _class_qmap5.items()}) if n_al5>0 else []
         am_texts5 = format_atmost_rules(am_rules5, inc5, dec5, crit_names5, score_map=file_score_map, qual_mapping=file_qual_mapping, qual_class_inv={v: k for k, v in _class_qmap5.items()}) if n_am5>0 else []
         mc1, mc2, mc3 = st.columns(3)
@@ -1923,13 +1963,12 @@ x2,2.0,4.5,1.5
         if alt_matrix5 is not None and s_minus5 is not None:
             st.markdown("---")
             st.markdown("#### Assignment")
-            _class_col5 = list(crit_names5)[-1] if crit_names5 else None
-            _qual_inv5 = {v: k for k, v in file_qual_mapping.get(_class_col5 or '', {}).items()} if file_qual_mapping and _class_col5 else {}
+            _qual_inv5 = {v: k for k, v in _class_qmap5.items()} if _class_qmap5 else {}
             rows5 = []
             for i, name in enumerate(alt_names5):
                 sm, sp = int(s_minus5[i]), int(s_plus5[i])
                 contra = sm > sp
-                _smap5  = st.session_state.get('score_map')
+                _smap5  = file_score_map
                 sm_lbl5 = _qual_inv5.get(sm, _fmt_class(sm, _smap5))
                 sp_lbl5 = _qual_inv5.get(sp, _fmt_class(sp, _smap5))
                 assign_disp5  = _assign_str(sm, sp, _smap5, qual_inv=_qual_inv5 if _qual_inv5 else None)
@@ -2065,9 +2104,9 @@ x2,2.0,4.5,1.5
                             al_rules5, match_al5,
                             am_rules5, match_am5,
                             inc5, dec5)
-                        s_minus_new5 = new_res5.get('s_minus_final',
+                        s_minus_new5 = new_res5.get('final_s_minus',
                                        np.full(n_new, 1))
-                        s_plus_new5  = new_res5.get('s_plus_final',
+                        s_plus_new5  = new_res5.get('final_s_plus',
                                        np.full(n_new, 1))
                         al_fin5 = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
                         am_fin5 = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
@@ -2100,39 +2139,35 @@ x2,2.0,4.5,1.5
                     s_plus5_p    = st.session_state['s_plus5_prev']
 
                     st.markdown("#### Assignment results")
-                    al7_5 = new_res5.get('step7_al_rules')
-                    am7_5 = new_res5.get('step7_am_rules')
                     al_fin5 = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
                     am_fin5 = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
-                    all_m5v = np.vstack([alt_matrix5, new_matrix5])
-                    all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
-                    _al7_for_new = al7_5 if _nlen(al7_5)>0 else al_fin5
-                    _am7_for_new = am7_5 if _nlen(am7_5)>0 else am_fin5
-                    sm_new5_all, sp_new5_all, _, _ = classify_units(
-                         all_nc5v, _al7_for_new, _am7_for_new, inc5, dec5)
+                    cl_all5 = new_res5.get('classification_all')
+                    changed5  = new_res5.get('changed_units', [])
+                    step1_sm5 = new_res5.get('step1_s_minus', None)
+                    step1_sp5 = new_res5.get('step1_s_plus',  None)
+                    _qual_inv_n5 = {v: k for k, v in _class_qmap5.items()} if _class_qmap5 else {}
 
                     rows_new5 = []
                     all_names_new5 = list(alt_names5_p) + list(new_names5)
+                    all_m5v = np.vstack([alt_matrix5, new_matrix5])
+                    all_nc5v = np.hstack([all_m5v, np.full((len(all_m5v),1), np.nan)])
 
                     # Previous units — check if assignment changed
-                    al_fin5 = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
-                    am_fin5 = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
-                    step1_sm5 = new_res5.get('step1_s_minus', None)
-                    step1_sp5 = new_res5.get('step1_s_plus',  None)
-                    changed5  = new_res5.get('changed_units', [])
-                    _class_col_n5 = list(crit_names5)[-1] if crit_names5 else None
-                    _qual_inv_n5 = {v: k for k, v in file_qual_mapping.get(_class_col_n5 or '', {}).items()} if file_qual_mapping and _class_col_n5 else {}
+                    _smap_n5 = file_score_map
                     for i, name in enumerate(alt_names5_p):
                          sm_o = int(s_minus5_p[i]); sp_o = int(s_plus5_p[i])
-                         sm_n = int(sm_new5_all[i]); sp_n = int(sp_new5_all[i])
+                         if cl_all5 is not None and i < len(cl_all5):
+                             sm_n = int(cl_all5[i, 0]); sp_n = int(cl_all5[i, 1])
+                         else:
+                             sm_n = sm_o; sp_n = sp_o
                          changed_flag = (sm_n != sm_o or sp_n != sp_o)
                          rows_new5.append({
                              "Unit": name,
-                             "Minimal (previous)": _qual_inv_n5.get(sm_o, _fmt_class(sm_o, file_score_map)),
-                             "Maximal (previous)": _qual_inv_n5.get(sp_o, _fmt_class(sp_o, file_score_map)),
-                             "Minimal (new)":  _qual_inv_n5.get(sm_n, _fmt_class(sm_n, file_score_map)),
-                             "Maximal (new)":  _qual_inv_n5.get(sp_n, _fmt_class(sp_n, file_score_map)),
-                             "Assignment": _assign_str(sm_n, sp_n, file_score_map, qual_inv=_qual_inv_n5 if _qual_inv_n5 else None),
+                             "Minimal (previous)": _qual_inv_n5.get(sm_o, _fmt_class(sm_o, _smap_n5)),
+                             "Maximal (previous)": _qual_inv_n5.get(sp_o, _fmt_class(sp_o, _smap_n5)),
+                             "Minimal (new)":  _qual_inv_n5.get(sm_n, _fmt_class(sm_n, _smap_n5)),
+                             "Maximal (new)":  _qual_inv_n5.get(sp_n, _fmt_class(sp_n, _smap_n5)),
+                             "Assignment": _assign_str(sm_n, sp_n, _smap_n5, qual_inv=_qual_inv_n5 if _qual_inv_n5 else None),
                              "Changed": "⚠️ Yes" if changed_flag else "",
                              "_changed": changed_flag,
                          })
@@ -2145,11 +2180,11 @@ x2,2.0,4.5,1.5
                          contra = sm > sp
                          rows_new5.append({
                              "Unit": name,
-                             "Minimal (previous)": _qual_inv_n5.get(sm1, _fmt_class(sm1, file_score_map)),
-                             "Maximal (previous)": _qual_inv_n5.get(sp1, _fmt_class(sp1, file_score_map)),
-                             "Minimal (new)":  _qual_inv_n5.get(sm,  _fmt_class(sm,  file_score_map)),
-                             "Maximal (new)":  _qual_inv_n5.get(sp,  _fmt_class(sp,  file_score_map)),
-                             "Assignment": _assign_str(sm, sp, file_score_map, qual_inv=_qual_inv_n5 if _qual_inv_n5 else None),
+                             "Minimal (previous)": _qual_inv_n5.get(sm1, _fmt_class(sm1, _smap_n5)),
+                             "Maximal (previous)": _qual_inv_n5.get(sp1, _fmt_class(sp1, _smap_n5)),
+                             "Minimal (new)":  _qual_inv_n5.get(sm,  _fmt_class(sm,  _smap_n5)),
+                             "Maximal (new)":  _qual_inv_n5.get(sp,  _fmt_class(sp,  _smap_n5)),
+                             "Assignment": _assign_str(sm, sp, _smap_n5, qual_inv=_qual_inv_n5 if _qual_inv_n5 else None),
                              "Changed": "🆕 New" if not contra else "⚠️ Contradictory",
                              "_changed": True,
                          })
