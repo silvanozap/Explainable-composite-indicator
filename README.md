@@ -215,7 +215,7 @@ Load saved rules and assign units. Qualitative mappings stored in the `#mapping`
 **Setup:** Pre-computed qualitative GCS rules with `#mapping` lines  
 **Workflow:** Tab Apply Rules → upload Ex.7_qualitative_maximal_rules.csv → upload Ex.7_GCS_qualitative.txt → inspect assignment → upload Ex.7_GCS_qualitative_new.xlsx → Assign new units
 
-### Example 8 — Miex Criteria (Quantitative and qualitative)
+### Example 8 — Mixed Criteria (Quantitative and qualitative)
 **File:** `Ex.8_ElectreScore_mixed.xlsx`, `Ex.8_ElectreScore_mixed_new.xlsx`  
 **Problem:** Classification with qualitative and quantitative criteria  
 **Setup:** 10 investment projects, 5 criteria (Investment cost ↓, Annual cost ↓, Recruitment ↑, Image ↑, Access ↑), continuous score 0–100  
