@@ -308,11 +308,16 @@ def show_rules(rules, texts, supps=None, units=None, rule_type="atleast"):
                 extra = f'<br>{tags}'
         st.markdown(f'<div class="rule-box {rule_type}">{txt}{extra}</div>', unsafe_allow_html=True)
 
-def show_explanation(name, s_minus, s_plus, al_m, am_m, al_texts, am_texts, idx):
+def show_explanation(name, s_minus, s_plus, al_m, am_m, al_texts, am_texts, idx, score_map=None, qual_inv=None):
     exp = explain_unit(idx, s_minus, s_plus, al_m, am_m, al_texts, am_texts, name)
+    #css = "class-ok" if not exp['contradictory'] and exp['s_minus']==exp['s_plus'] \
+    #      else "class-err" if exp['contradictory'] else "class-range"
+    #st.markdown(f'<div class="class-box {css}"><b>{name}</b> → <b>{exp["assignment"]}</b></div>',
+    #            unsafe_allow_html=True)
+    _lbl = _assign_str(exp['s_minus'], exp['s_plus'], score_map, qual_inv=qual_inv)
     css = "class-ok" if not exp['contradictory'] and exp['s_minus']==exp['s_plus'] \
           else "class-err" if exp['contradictory'] else "class-range"
-    st.markdown(f'<div class="class-box {css}"><b>{name}</b> → <b>{exp["assignment"]}</b></div>',
+    st.markdown(f'<div class="class-box {css}"><b>{name}</b> → <b>{_lbl}</b></div>',
                 unsafe_allow_html=True)
     if exp['matched_atleast']:
         st.markdown("**Satisfied at-least rules:**")
@@ -1189,7 +1194,9 @@ if uploaded is not None:
             st.markdown("#### Unit-by-unit explanation")
             sel = st.selectbox("Select unit", unit_names, key="sel_tab3")
             show_explanation(sel, s_minus, s_plus, al_m, am_m,
-                             al_texts, am_texts, unit_names.index(sel))
+                            al_texts, am_texts, unit_names.index(sel),
+                            score_map=st.session_state.get('score_map'),
+                            qual_inv=_qual_inv3)
             import io
             _buf_xlsx = io.BytesIO()
             with pd.ExcelWriter(_buf_xlsx, engine="openpyxl") as writer:
@@ -1526,7 +1533,9 @@ if uploaded is not None:
                 sel_expl = st.selectbox("Select unit", all_names_expl, key="sel_new")
                 idx_expl = all_names_expl.index(sel_expl)
                 show_explanation(sel_expl, s_minus_all, s_plus_all,
-                                 al_m_all, am_m_all, al_texts_new, am_texts_new, idx_expl)
+                                al_m_all, am_m_all, al_texts_new, am_texts_new, idx_expl,
+                                score_map=st.session_state.get('score_map'),
+                                qual_inv=_qual_inv4a)
 
                 st.markdown("### 💾 Export")
                 _inc_n = st.session_state['inc']; _dec_n = st.session_state['dec']
@@ -1998,7 +2007,9 @@ x2,2.0,4.5,1.5
             st.markdown("#### Unit-by-unit explanation")
             sel5 = st.selectbox("Select unit", alt_names5, key="sel_tab5")
             show_explanation(sel5, s_minus5, s_plus5, al_m5, am_m5,
-                             al_texts5, am_texts5, alt_names5.index(sel5))
+                            al_texts5, am_texts5, alt_names5.index(sel5),
+                            score_map=file_score_map,
+                            qual_inv=_qual_inv5)
 
             import io
             _buf_apply_xlsx = io.BytesIO()
@@ -2270,7 +2281,9 @@ x2,2.0,4.5,1.5
                          all_nc5v, al_fin5, am_fin5, inc5, dec5)
                     sel5n = st.selectbox("Select unit", all_names_new5, key="sel_new5")
                     show_explanation(sel5n, sm_a5, sp_a5, al_m_a5, am_m_a5,
-                                      al_tf5, am_tf5, all_names_new5.index(sel5n))
+                                    al_tf5, am_tf5, all_names_new5.index(sel5n),
+                                    score_map=file_score_map,
+                                    qual_inv=_qual_inv_n5)
 
                     # ── Downloads ─────────────────────────────────────────────
                     st.markdown("### 💾 Export")
