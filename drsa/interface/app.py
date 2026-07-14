@@ -753,11 +753,16 @@ if uploaded is not None:
             _new_qual_mapping = {}
 
         st.markdown("#### 🎯 Reference units")
+        #selected_ref = st.multiselect(
+        #    "Select reference units",
+        #    options=unit_names,
+        #    default=[unit_names[i] for i in ref_indices],
+        #)
+        _selectable_refs = [unit_names[i] for i in range(n_units) if not np.isnan(matrix_raw[i, -1])]
         selected_ref = st.multiselect(
             "Select reference units",
-            options=unit_names,
-            default=[unit_names[i] for i in ref_indices],
-        )
+            options=_selectable_refs,
+            default=[unit_names[i] for i in ref_indices])
         if len(selected_ref) == 0:
             st.error("Please select at least one reference unit."); st.stop()
 
