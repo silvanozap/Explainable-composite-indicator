@@ -935,10 +935,10 @@ if uploaded is not None:
                 al_final = al_min if (milp_ok and _nlen(al_min)>0) else al_r2
                 am_final = am_min if (milp_ok and _nlen(am_min)>0) else am_r2
                 if milp_ok:
-                    status.success(f"✅ Step 5/5: {_nlen(al_final)} at-least, {_nlen(am_final)} minimal rules")
+                    status.success(f"✅ Step 5/5: {_nlen(al_final)} at-least, {_nlen(am_final)} minimal set of rules")
                 else:
                     status.warning(f"⚠️ MILP minimisation failed ({milp_msg}). "
-                                   f"Using maximal rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most) instead.")
+                                   f"Using maximal set of rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most) instead.")
                 prog.progress(88)
                 status.info("⏳ Final assignment…")
                 sm7, sp7, _, _ = _cu(mat_nc, al_final, am_final, inc, dec)
@@ -1005,7 +1005,7 @@ if uploaded is not None:
                 csv_rules = rules_to_csv(al_texts, am_texts, crit_names, inc, dec,
                                          al_rules=al_r, am_rules=am_r,
                                          score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
-                st.download_button("⬇ Maximal rules", csv_rules,
+                st.download_button("⬇ Maximal set of rules", csv_rules,
                                    file_name="drsa_rules_maximal.csv", mime="text/csv",
                                    key="dl_rules_ind", use_container_width=True)
 
@@ -1060,7 +1060,7 @@ if uploaded is not None:
                             csv_min_ind = rules_to_csv(al_texts_min, am_texts_min, crit_names, inc, dec,
                                                        al_rules=al_final, am_rules=am_final,
                                                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
-                            st.download_button("⬇ Minimal rules", csv_min_ind,
+                            st.download_button("⬇ Minimal set of rules", csv_min_ind,
                                                file_name="drsa_rules_minimal.csv", mime="text/csv",
                                                key="dl_min_ind", use_container_width=True)
             else:
@@ -1091,7 +1091,7 @@ if uploaded is not None:
             am_units_min = st.session_state.get('am_units_min', [])
 
             if al_texts_max or am_texts_max:
-                with st.expander(f"📂 Maximal rules ({_nlen(al_r2)} at-least, {_nlen(am_r2)} at-most)"):
+                with st.expander(f"📂 Maximal set of rules ({_nlen(al_r2)} at-least, {_nlen(am_r2)} at-most)"):
                     if al_texts_max:
                         st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least rules**")
                         show_rules(al_r2, al_texts_max, units=al_units_max, rule_type="atleast")
@@ -1099,7 +1099,7 @@ if uploaded is not None:
                         st.markdown("**$\\mathcal{R}^{\\leqslant}$ At-Most rules**")
                         show_rules(am_r2, am_texts_max, units=am_units_max, rule_type="atmost")
             if al_texts_max or am_texts_max:
-                with st.expander(f"📂 Minimal rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most)"):
+                with st.expander(f"📂 Minimal set of rules ({_nlen(al_final)} at-least, {_nlen(am_final)} at-most)"):
                     if al_texts_min:
                         st.markdown("**$\\mathcal{R}^{\\geqslant}$ · At-Least rules**")
                         show_rules(al_final, al_texts_min, units=al_units_min, rule_type="atleast")
@@ -1115,14 +1115,14 @@ if uploaded is not None:
                 csv_min_p = rules_to_csv(al_texts_min, am_texts_min, _crit, _inc, _dec,
                                          al_rules=al_final, am_rules=am_final,
                                          score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
-                st.download_button("⬇ Minimal rules", csv_min_p,
+                st.download_button("⬇ Minimal set of rules", csv_min_p,
                                    file_name="pipeline_rules_minimal.csv", mime="text/csv",
                                    key="dl_min_prev", use_container_width=True)
             with c2:
                 csv_max_p = rules_to_csv(al_texts_max, am_texts_max, _crit, _inc, _dec,
                                          al_rules=al_r2, am_rules=am_r2,
                                          score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
-                st.download_button("⬇ Maximal rules", csv_max_p,
+                st.download_button("⬇ Maximal set of rules", csv_max_p,
                                    file_name="pipeline_rules_maximal.csv", mime="text/csv",
                                    key="dl_max_prev", use_container_width=True)
 
@@ -1460,10 +1460,10 @@ if uploaded is not None:
                     st.markdown(f"**Changed assignment of previous units:** "
                                 f"{', '.join(changed_names) if changed_names else 'None'}")
                     def _nr(x): return _nlen(x) if x is not None else 0
-                    st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ maximal rules selected:** "
+                    st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ maximal set of rules selected:** "
                                 f"{_nr(new_res.get('step7_al_rules'))} at-least, "
                                 f"{_nr(new_res.get('step7_am_rules'))} at-most")
-                    st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ minimal rules selected:** "
+                    st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ minimal set of rules selected:** "
                                 f"{_nr(new_res.get('step8_al_rules'))} at-least, "
                                 f"{_nr(new_res.get('step8_am_rules'))} at-most")
 
@@ -1493,7 +1493,7 @@ if uploaded is not None:
                                  for i in range(_nlen(al7))]
                     am_units7 = [[all_new_names[j] for j in range(len(all_new_names)) if am_m7_all[j,i]==1]
                                  for i in range(_nlen(am7))]
-                    with st.expander(f"📂 Maximal rules selected ({_nlen(al7)} at-least, {_nlen(am7)} at-most)"):
+                    with st.expander(f"📂 Maximal set of rules selected ({_nlen(al7)} at-least, {_nlen(am7)} at-most)"):
                         if al_texts7:
                             st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least:**")
                             show_rules(al7, al_texts7, units=al_units7, rule_type="atleast")
@@ -1511,7 +1511,7 @@ if uploaded is not None:
                                     for i in range(_nlen(al_fin))]
                     am_units_fin = [[all_new_names[j] for j in range(len(all_new_names)) if am_m_fin[j,i]==1]
                                     for i in range(_nlen(am_fin))]
-                    with st.expander(f"📂 Minimal rules selected ({_nlen(al_fin)} at-least, {_nlen(am_fin)} at-most)"):
+                    with st.expander(f"📂 Minimal set of rules selected ({_nlen(al_fin)} at-least, {_nlen(am_fin)} at-most)"):
                         if al_texts_new:
                             st.markdown("**$\\mathcal{R}^{\\geqslant}$ At-Least:**")
                             show_rules(al_fin, al_texts_new, units=al_units_fin, rule_type="atleast")
@@ -1545,7 +1545,7 @@ if uploaded is not None:
                     csv_new_min = rules_to_csv(al_texts_new, am_texts_new, _crit_n, _inc_n, _dec_n,
                                                al_rules=al_fin, am_rules=am_fin,
                                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
-                    st.download_button("⬇ Minimal rules", csv_new_min,
+                    st.download_button("⬇ Minimal set of rules", csv_new_min,
                                        file_name="pipeline_newunits_rules_minimal.csv",
                                        mime="text/csv", key="dl_new_min", use_container_width=True)
                 with c2:
@@ -1557,7 +1557,7 @@ if uploaded is not None:
                     csv_new_max = rules_to_csv(_al7_txtn, _am7_txtn, _crit_n, _inc_n, _dec_n,
                                                al_rules=_al7n, am_rules=_am7n,
                                        score_map=st.session_state.get('score_map'), qual_mapping=st.session_state.get('qual_mapping', {}))
-                    st.download_button("⬇ Maximal rules", csv_new_max,
+                    st.download_button("⬇ Maximal set of rules", csv_new_max,
                                        file_name="pipeline_newunits_rules_maximal.csv",
                                        mime="text/csv", key="dl_new_max", use_container_width=True)
 
@@ -2221,12 +2221,12 @@ x2,2.0,4.5,1.5
                     with st.expander("🔍 Summary result", expanded=False):
                        st.markdown(f"**Changed assignment of previous units:** "
                                     f"{chr(44).join(ch_names5) if ch_names5 else 'None'}")
-                       st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ maximal rules selected:** "
+                       st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ maximal set of rules selected:** "
                                     f"{_nlen(new_res5.get('step7_al_rules'))} at-least, "
                                     f"{_nlen(new_res5.get('step7_am_rules'))} at-most")
                        al_fin5_tmp = new_res5.get('step8_al_rules', new_res5.get('step7_al_rules', al_rules5))
                        am_fin5_tmp = new_res5.get('step8_am_rules', new_res5.get('step7_am_rules', am_rules5))
-                       st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ minimal rules selected:** "
+                       st.markdown(f"**$\\mathcal{{R}}^{{\\geqslant/\\leqslant}}$ minimal set of rules selected:** "
                                     f"{_nlen(al_fin5_tmp)} at-least, {_nlen(am_fin5_tmp)} at-most")
 
                     # ── Maximal rules expander ────────────────────────────────
@@ -2248,7 +2248,7 @@ x2,2.0,4.5,1.5
                                      if al_m7_5[j,i]==1] for i in range(_nlen(al7_5))]
                          am_u7_5 = [[all_names_new5[j] for j in range(len(all_names_new5))
                                      if am_m7_5[j,i]==1] for i in range(_nlen(am7_5))]
-                         with st.expander(f"📂 Maximal rules selected ({_nlen(al7_5)} at-least, {_nlen(am7_5)} at-most)", expanded=False):
+                         with st.expander(f"📂 Maximal set of rules selected ({_nlen(al7_5)} at-least, {_nlen(am7_5)} at-most)", expanded=False):
                              if al_t7_5:
                                  st.markdown("**R≥ At-Least:**")
                                  show_rules(al7_5, al_t7_5, units=al_u7_5, rule_type="atleast")
@@ -2267,7 +2267,7 @@ x2,2.0,4.5,1.5
                                 if al_mf5[j,i]==1] for i in range(_nlen(al_fin5))]
                     am_uf5 = [[all_names_new5[j] for j in range(len(all_names_new5))
                                 if am_mf5[j,i]==1] for i in range(_nlen(am_fin5))]
-                    with st.expander(f"📂 Minimal rules selected ({_nlen(al_fin5)} at-least, {_nlen(am_fin5)} at-most)", expanded=False):
+                    with st.expander(f"📂 Minimal set of rules selected ({_nlen(al_fin5)} at-least, {_nlen(am_fin5)} at-most)", expanded=False):
                          if al_tf5:
                              st.markdown("**R≥ At-Least:**")
                              show_rules(al_fin5, al_tf5, units=al_uf5, rule_type="atleast")
@@ -2295,7 +2295,7 @@ x2,2.0,4.5,1.5
                             al_rules=al7_5, am_rules=am7_5,
                             score_map=file_score_map,
                             qual_mapping=file_qual_mapping)
-                        st.download_button("⬇ New units maximal rules", csv_max5,
+                        st.download_button("⬇ New units maximal set of rules", csv_max5,
                             file_name="drsa_applied_new_units_maximal_rules.csv", mime="text/csv",
                             key="dl_new5_max", use_container_width=True)
                     with dc2:
@@ -2303,7 +2303,7 @@ x2,2.0,4.5,1.5
                             al_rules=al_fin5, am_rules=am_fin5,
                             score_map=file_score_map,
                             qual_mapping=file_qual_mapping)
-                        st.download_button("⬇ New units minimal rules", csv_min5,
+                        st.download_button("⬇ New units minimal set of rules", csv_min5,
                             file_name="drsa_applied_new_units_minimal_rules.csv", mime="text/csv",
                             key="dl_new5_min", use_container_width=True)
                     import io
