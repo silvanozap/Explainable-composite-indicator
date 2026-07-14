@@ -1158,8 +1158,11 @@ if uploaded is not None:
             # Build inverse qual mapping for class column
             _qmap3 = st.session_state.get('qual_mapping', {})
             _qcols3 = st.session_state.get('qual_cols', [])
-            _class_col3 = _qcols3[-1] if _qcols3 else None
+            #_class_col3 = _qcols3[-1] if _qcols3 else None
+            #_qual_inv3 = {v: k for k, v in _qmap3[_class_col3].items()} if _class_col3 and _class_col3 in _qmap3 else {}
+            _class_col3 = st.session_state.get('qual_class_col')
             _qual_inv3 = {v: k for k, v in _qmap3[_class_col3].items()} if _class_col3 and _class_col3 in _qmap3 else {}
+
 
             rows = []
             for i, name in enumerate(unit_names):
